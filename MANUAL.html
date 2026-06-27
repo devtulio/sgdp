@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual Operacional — SGDP v1.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
+
+  .page { background: #fff; width: 210mm; min-height: 297mm; margin: 20px auto; padding: 25mm 20mm; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+
+  /* Capa */
+  .cover { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240mm; text-align: center; border: 3px double #1a3a6b; padding: 30mm 20mm; }
+  .cover-logo { font-size: 52pt; font-weight: 900; color: #1a3a6b; letter-spacing: -2px; margin-bottom: 16pt; }
+  .cover-title { font-size: 22pt; font-weight: bold; color: #1a3a6b; margin-bottom: 8pt; }
+  .cover-subtitle { font-size: 14pt; color: #b8962e; margin-bottom: 6pt; font-style: italic; }
+  .cover-system { font-size: 12pt; color: #444; margin-bottom: 30pt; }
+  .cover-version { font-size: 11pt; color: #666; border: 1px solid #ccc; padding: 4pt 14pt; border-radius: 20px; display: inline-block; margin-bottom: 16pt; }
+  .cover-legal { font-size: 10pt; color: #888; margin-top: 30pt; font-style: italic; border-top: 1px solid #ddd; padding-top: 12pt; }
+  .cover-date { font-size: 10pt; color: #999; margin-top: 8pt; }
+
+  /* Tipografia */
+  h1, h2, h3, h4 { font-family: 'Times New Roman', serif; }
+  h1 { font-size: 18pt; color: #1a3a6b; margin: 16pt 0 8pt; }
+  h2 { font-size: 14pt; border-bottom: 2px solid #1a3a6b; padding-bottom: 4pt; margin: 20pt 0 10pt; color: #1a3a6b; }
+  h3 { font-size: 12pt; margin: 14pt 0 6pt; color: #b8962e; font-weight: bold; }
+  h4 { font-size: 11pt; margin: 10pt 0 4pt; color: #333; }
+  p { line-height: 1.7; text-align: justify; margin-bottom: 8pt; }
+  ul, ol { margin: 6pt 0 10pt 20pt; line-height: 1.7; }
+  li { margin-bottom: 3pt; }
+  strong { font-weight: bold; }
+  em { font-style: italic; }
+  code { font-family: 'Courier New', monospace; font-size: 10pt; background: #f0f4fa; padding: 1px 5px; border-radius: 3px; color: #1a3a6b; }
+
+  /* Sumário */
+  .toc { margin: 10pt 0; }
+  .toc a { color: #1a3a6b; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc-item { display: flex; justify-content: space-between; align-items: baseline; padding: 2pt 0; border-bottom: 1px dotted #ccc; }
+  .toc-item.h2 { font-weight: 700; margin-top: 6pt; }
+  .toc-item.h3 { padding-left: 16pt; font-size: 10.5pt; }
+  .toc-num { white-space: nowrap; color: #888; font-size: 10pt; }
+
+  /* Notas */
+  .nota  { background: #fff8e1; border-left: 4px solid #f59e0b; padding: 8pt 12pt; margin: 10pt 0; font-size: 10.5pt; border-radius: 0 4px 4px 0; }
+  .aviso { background: #fef2f2; border-left: 4px solid #ef4444; padding: 8pt 12pt; margin: 10pt 0; font-size: 10.5pt; border-radius: 0 4px 4px 0; }
+  .dica  { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 8pt 12pt; margin: 10pt 0; font-size: 10.5pt; border-radius: 0 4px 4px 0; }
+
+  /* Tabela */
+  table { width: 100%; border-collapse: collapse; margin: 10pt 0; font-size: 10.5pt; }
+  th { background: #1a3a6b; color: #fff; padding: 6pt 10pt; text-align: left; font-weight: 700; }
+  td { padding: 6pt 10pt; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+
+  /* Tipo badges */
+  .badge { display: inline-block; padding: 1pt 7pt; border-radius: 3pt; font-size: 9pt; font-weight: 700; }
+  .badge-lei      { background: #eff6ff; color: #1e40af; }
+  .badge-decreto  { background: #f5f3ff; color: #6d28d9; }
+  .badge-portaria { background: #ecfdf5; color: #065f46; }
+  .badge-parecer  { background: #fffbeb; color: #92400e; }
+  .badge-oficio   { background: #f3f4f6; color: #374151; }
+
+  /* Separador de página */
+  .page-break { page-break-before: always; margin-top: 0; }
+
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── CAPA ─────────────────────────────────────────────────────────────────── -->
+<div class="page">
+  <div class="cover">
+    <div class="cover-logo">SGDP</div>
+    <div class="cover-title">Sistema de Gestão de Documentos<br>da Procuradoria</div>
+    <div class="cover-subtitle">Manual Operacional</div>
+    <div class="cover-system">Procuradoria-Geral Municipal</div>
+    <div class="cover-version">Versão 1.0.0</div>
+    <div class="cover-legal">
+      Documentação de uso interno.<br>
+      Desenvolvido para gestão de atos jurídicos municipais.
+    </div>
+    <div class="cover-date">Junho de 2026</div>
+  </div>
+</div>
+
+<!-- ── SUMÁRIO ───────────────────────────────────────────────────────────────── -->
+<div class="page">
+  <h1>Sumário</h1>
+  <div class="toc">
+    <div class="toc-item h2"><a href="#s1">1. Visão Geral do Sistema</a><span class="toc-num">3</span></div>
+    <div class="toc-item h3"><a href="#s1-1">1.1 Objetivo</a><span class="toc-num">3</span></div>
+    <div class="toc-item h3"><a href="#s1-2">1.2 Tipos de documento gerenciados</a><span class="toc-num">3</span></div>
+    <div class="toc-item h3"><a href="#s1-3">1.3 Arquitetura simplificada</a><span class="toc-num">3</span></div>
+    <div class="toc-item h2"><a href="#s2">2. Instalação e Inicialização</a><span class="toc-num">4</span></div>
+    <div class="toc-item h3"><a href="#s2-1">2.1 Requisitos</a><span class="toc-num">4</span></div>
+    <div class="toc-item h3"><a href="#s2-2">2.2 Primeiros passos</a><span class="toc-num">4</span></div>
+    <div class="toc-item h3"><a href="#s2-3">2.3 Acesso em rede local</a><span class="toc-num">4</span></div>
+    <div class="toc-item h2"><a href="#s3">3. Login e Perfis de Acesso</a><span class="toc-num">5</span></div>
+    <div class="toc-item h2"><a href="#s4">4. Cadastro de Documentos</a><span class="toc-num">5</span></div>
+    <div class="toc-item h3"><a href="#s4-1">4.1 Campos do formulário</a><span class="toc-num">5</span></div>
+    <div class="toc-item h3"><a href="#s4-2">4.2 Numeração automática</a><span class="toc-num">6</span></div>
+    <div class="toc-item h3"><a href="#s4-3">4.3 Anexar PDF assinado</a><span class="toc-num">6</span></div>
+    <div class="toc-item h2"><a href="#s5">5. Busca e Filtros</a><span class="toc-num">7</span></div>
+    <div class="toc-item h2"><a href="#s6">6. Administração</a><span class="toc-num">7</span></div>
+    <div class="toc-item h3"><a href="#s6-1">6.1 Gestão de usuários</a><span class="toc-num">7</span></div>
+    <div class="toc-item h3"><a href="#s6-2">6.2 Auditoria</a><span class="toc-num">8</span></div>
+    <div class="toc-item h3"><a href="#s6-3">6.3 Backup e restauração</a><span class="toc-num">8</span></div>
+    <div class="toc-item h2"><a href="#s7">7. Fluxo de Trabalho Recomendado</a><span class="toc-num">9</span></div>
+    <div class="toc-item h2"><a href="#s8">8. Perguntas Frequentes</a><span class="toc-num">9</span></div>
+  </div>
+</div>
+
+<!-- ── SEÇÃO 1 ────────────────────────────────────────────────────────────────── -->
+<div class="page">
+  <h2 id="s1">1. Visão Geral do Sistema</h2>
+
+  <h3 id="s1-1">1.1 Objetivo</h3>
+  <p>
+    O <strong>SGDP</strong> (Sistema de Gestão de Documentos da Procuradoria) é uma aplicação web
+    de uso interno desenvolvida para a Procuradoria-Geral municipal. Seu propósito é centralizar
+    e controlar os atos jurídicos produzidos pelo órgão — substituindo planilhas e pastas físicas
+    por um repositório digital consultável, rastreável e com acesso simultâneo para todos os procuradores.
+  </p>
+
+  <h3 id="s1-2">1.2 Tipos de documento gerenciados</h3>
+  <table>
+    <thead><tr><th>Tipo</th><th>Descrição</th><th>Numeração</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-lei">Lei</span></td><td>Ato normativo aprovado pela Câmara Municipal</td><td>nº 001/2026…</td></tr>
+      <tr><td><span class="badge badge-decreto">Decreto</span></td><td>Ato normativo do Executivo Municipal</td><td>nº 001/2026…</td></tr>
+      <tr><td><span class="badge badge-portaria">Portaria</span></td><td>Ato administrativo interno do Executivo</td><td>nº 001/2026…</td></tr>
+      <tr><td><span class="badge badge-parecer">Parecer</span></td><td>Manifestação jurídica da Procuradoria</td><td>nº 001/2026…</td></tr>
+      <tr><td><span class="badge badge-oficio">Ofício</span></td><td>Comunicação oficial externa da Procuradoria</td><td>nº 001/2026…</td></tr>
+    </tbody>
+  </table>
+  <p>Cada tipo possui sua própria sequência numérica independente, reiniciada a cada ano.</p>
+
+  <h3 id="s1-3">1.3 Arquitetura simplificada</h3>
+  <p>
+    Um único computador executa o servidor (<code>server.py</code>) e armazena todos os dados
+    (banco SQLite + PDFs em disco). Os procuradores acessam pelo navegador — seja no próprio
+    computador servidor (<code>localhost:3001</code>) ou em outros computadores da mesma rede
+    (<code>192.168.x.x:3001</code>). Não é necessária conexão com a internet.
+  </p>
+
+  <div class="nota">
+    <strong>Nota:</strong> O servidor encerra automaticamente quando todas as janelas do navegador
+    são fechadas (após 60 segundos). Para manter o sistema disponível durante o expediente,
+    mantenha ao menos uma janela aberta no computador servidor.
+  </div>
+
+  <h2 id="s2">2. Instalação e Inicialização</h2>
+
+  <h3 id="s2-1">2.1 Requisitos</h3>
+  <ul>
+    <li><strong>Python 3.8 ou superior</strong> — disponível em <code>python.org</code>; marcar "Add Python to PATH" na instalação</li>
+    <li><strong>Google Chrome</strong> ou <strong>Microsoft Edge</strong> atualizado</li>
+    <li>Windows 10 ou 11</li>
+    <li>Nenhuma dependência externa — apenas a biblioteca padrão do Python</li>
+  </ul>
+
+  <h3 id="s2-2">2.2 Primeiros passos</h3>
+  <ol>
+    <li>Copie a pasta <code>SGDP/</code> para o computador que atuará como servidor (preferencialmente um computador sempre ligado durante o expediente)</li>
+    <li>Clique duas vezes em <strong><code>Iniciar SGDP.bat</code></strong></li>
+    <li>O navegador abrirá automaticamente na tela de login</li>
+    <li>Use as credenciais iniciais: usuário <code>admin</code> / senha <code>sgdp2024</code></li>
+    <li><strong>Altere a senha imediatamente</strong> em Usuários → Editar</li>
+    <li>Cadastre os demais procuradores na tela de Usuários</li>
+  </ol>
+
+  <div class="aviso">
+    <strong>Importante:</strong> não exclua o arquivo <code>sgdp.db</code> nem a pasta
+    <code>uploads/</code> — eles contêm todos os dados e PDFs do sistema.
+    Realize backups periódicos pela tela de Backup.
+  </div>
+
+  <h3 id="s2-3">2.3 Acesso em rede local</h3>
+  <p>
+    Para que outros procuradores acessem o sistema em seus próprios computadores:
+  </p>
+  <ol>
+    <li>Descubra o IP do computador servidor: abra o Prompt de Comando e digite <code>ipconfig</code>; o IP aparece em "Endereço IPv4" (ex: <code>192.168.1.10</code>)</li>
+    <li>Nos computadores dos procuradores, abra o navegador e acesse <code>http://192.168.1.10:3001</code></li>
+    <li>Certifique-se de que o firewall do Windows não está bloqueando a porta 3001 (se necessário, crie uma regra de entrada para essa porta)</li>
+  </ol>
+
+  <div class="dica">
+    <strong>Dica:</strong> Crie um atalho no navegador de cada procurador apontando para o endereço IP do servidor para facilitar o acesso diário.
+  </div>
+</div>
+
+<!-- ── SEÇÃO 3–4 ───────────────────────────────────────────────────────────────── -->
+<div class="page">
+  <h2 id="s3">3. Login e Perfis de Acesso</h2>
+  <p>
+    O SGDP possui dois perfis de acesso:
+  </p>
+  <table>
+    <thead><tr><th>Perfil</th><th>Permissões</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Administrador</strong></td>
+        <td>Acesso total: documentos, usuários, auditoria e backup</td>
+      </tr>
+      <tr>
+        <td><strong>Procurador (padrão)</strong></td>
+        <td>Criar, editar e excluir documentos; upload e download de PDFs; dashboard</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    As sessões de login têm duração de <strong>8 horas</strong>. Ao expirar, o sistema retorna
+    automaticamente à tela de login. O logout manual encerra a sessão imediatamente.
+  </p>
+
+  <div class="nota">
+    <strong>Segurança:</strong> as senhas são armazenadas com criptografia PBKDF2-HMAC-SHA256
+    com salt individual por usuário. Não é possível recuperar a senha esquecida — apenas um
+    administrador pode redefini-la pela tela de Usuários.
+  </div>
+
+  <h2 id="s4">4. Cadastro de Documentos</h2>
+
+  <p>
+    Para cadastrar um novo documento, clique no item correspondente na barra lateral
+    (ex: <em>Leis</em>) e em seguida no botão <strong>+ Nova Lei</strong> no canto superior direito.
+  </p>
+
+  <h3 id="s4-1">4.1 Campos do formulário</h3>
+  <table>
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td>Tipo</td><td>Sim</td><td>Definido pelo botão clicado; não pode ser alterado após salvar</td></tr>
+      <tr><td>Número</td><td>Não</td><td>Preenchido automaticamente com o próximo número disponível; pode ser ajustado</td></tr>
+      <tr><td>Ano</td><td>Sim</td><td>Preenchido com o ano atual; editável</td></tr>
+      <tr><td>Data</td><td>Sim</td><td>Data do ato (assinatura, publicação ou expedição)</td></tr>
+      <tr><td>Ementa / Assunto</td><td>Sim</td><td>Descrição resumida do conteúdo do documento</td></tr>
+      <tr><td>Partes / Envolvidos</td><td>Não</td><td>Nomes das partes, requerentes, destinatários ou interessados</td></tr>
+      <tr><td>Observações</td><td>Não</td><td>Informações internas adicionais; não aparecem em relatórios</td></tr>
+      <tr><td>PDF Assinado</td><td>Não</td><td>Arquivo PDF do documento já assinado digitalmente</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="s4-2">4.2 Numeração automática</h3>
+  <p>
+    Ao abrir o formulário de novo documento, o campo <strong>Número</strong> aparece em branco
+    com a indicação "auto". O sistema atribuirá o próximo número disponível para aquele tipo e ano
+    ao salvar. Para definir um número específico (ex: ao cadastrar documentos retroativos),
+    basta digitar o valor desejado antes de salvar.
+  </p>
+  <div class="nota">
+    <strong>Nota:</strong> a numeração é por <em>tipo + ano</em>. Leis e Decretos têm sequências
+    independentes entre si. A sequência reinicia do 1 a cada início de ano.
+  </div>
+
+  <h3 id="s4-3">4.3 Anexar PDF assinado</h3>
+  <p>O fluxo recomendado para cada documento é:</p>
+  <ol>
+    <li>O procurador elabora o documento em <strong>Word (.docx)</strong></li>
+    <li>Exporta para <strong>PDF</strong></li>
+    <li>Realiza a <strong>assinatura digital</strong> no PDF (via GOV.BR, ICP-Brasil ou assinatura eletrônica municipal)</li>
+    <li>Acessa o SGDP e cadastra ou edita o documento</li>
+    <li>Faz o upload do PDF assinado na seção <em>"PDF Assinado"</em> do formulário</li>
+  </ol>
+  <p>
+    O PDF pode ser anexado no momento do cadastro ou posteriormente, editando o documento.
+    Para substituir um PDF já anexado, clique em <strong>↺ Substituir</strong>.
+    Para visualizar, clique em <strong>👁 Ver</strong>; para baixar, em <strong>⬇</strong>.
+  </p>
+  <div class="dica">
+    <strong>Dica:</strong> você também pode arrastar o arquivo PDF diretamente para a área de upload
+    em vez de clicar para selecionar.
+  </div>
+</div>
+
+<!-- ── SEÇÃO 5–6 ───────────────────────────────────────────────────────────────── -->
+<div class="page">
+  <h2 id="s5">5. Busca e Filtros</h2>
+  <p>
+    Em cada tela de listagem (Leis, Decretos etc.) há uma barra de ferramentas com:
+  </p>
+  <ul>
+    <li><strong>Campo de busca:</strong> pesquisa simultânea por número, ementa e partes envolvidas. Pressione Enter ou clique em <em>Filtrar</em> para aplicar.</li>
+    <li><strong>Filtro por ano:</strong> exibe apenas documentos do ano selecionado.</li>
+    <li><strong>Paginação:</strong> 50 documentos por página; navegue pelas setas ou números.</li>
+  </ul>
+  <div class="nota">
+    <strong>Exemplo:</strong> para localizar um parecer que menciona "João da Silva", acesse
+    <em>Pareceres</em>, digite "João" no campo de busca e pressione Enter.
+  </div>
+
+  <h2 id="s6">6. Administração</h2>
+  <p>As telas de administração são visíveis apenas para usuários com perfil <strong>Administrador</strong>.</p>
+
+  <h3 id="s6-1">6.1 Gestão de usuários</h3>
+  <p>Acesse <strong>Usuários</strong> na barra lateral para:</p>
+  <ul>
+    <li><strong>Criar usuário:</strong> clique em <em>+ Novo Usuário</em>; informe nome completo, nome de login (sem espaços), senha (mínimo 6 caracteres) e se é administrador.</li>
+    <li><strong>Editar:</strong> altere nome, senha ou perfil. O nome de login não pode ser alterado após a criação.</li>
+    <li><strong>Desativar:</strong> desmarque "Conta ativa" para bloquear o acesso sem excluir o histórico do usuário.</li>
+    <li><strong>Excluir:</strong> remove o cadastro permanentemente. Não é possível excluir seu próprio usuário.</li>
+  </ul>
+
+  <div class="aviso">
+    <strong>Atenção:</strong> defina pelo menos um usuário administrador além do <code>admin</code>
+    padrão. Se a senha do único administrador for perdida, não há como recuperá-la sem intervenção
+    técnica direta no banco de dados.
+  </div>
+
+  <h3 id="s6-2">6.2 Auditoria</h3>
+  <p>
+    A tela de <strong>Auditoria</strong> exibe um histórico completo de todas as ações realizadas no
+    sistema, com data/hora, usuário responsável, tipo de ação e detalhes. As ações registradas são:
+  </p>
+  <table>
+    <thead><tr><th>Ação</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><code>criar</code></td><td>Novo documento cadastrado</td></tr>
+      <tr><td><code>editar</code></td><td>Documento alterado</td></tr>
+      <tr><td><code>excluir</code></td><td>Documento removido permanentemente</td></tr>
+      <tr><td><code>upload</code></td><td>PDF anexado ao documento</td></tr>
+      <tr><td><code>remover_arquivo</code></td><td>PDF removido do documento</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="s6-3">6.3 Backup e restauração</h3>
+  <p>
+    Acesse <strong>Backup</strong> na barra lateral. O backup é um arquivo <code>.json</code> que contém
+    todos os documentos, os PDFs (codificados em base64) e os usuários. É a única forma de
+    recuperar dados em caso de falha no computador.
+  </p>
+
+  <p><strong>Exportar backup:</strong></p>
+  <ol>
+    <li>Clique em <em>Exportar backup completo</em></li>
+    <li>O arquivo <code>sgdp_backup_AAAAMMDD.json</code> será baixado automaticamente</li>
+    <li>Guarde em local externo: servidor de rede, OneDrive/Google Drive institucional ou pendrive</li>
+  </ol>
+
+  <p><strong>Restaurar backup:</strong></p>
+  <ol>
+    <li>Clique em <em>Restaurar a partir de backup</em></li>
+    <li>Selecione o arquivo <code>.json</code> previamente exportado</li>
+    <li>Confirme a operação — todos os dados atuais serão substituídos</li>
+  </ol>
+
+  <div class="aviso">
+    <strong>Atenção:</strong> a restauração apaga <em>todos</em> os dados atuais e os substitui
+    pelos do backup. Execute essa operação apenas em caso de necessidade e sempre exporte um
+    backup do estado atual antes de restaurar.
+  </div>
+
+  <div class="dica">
+    <strong>Recomendação:</strong> realize o backup ao menos semanalmente, sempre ao final do
+    expediente de sexta-feira, e armazene em local externo ao computador servidor.
+  </div>
+</div>
+
+<!-- ── SEÇÃO 7–8 ───────────────────────────────────────────────────────────────── -->
+<div class="page">
+  <h2 id="s7">7. Fluxo de Trabalho Recomendado</h2>
+  <p>O fluxo típico para cada ato jurídico:</p>
+  <ol>
+    <li><strong>Elaboração:</strong> o procurador redige o documento no Word, utilizando o modelo do tipo correspondente (Lei, Decreto, Portaria etc.)</li>
+    <li><strong>Numeração prévia (opcional):</strong> para inserir o número no corpo do documento antes da assinatura, acesse o SGDP, clique em <em>+ Novo [Tipo]</em> e verifique o próximo número disponível no campo "Número" — ele pode ser anotado e usado no Word</li>
+    <li><strong>Exportação para PDF:</strong> no Word, utilize "Salvar como" → PDF ou "Exportar" → PDF</li>
+    <li><strong>Assinatura digital:</strong> assine o PDF pela plataforma de assinatura do município (GOV.BR, DocuSign municipal etc.)</li>
+    <li><strong>Cadastro no SGDP:</strong> acesse a lista do tipo correspondente, clique em <em>+ Novo</em>, preencha os campos e faça o upload do PDF assinado</li>
+    <li><strong>Distribuição:</strong> compartilhe o PDF a partir do botão de download do SGDP ou diretamente pelo e-mail/sistema de protocolo</li>
+  </ol>
+
+  <h2 id="s8">8. Perguntas Frequentes</h2>
+
+  <h3>O servidor não abre ao clicar no .bat</h3>
+  <p>
+    Verifique se o Python está instalado: abra o Prompt de Comando, digite <code>python --version</code>
+    e pressione Enter. Se aparecer um erro, instale o Python em <code>python.org</code>
+    marcando a opção "Add Python to PATH".
+  </p>
+
+  <h3>A janela do servidor fecha imediatamente</h3>
+  <p>
+    Provavelmente outra instância do SGDP já está em execução na porta 3001, ou outra aplicação
+    ocupa essa porta. Feche todos os processos Python no Gerenciador de Tarefas e tente novamente.
+  </p>
+
+  <h3>Um procurador não consegue acessar pelo IP</h3>
+  <p>
+    Verifique se: (1) o servidor está em execução no computador correto; (2) ambos os computadores
+    estão na mesma rede Wi-Fi ou cabeada; (3) o firewall do Windows permite conexões na porta 3001
+    (Painel de Controle → Firewall → Regras de Entrada → Nova Regra → Porta 3001 TCP).
+  </p>
+
+  <h3>Esqueci a senha de um usuário</h3>
+  <p>
+    Um administrador pode redefinir a senha de qualquer usuário em <strong>Usuários → Editar</strong>,
+    informando uma nova senha no campo correspondente (deixar em branco mantém a senha atual).
+  </p>
+
+  <h3>O servidor encerrou sozinho enquanto trabalhava</h3>
+  <p>
+    O servidor encerra automaticamente 60 segundos após todas as janelas do navegador serem fechadas.
+    Se o navegador travar ou fechar inesperadamente, o servidor também encerrará. Basta clicar
+    novamente em <code>Iniciar SGDP.bat</code> para reiniciar — todos os dados são preservados.
+  </p>
+
+  <h3>Como faço para acessar o sistema fora da rede municipal?</h3>
+  <p>
+    O SGDP é projetado para uso em rede local (intranet). Para acesso externo, seria necessário
+    configurar VPN ou redirecionamento de porta no roteador — o que deve ser avaliado com o setor
+    de TI do município, considerando os aspectos de segurança.
+  </p>
+
+  <div class="nota" style="margin-top:20pt">
+    <strong>Suporte técnico:</strong> em caso de dúvidas ou problemas não cobertos neste manual,
+    entre em contato com o responsável pelo desenvolvimento do sistema.
+  </div>
+</div>
+
+</body>
+</html>

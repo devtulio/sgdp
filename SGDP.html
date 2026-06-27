@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SGDP — Procuradoria-Geral</title>
+<style>
+/* ── Variáveis ──────────────────────────────────────────────────────────── */
+:root {
+  --brand:        #1a3a6b;
+  --brand-dark:   #102855;
+  --brand-light:  #e8eef7;
+  --accent:       #b8962e;
+  --accent-light: #fdf8e8;
+  --gray-50:  #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+  --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+  --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937;
+  --gray-900: #111827;
+  --green:  #16a34a; --green-bg:  #f0fdf4;
+  --red:    #dc2626; --red-bg:    #fef2f2;
+  --yellow: #d97706; --yellow-bg: #fffbeb;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,.12);
+  --sidebar-w: 220px;
+}
+
+/* Tipos de documento */
+.tipo-lei       { --tc: #1e40af; --tb: #eff6ff; }
+.tipo-decreto   { --tc: #6d28d9; --tb: #f5f3ff; }
+.tipo-portaria  { --tc: #065f46; --tb: #ecfdf5; }
+.tipo-parecer   { --tc: #92400e; --tb: #fffbeb; }
+.tipo-oficio    { --tc: #374151; --tb: #f3f4f6; }
+
+/* ── Reset / Base ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px; color: var(--gray-800); background: var(--gray-100); }
+a { color: var(--brand); text-decoration: none; }
+input, textarea, select, button { font-family: inherit; font-size: inherit; }
+button { cursor: pointer; }
+
+/* ── Login ──────────────────────────────────────────────────────────────── */
+#tela-login {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand) 60%, #2a5298 100%);
+  padding: 24px;
+}
+.login-card {
+  background: #fff; border-radius: 16px; box-shadow: var(--shadow-lg);
+  padding: 40px 48px; width: 100%; max-width: 400px; text-align: center;
+}
+.login-logo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px; border-radius: 16px;
+  background: var(--brand); color: #fff; font-size: 22px; font-weight: 800;
+  letter-spacing: -1px; margin-bottom: 20px;
+}
+.login-card h1 { font-size: 22px; font-weight: 700; color: var(--brand); margin-bottom: 4px; }
+.login-card p  { font-size: 12px; color: var(--gray-500); margin-bottom: 28px; }
+.login-card .field { text-align: left; margin-bottom: 16px; }
+.login-card label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+.login-card input { width: 100%; border: 1px solid var(--gray-300); border-radius: var(--radius);
+  padding: 10px 14px; outline: none; transition: border-color .15s; }
+.login-card input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); }
+#login-erro { color: var(--red); font-size: 12px; margin-bottom: 12px; display: none; }
+.btn-login { width: 100%; background: var(--brand); color: #fff; border: none;
+  border-radius: var(--radius); padding: 11px; font-weight: 700; font-size: 14px;
+  transition: background .15s; margin-top: 4px; }
+.btn-login:hover { background: var(--brand-dark); }
+
+/* ── App Shell ──────────────────────────────────────────────────────────── */
+#app { display: none; height: 100vh; overflow: hidden; }
+#app.visible { display: flex; }
+
+/* Sidebar */
+#sidebar {
+  width: var(--sidebar-w); flex-shrink: 0; background: var(--brand); color: #fff;
+  display: flex; flex-direction: column; height: 100vh; overflow-y: auto;
+}
+.sidebar-logo {
+  padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.sidebar-logo .s-title { font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
+.sidebar-logo .s-sub   { font-size: 10px; opacity: .7; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+.sidebar-logo .s-muni  { font-size: 11px; opacity: .85; margin-top: 6px; line-height: 1.3; }
+
+.sidebar-nav { flex: 1; padding: 12px 0; }
+.nav-section { font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .8px; opacity: .5; padding: 14px 18px 6px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 18px;
+  font-size: 13px; font-weight: 500; color: rgba(255,255,255,.8);
+  cursor: pointer; transition: all .15s; border-left: 3px solid transparent;
+}
+.nav-item:hover { background: rgba(255,255,255,.08); color: #fff; }
+.nav-item.active { background: rgba(255,255,255,.14); color: #fff;
+  border-left-color: var(--accent); font-weight: 600; }
+.nav-item .nav-ico { width: 16px; text-align: center; opacity: .8; }
+.nav-badge { margin-left: auto; background: rgba(255,255,255,.2);
+  border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+
+.sidebar-user {
+  padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.12);
+  display: flex; align-items: center; gap: 10px;
+}
+.user-avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.user-info { flex: 1; min-width: 0; }
+.user-nome  { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-cargo { font-size: 10px; opacity: .6; }
+.btn-sair { background: none; border: none; color: rgba(255,255,255,.6); padding: 4px;
+  border-radius: 4px; transition: color .15s; }
+.btn-sair:hover { color: #fff; }
+
+/* Main */
+#main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.page-header {
+  background: #fff; border-bottom: 1px solid var(--gray-200);
+  padding: 0 28px; height: 56px; display: flex; align-items: center;
+  justify-content: space-between; flex-shrink: 0; position: sticky; top: 0; z-index: 10;
+}
+.page-title { font-size: 16px; font-weight: 700; color: var(--gray-800); }
+.page-content { padding: 24px 28px; flex: 1; }
+
+/* ── Botões ──────────────────────────────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; gap: 6px; border: none;
+  border-radius: var(--radius); padding: 8px 16px; font-weight: 600;
+  font-size: 13px; transition: all .15s; white-space: nowrap; }
+.btn-primary  { background: var(--brand); color: #fff; }
+.btn-primary:hover  { background: var(--brand-dark); }
+.btn-outline  { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
+.btn-outline:hover  { border-color: var(--gray-400); background: var(--gray-50); }
+.btn-danger   { background: var(--red); color: #fff; }
+.btn-danger:hover   { background: #b91c1c; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-icon { padding: 6px; border-radius: 6px; line-height: 1; }
+
+/* ── Cards do dashboard ──────────────────────────────────────────────────── */
+.dash-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+@media (max-width: 1100px) { .dash-cards { grid-template-columns: repeat(3,1fr); } }
+.dash-card {
+  background: #fff; border-radius: var(--radius); padding: 20px;
+  box-shadow: var(--shadow); cursor: pointer; transition: box-shadow .15s;
+  border-top: 3px solid var(--tc, var(--gray-300));
+}
+.dash-card:hover { box-shadow: var(--shadow-md); }
+.dash-card .dc-label { font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--gray-500); margin-bottom: 8px; }
+.dash-card .dc-total { font-size: 28px; font-weight: 800; color: var(--tc, var(--gray-700)); line-height: 1; }
+.dash-card .dc-ano   { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+/* ── Tabela ──────────────────────────────────────────────────────────────── */
+.table-wrap { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.table-toolbar {
+  padding: 14px 16px; border-bottom: 1px solid var(--gray-200);
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.search-input { flex: 1; min-width: 200px; border: 1px solid var(--gray-300);
+  border-radius: var(--radius); padding: 7px 12px; outline: none; transition: border-color .15s; }
+.search-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); }
+.select-sm { border: 1px solid var(--gray-300); border-radius: var(--radius);
+  padding: 7px 10px; outline: none; background: #fff; }
+table { width: 100%; border-collapse: collapse; }
+th { background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+  padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .4px; color: var(--gray-500); white-space: nowrap; }
+td { padding: 11px 14px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--gray-50); }
+.td-ementa { max-width: 320px; }
+.td-ementa span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.td-acoes { white-space: nowrap; display: flex; gap: 4px; }
+.empty-row td { text-align: center; padding: 48px; color: var(--gray-400); }
+
+/* Paginação */
+.pagination { display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-top: 1px solid var(--gray-200); font-size: 12px; color: var(--gray-500); }
+.pag-btns { display: flex; gap: 4px; }
+.pag-btn  { border: 1px solid var(--gray-300); background: #fff; border-radius: 6px;
+  padding: 4px 10px; font-size: 12px; transition: all .15s; }
+.pag-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.pag-btn:disabled { opacity: .4; cursor: default; }
+.pag-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+/* ── Badges tipo ─────────────────────────────────────────────────────────── */
+.badge-tipo {
+  display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+  background: var(--tb); color: var(--tc);
+}
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 580px; max-height: 90vh; display: flex; flex-direction: column;
+  transform: translateY(12px); transition: transform .2s; }
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-xl { max-width: 900px; }
+.modal-hd { padding: 18px 22px; border-bottom: 1px solid var(--gray-200);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.modal-hd h2 { font-size: 16px; font-weight: 700; }
+.modal-body { padding: 22px; overflow-y: auto; flex: 1; }
+.modal-ft  { padding: 14px 22px; border-top: 1px solid var(--gray-200);
+  display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
+.btn-close { background: none; border: none; font-size: 18px; color: var(--gray-400);
+  width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.btn-close:hover { background: var(--gray-100); color: var(--gray-700); }
+
+/* Formulário */
+.form-row { display: grid; gap: 16px; margin-bottom: 16px; }
+.form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 12px; font-weight: 600; color: var(--gray-600); }
+.form-group input, .form-group textarea, .form-group select {
+  border: 1px solid var(--gray-300); border-radius: var(--radius);
+  padding: 8px 12px; outline: none; transition: border-color .15s; width: 100%;
+}
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+  border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light);
+}
+.form-group textarea { resize: vertical; min-height: 80px; }
+.form-hint { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+/* Upload de arquivo */
+.upload-zone {
+  border: 2px dashed var(--gray-300); border-radius: var(--radius);
+  padding: 24px; text-align: center; cursor: pointer;
+  transition: all .15s; color: var(--gray-400);
+}
+.upload-zone:hover, .upload-zone.dragover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+.upload-zone input { display: none; }
+.upload-zone svg { margin-bottom: 8px; }
+.upload-zone p  { font-size: 13px; }
+.upload-zone small { font-size: 11px; }
+
+.arquivo-info {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  background: var(--green-bg); border: 1px solid #86efac; border-radius: var(--radius);
+}
+.arquivo-info .arq-nome { flex: 1; font-size: 13px; font-weight: 500; color: var(--green); word-break: break-all; }
+.arquivo-info .arq-size { font-size: 11px; color: var(--green); opacity: .7; white-space: nowrap; }
+
+/* ── Seção de usuários ───────────────────────────────────────────────────── */
+.users-grid { display: grid; gap: 12px; }
+.user-card {
+  background: #fff; border-radius: var(--radius); padding: 16px 18px;
+  box-shadow: var(--shadow); display: flex; align-items: center; gap: 14px;
+}
+.user-card .uc-avatar { width: 40px; height: 40px; border-radius: 50%;
+  background: var(--brand-light); color: var(--brand); font-weight: 700;
+  display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.user-card .uc-info { flex: 1; }
+.user-card .uc-nome { font-weight: 700; font-size: 14px; }
+.user-card .uc-user { font-size: 12px; color: var(--gray-400); }
+.badge-admin { background: var(--accent-light); color: var(--accent); border-radius: 4px;
+  padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.badge-inativo { background: var(--gray-100); color: var(--gray-400); border-radius: 4px;
+  padding: 2px 8px; font-size: 11px; font-weight: 700; }
+
+/* ── Auditoria ───────────────────────────────────────────────────────────── */
+.audit-table td { font-size: 12px; }
+.audit-acao { font-family: monospace; font-size: 11px; background: var(--gray-100);
+  padding: 2px 6px; border-radius: 4px; }
+
+/* ── Toasts ──────────────────────────────────────────────────────────────── */
+#toast-box { position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast { padding: 12px 18px; border-radius: var(--radius); box-shadow: var(--shadow-lg);
+  font-size: 13px; font-weight: 500; pointer-events: all; max-width: 360px;
+  animation: slideIn .2s ease; }
+.toast-success { background: var(--green-bg); color: #166534; border: 1px solid #86efac; }
+.toast-error   { background: var(--red-bg);   color: #991b1b; border: 1px solid #fca5a5; }
+.toast-info    { background: var(--brand-light); color: var(--brand); border: 1px solid #93c5fd; }
+@keyframes slideIn { from { transform: translateX(40px); opacity: 0; } }
+
+/* ── Modal de confirmação ────────────────────────────────────────────────── */
+#modal-confirm .modal { max-width: 420px; }
+#modal-confirm .modal-body { padding: 24px 22px; font-size: 14px; line-height: 1.6; }
+
+/* ── PDF viewer ──────────────────────────────────────────────────────────── */
+#modal-pdf .modal { max-width: 95vw; width: 95vw; height: 92vh; }
+#pdf-frame { width: 100%; height: 100%; border: none; flex: 1; }
+#modal-pdf .modal-body { padding: 0; display: flex; }
+
+/* ── Misc ────────────────────────────────────────────────────────────────── */
+.section-title { font-size: 13px; font-weight: 700; color: var(--gray-700);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.loading { text-align: center; padding: 48px; color: var(--gray-400); font-size: 13px; }
+.num-doc { font-family: monospace; font-weight: 700; color: var(--tc, var(--gray-700)); font-size: 13px; }
+.action-row { display: flex; align-items: center; gap: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ── Tela de login ───────────────────────────────────────────────────────── -->
+<div id="tela-login">
+  <div class="login-card">
+    <div class="login-logo">PG</div>
+    <h1>SGDP</h1>
+    <p>Sistema de Gestão de Documentos da Procuradoria</p>
+    <div class="field">
+      <label for="l-user">Usuário</label>
+      <input id="l-user" type="text" placeholder="nome de usuário" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="l-pass">Senha</label>
+      <input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div id="login-erro"></div>
+    <button class="btn-login" onclick="fazerLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- ── App ────────────────────────────────────────────────────────────────── -->
+<div id="app">
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <div class="s-title">SGDP</div>
+      <div class="s-sub">Procuradoria-Geral</div>
+      <div class="s-muni" id="muni-nome">Município</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Principal</div>
+      <div class="nav-item active" data-view="dashboard" onclick="navegar('dashboard')">
+        <span class="nav-ico">⊞</span> Dashboard
+      </div>
+      <div class="nav-section">Documentos</div>
+      <div class="nav-item tipo-lei"      data-view="lei"      onclick="navegar('lei')">
+        <span class="nav-ico">§</span> Leis
+        <span class="nav-badge" id="badge-lei">—</span>
+      </div>
+      <div class="nav-item tipo-decreto"  data-view="decreto"  onclick="navegar('decreto')">
+        <span class="nav-ico">⚖</span> Decretos
+        <span class="nav-badge" id="badge-decreto">—</span>
+      </div>
+      <div class="nav-item tipo-portaria" data-view="portaria" onclick="navegar('portaria')">
+        <span class="nav-ico">📋</span> Portarias
+        <span class="nav-badge" id="badge-portaria">—</span>
+      </div>
+      <div class="nav-item tipo-parecer"  data-view="parecer"  onclick="navegar('parecer')">
+        <span class="nav-ico">🔍</span> Pareceres
+        <span class="nav-badge" id="badge-parecer">—</span>
+      </div>
+      <div class="nav-item tipo-oficio"   data-view="oficio"   onclick="navegar('oficio')">
+        <span class="nav-ico">✉</span> Ofícios
+        <span class="nav-badge" id="badge-oficio">—</span>
+      </div>
+      <div class="nav-section admin-only" id="nav-admin">Administração</div>
+      <div class="nav-item admin-only" data-view="usuarios" onclick="navegar('usuarios')">
+        <span class="nav-ico">👥</span> Usuários
+      </div>
+      <div class="nav-item admin-only" data-view="auditoria" onclick="navegar('auditoria')">
+        <span class="nav-ico">📜</span> Auditoria
+      </div>
+      <div class="nav-item admin-only" data-view="backup" onclick="navegar('backup')">
+        <span class="nav-ico">💾</span> Backup
+      </div>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <div class="user-info">
+        <div class="user-nome" id="user-nome">—</div>
+        <div class="user-cargo" id="user-cargo">Procurador</div>
+      </div>
+      <button class="btn-sair" onclick="sair()" title="Sair">⏻</button>
+    </div>
+  </aside>
+
+  <!-- Conteúdo principal -->
+  <main id="main">
+    <div class="page-header">
+      <div class="page-title" id="page-title">Dashboard</div>
+      <div id="header-actions"></div>
+    </div>
+    <div class="page-content" id="page-content">
+      <div class="loading">Carregando…</div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Modal: Documento ───────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-doc">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2 id="modal-doc-titulo">Novo Documento</h2>
+      <button class="btn-close" onclick="fecharModal('modal-doc')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-doc-body">
+      <div class="form-row cols-3">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="f-tipo" onchange="onTipoChange()">
+            <option value="lei">Lei</option>
+            <option value="decreto">Decreto</option>
+            <option value="portaria">Portaria</option>
+            <option value="parecer">Parecer</option>
+            <option value="oficio">Ofício</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Número</label>
+          <input id="f-numero" type="number" min="1" placeholder="auto">
+          <span class="form-hint">Deixe em branco para automático</span>
+        </div>
+        <div class="form-group">
+          <label>Ano</label>
+          <input id="f-ano" type="number" min="2000" max="2099">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Data</label>
+          <input id="f-data" type="date">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ementa / Assunto <span style="color:var(--red)">*</span></label>
+          <textarea id="f-ementa" rows="3" placeholder="Descrição resumida do documento…"></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Partes / Envolvidos</label>
+          <input id="f-partes" type="text" placeholder="Ex: João da Silva, Empresa XYZ Ltda.">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Observações</label>
+          <textarea id="f-obs" rows="2" placeholder="Informações adicionais…"></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>PDF Assinado</label>
+          <div id="upload-area">
+            <label class="upload-zone" id="upload-zone"
+              ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+              <input type="file" id="f-pdf" accept=".pdf" onchange="onFileSelect(event)">
+              <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+              </svg>
+              <p>Arraste o PDF aqui ou clique para selecionar</p>
+              <small>Máximo 50 MB</small>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="fecharModal('modal-doc')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarDocumento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: PDF viewer ──────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-pdf">
+  <div class="modal modal-xl">
+    <div class="modal-hd">
+      <h2 id="pdf-titulo">Visualizar PDF</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a id="pdf-download" href="#" class="btn btn-outline btn-sm" download>⬇ Baixar</a>
+        <button class="btn-close" onclick="fecharModal('modal-pdf')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <iframe id="pdf-frame" src=""></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Usuário ─────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2 id="modal-user-titulo">Novo Usuário</h2>
+      <button class="btn-close" onclick="fecharModal('modal-usuario')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nome completo <span style="color:var(--red)">*</span></label>
+          <input id="u-nome" type="text" placeholder="Ex: Dr. João da Silva">
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Usuário (login) <span style="color:var(--red)">*</span></label>
+          <input id="u-username" type="text" placeholder="Ex: joao.silva" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label id="u-senha-label">Senha <span style="color:var(--red)">*</span></label>
+          <input id="u-senha" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
+          <input id="u-admin" type="checkbox" style="width:auto">
+          <label for="u-admin" style="font-weight:600;cursor:pointer">Administrador (acesso total)</label>
+        </div>
+      </div>
+      <div class="form-row" id="u-ativo-row" style="display:none">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
+          <input id="u-ativo" type="checkbox" style="width:auto" checked>
+          <label for="u-ativo" style="font-weight:600;cursor:pointer">Conta ativa</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="fecharModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarUsuario()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Confirmação ─────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2 id="confirm-titulo">Confirmar ação</h2>
+      <button class="btn-close" onclick="confirmarResp(false)">✕</button>
+    </div>
+    <div class="modal-body" id="confirm-msg"></div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="confirmarResp(false)">Cancelar</button>
+      <button class="btn btn-danger"  id="confirm-ok" onclick="confirmarResp(true)">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toasts ─────────────────────────────────────────────────────────────── -->
+<div id="toast-box"></div>
+
+<script>
+'use strict';
+
+// ── Estado global ────────────────────────────────────────────────────────────
+const S = {
+  token: localStorage.getItem('sgdp-token'),
+  user:  JSON.parse(localStorage.getItem('sgdp-user') || 'null'),
+  view:  'dashboard',
+  editId: null,      // ID do documento em edição
+  editUid: null,     // ID do usuário em edição
+  pendingFile: null, // arquivo PDF selecionado (não salvo ainda)
+  existingArq: null, // arquivo já vinculado ao documento em edição
+  pag: { page: 1, total: 0, per: 50 },
+  filtros: { q: '', ano: '' },
+  confirmCb: null,
+};
+
+const TIPOS_LABELS = {
+  lei: 'Lei', decreto: 'Decreto', portaria: 'Portaria',
+  parecer: 'Parecer', oficio: 'Ofício',
+};
+const ANO_ATUAL = new Date().getFullYear();
+
+// ── API ───────────────────────────────────────────────────────────────────────
+const API = {
+  async req(method, path, body, form = false) {
+    const h = {};
+    if (S.token) h['Authorization'] = `Bearer ${S.token}`;
+    if (body && !form) h['Content-Type'] = 'application/json';
+    const opts = { method, headers: h };
+    if (body) opts.body = form ? body : JSON.stringify(body);
+    const r = await fetch(path, opts);
+    if (r.status === 401) { sair(); return null; }
+    return r;
+  },
+  async get(p)       { return this.req('GET',    p); },
+  async post(p, b)   { return this.req('POST',   p, b); },
+  async put(p, b)    { return this.req('PUT',    p, b); },
+  async del(p)       { return this.req('DELETE', p); },
+  async upload(p, f) { return this.req('POST',   p, f, true); },
+  async json(r)      { return r ? r.json() : null; },
+};
+
+// ── Inicialização ───────────────────────────────────────────────────────────
+async function init() {
+  document.getElementById('l-pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') fazerLogin();
+  });
+  document.getElementById('l-user').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('l-pass').focus();
+  });
+  if (S.token && S.user) {
+    mostrarApp();
+    navegar('dashboard');
+  }
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function fazerLogin() {
+  const username = document.getElementById('l-user').value.trim();
+  const password = document.getElementById('l-pass').value;
+  const erro = document.getElementById('login-erro');
+  erro.style.display = 'none';
+  if (!username || !password) {
+    erro.textContent = 'Preencha usuário e senha.';
+    erro.style.display = 'block';
+    return;
+  }
+  const r = await API.post('/api/auth/login', { username, password });
+  if (!r) return;
+  const data = await r.json();
+  if (!r.ok) {
+    erro.textContent = data.error || 'Erro ao fazer login.';
+    erro.style.display = 'block';
+    return;
+  }
+  S.token = data.token;
+  S.user  = data.user;
+  localStorage.setItem('sgdp-token', data.token);
+  localStorage.setItem('sgdp-user',  JSON.stringify(data.user));
+  mostrarApp();
+  navegar('dashboard');
+}
+
+async function sair() {
+  if (S.token) await API.post('/api/auth/logout');
+  S.token = null; S.user = null;
+  localStorage.removeItem('sgdp-token');
+  localStorage.removeItem('sgdp-user');
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('tela-login').style.display = 'flex';
+  document.getElementById('l-pass').value = '';
+}
+
+function mostrarApp() {
+  document.getElementById('tela-login').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  // User info na sidebar
+  document.getElementById('user-nome').textContent = S.user.nome;
+  document.getElementById('user-cargo').textContent = S.user.admin ? 'Administrador' : 'Procurador';
+  document.getElementById('user-avatar').textContent = S.user.nome[0].toUpperCase();
+  // Itens admin
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = S.user.admin ? '' : 'none';
+  });
+  // Heartbeat
+  setInterval(() => fetch('/heartbeat').catch(() => {}), 10000);
+}
+
+// ── Navegação ─────────────────────────────────────────────────────────────────
+async function navegar(view) {
+  S.view = view;
+  S.pag  = { page: 1, total: 0, per: 50 };
+  S.filtros = { q: '', ano: '' };
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.view === view);
+  });
+  const titles = {
+    dashboard: 'Dashboard', lei: 'Leis', decreto: 'Decretos',
+    portaria: 'Portarias', parecer: 'Pareceres', oficio: 'Ofícios',
+    usuarios: 'Usuários', auditoria: 'Auditoria', backup: 'Backup',
+  };
+  document.getElementById('page-title').textContent = titles[view] || view;
+  const ha = document.getElementById('header-actions');
+  ha.innerHTML = '';
+  if (['lei','decreto','portaria','parecer','oficio'].includes(view)) {
+    ha.innerHTML = `<button class="btn btn-primary" onclick="abrirNovoDoc('${view}')">+ Novo ${TIPOS_LABELS[view]}</button>`;
+  } else if (view === 'usuarios') {
+    ha.innerHTML = `<button class="btn btn-primary" onclick="abrirNovoUsuario()">+ Novo Usuário</button>`;
+  } else if (view === 'backup') {
+    ha.innerHTML = `<button class="btn btn-outline" onclick="exportarBackup()">⬇ Exportar Backup</button>`;
+  }
+  const pc = document.getElementById('page-content');
+  pc.innerHTML = '<div class="loading">Carregando…</div>';
+  if (view === 'dashboard') await renderDashboard();
+  else if (['lei','decreto','portaria','parecer','oficio'].includes(view)) await renderDocumentos(view);
+  else if (view === 'usuarios')  await renderUsuarios();
+  else if (view === 'auditoria') await renderAuditoria();
+  else if (view === 'backup')    renderBackup();
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+async function renderDashboard() {
+  const r = await API.get('/api/dashboard');
+  const d = await API.json(r);
+  if (!d) return;
+  const tipos = ['lei','decreto','portaria','parecer','oficio'];
+  // Atualiza badges
+  tipos.forEach(t => {
+    const el = document.getElementById('badge-' + t);
+    if (el) el.textContent = d.totais[t] || 0;
+  });
+  const cards = tipos.map(t => `
+    <div class="dash-card tipo-${t}" onclick="navegar('${t}')">
+      <div class="dc-label">${TIPOS_LABELS[t]}s</div>
+      <div class="dc-total">${d.totais[t] || 0}</div>
+      <div class="dc-ano">${d.ano_atual[t] || 0} em ${ANO_ATUAL}</div>
+    </div>
+  `).join('');
+
+  const recentes = d.recentes.length ? d.recentes.map(doc => `
+    <tr>
+      <td><span class="badge-tipo tipo-${doc.tipo}">${TIPOS_LABELS[doc.tipo]}</span></td>
+      <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano)}</span></td>
+      <td>${fmtData(doc.data)}</td>
+      <td class="td-ementa"><span>${esc(doc.ementa)}</span></td>
+      <td>${doc.arquivo_id ? '<span style="color:var(--green)">✓ PDF</span>' : '<span style="color:var(--gray-300)">—</span>'}</td>
+    </tr>
+  `).join('') : `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--gray-400)">Nenhum documento cadastrado ainda.</td></tr>`;
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="dash-cards">${cards}</div>
+    <div class="section-title">📄 Documentos recentes</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tipo</th><th>Número</th><th>Data</th><th>Ementa</th><th>PDF</th></tr></thead>
+        <tbody>${recentes}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── Lista de documentos ───────────────────────────────────────────────────────
+async function renderDocumentos(tipo, page = 1) {
+  S.pag.page = page;
+  const qs = new URLSearchParams({ tipo, page, per: S.pag.per });
+  if (S.filtros.q)   qs.set('q',   S.filtros.q);
+  if (S.filtros.ano) qs.set('ano', S.filtros.ano);
+  const r = await API.get('/api/documentos?' + qs);
+  const d = await API.json(r);
+  if (!d) return;
+  S.pag.total = d.total;
+
+  const rows = d.items.length ? d.items.map(doc => `
+    <tr>
+      <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano)}</span></td>
+      <td>${fmtData(doc.data)}</td>
+      <td class="td-ementa"><span title="${esc(doc.ementa)}">${esc(doc.ementa)}</span></td>
+      <td>${esc(doc.partes || '—')}</td>
+      <td>${doc.arquivo_id
+        ? `<span style="display:flex;gap:4px">
+            <button class="btn btn-outline btn-sm btn-icon" onclick="verPdf(${doc.arquivo_id},'${esc(doc.arquivo_nome || 'Documento')}')" title="Visualizar PDF">👁</button>
+            <a href="/api/arquivos/${doc.arquivo_id}" download class="btn btn-outline btn-sm btn-icon" title="Baixar PDF">⬇</a>
+           </span>`
+        : '<span style="color:var(--gray-300);font-size:12px">sem PDF</span>'}</td>
+      <td>
+        <div class="td-acoes">
+          <button class="btn btn-outline btn-sm" onclick="abrirEditarDoc(${doc.id})">✎ Editar</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')">✕</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') : `<tr class="empty-row"><td colspan="6">Nenhum documento encontrado.</td></tr>`;
+
+  const totalPages = Math.ceil(d.total / S.pag.per);
+  const paginacao = totalPages > 1 ? `
+    <div class="pagination">
+      <span>${d.total} documento${d.total !== 1 ? 's' : ''}</span>
+      <div class="pag-btns">
+        <button class="pag-btn" onclick="renderDocumentos('${tipo}',${page-1})" ${page<=1?'disabled':''}>‹</button>
+        ${Array.from({length: Math.min(totalPages,7)}, (_,i) => {
+          const pg = i+1;
+          return `<button class="pag-btn ${pg===page?'active':''}" onclick="renderDocumentos('${tipo}',${pg})">${pg}</button>`;
+        }).join('')}
+        <button class="pag-btn" onclick="renderDocumentos('${tipo}',${page+1})" ${page>=totalPages?'disabled':''}>›</button>
+      </div>
+    </div>
+  ` : `<div class="pagination"><span>${d.total} documento${d.total !== 1 ? 's' : ''}</span></div>`;
+
+  // Anos disponíveis para filtro
+  const anoAtual = ANO_ATUAL;
+  const anos = Array.from({length: 6}, (_, i) => anoAtual - i);
+  const anoOpts = `<option value="">Todos os anos</option>` +
+    anos.map(a => `<option value="${a}" ${S.filtros.ano == a ? 'selected' : ''}>${a}</option>`).join('');
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <input class="search-input" placeholder="Buscar por número, ementa, partes…"
+          value="${esc(S.filtros.q)}"
+          oninput="S.filtros.q=this.value" onkeydown="if(event.key==='Enter')renderDocumentos('${tipo}',1)">
+        <select class="select-sm" onchange="S.filtros.ano=this.value;renderDocumentos('${tipo}',1)">${anoOpts}</select>
+        <button class="btn btn-outline btn-sm" onclick="renderDocumentos('${tipo}',1)">Filtrar</button>
+      </div>
+      <table>
+        <thead><tr><th>Número</th><th>Data</th><th>Ementa</th><th>Partes</th><th>PDF</th><th>Ações</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${paginacao}
+    </div>
+  `;
+}
+
+// ── Modal de documento ────────────────────────────────────────────────────────
+async function abrirNovoDoc(tipo) {
+  S.editId = null;
+  S.pendingFile = null;
+  S.existingArq = null;
+  document.getElementById('modal-doc-titulo').textContent = `Novo ${TIPOS_LABELS[tipo]}`;
+  document.getElementById('f-tipo').value = tipo;
+  document.getElementById('f-tipo').disabled = false;
+  document.getElementById('f-numero').value = '';
+  document.getElementById('f-ano').value = ANO_ATUAL;
+  document.getElementById('f-data').value = hoje();
+  document.getElementById('f-ementa').value = '';
+  document.getElementById('f-partes').value = '';
+  document.getElementById('f-obs').value = '';
+  resetUpload();
+  abrirModal('modal-doc');
+}
+
+async function abrirEditarDoc(id) {
+  const r = await API.get(`/api/documentos/${id}`);
+  const doc = await API.json(r);
+  if (!doc || !r.ok) { toast('Erro ao carregar documento.', 'error'); return; }
+  S.editId = id;
+  S.pendingFile = null;
+  S.existingArq = doc.arquivo_id ? { id: doc.arquivo_id, nome: doc.arquivo_nome, tamanho: doc.arquivo_tamanho } : null;
+  document.getElementById('modal-doc-titulo').textContent = `Editar ${TIPOS_LABELS[doc.tipo]}`;
+  document.getElementById('f-tipo').value = doc.tipo;
+  document.getElementById('f-tipo').disabled = true;
+  document.getElementById('f-numero').value = doc.numero;
+  document.getElementById('f-ano').value = doc.ano;
+  document.getElementById('f-data').value = doc.data;
+  document.getElementById('f-ementa').value = doc.ementa || '';
+  document.getElementById('f-partes').value = doc.partes || '';
+  document.getElementById('f-obs').value = doc.observacoes || '';
+  if (S.existingArq) {
+    mostrarArquivoExistente(S.existingArq);
+  } else {
+    resetUpload();
+  }
+  abrirModal('modal-doc');
+}
+
+function onTipoChange() {
+  // futuro: campos específicos por tipo
+}
+
+async function salvarDocumento() {
+  const ementa = document.getElementById('f-ementa').value.trim();
+  const data   = document.getElementById('f-data').value;
+  if (!ementa) { toast('A ementa é obrigatória.', 'error'); return; }
+  if (!data)   { toast('A data é obrigatória.', 'error'); return; }
+
+  const payload = {
+    tipo:       document.getElementById('f-tipo').value,
+    numero:     document.getElementById('f-numero').value || null,
+    ano:        parseInt(document.getElementById('f-ano').value),
+    data, ementa,
+    partes:     document.getElementById('f-partes').value.trim(),
+    observacoes: document.getElementById('f-obs').value.trim(),
+  };
+
+  let r, doc;
+  if (S.editId) {
+    r = await API.put(`/api/documentos/${S.editId}`, payload);
+    doc = await API.json(r);
+    if (!r.ok) { toast(doc?.error || 'Erro ao salvar.', 'error'); return; }
+    toast('Documento atualizado.', 'success');
+  } else {
+    r = await API.post('/api/documentos', payload);
+    doc = await API.json(r);
+    if (!r.ok) { toast(doc?.error || 'Erro ao salvar.', 'error'); return; }
+    toast('Documento criado.', 'success');
+  }
+
+  // Upload de PDF pendente
+  if (S.pendingFile) {
+    const fd = new FormData();
+    fd.append('arquivo', S.pendingFile);
+    const ru = await API.upload(`/api/documentos/${doc.id}/arquivo`, fd);
+    if (!ru || !ru.ok) {
+      toast('Documento salvo, mas houve erro ao enviar o PDF.', 'error');
+    }
+  }
+
+  fecharModal('modal-doc');
+  if (['lei','decreto','portaria','parecer','oficio'].includes(S.view)) {
+    await renderDocumentos(S.view, S.pag.page);
+  } else {
+    await renderDashboard();
+  }
+}
+
+async function excluirDoc(id, label) {
+  const ok = await confirmar(`Excluir permanentemente <strong>${label}</strong>?<br><br>O arquivo PDF também será removido, se houver.`, 'Excluir');
+  if (!ok) return;
+  const r = await API.del(`/api/documentos/${id}`);
+  const d = await API.json(r);
+  if (!r.ok) { toast(d?.error || 'Erro ao excluir.', 'error'); return; }
+  toast('Documento excluído.', 'success');
+  if (['lei','decreto','portaria','parecer','oficio'].includes(S.view)) {
+    await renderDocumentos(S.view, S.pag.page);
+  }
+}
+
+// ── Upload de PDF ─────────────────────────────────────────────────────────────
+function resetUpload() {
+  document.getElementById('upload-area').innerHTML = `
+    <label class="upload-zone" id="upload-zone"
+      ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <input type="file" id="f-pdf" accept=".pdf" onchange="onFileSelect(event)">
+      <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+      </svg>
+      <p>Arraste o PDF aqui ou clique para selecionar</p>
+      <small>Máximo 50 MB</small>
+    </label>
+  `;
+  S.pendingFile = null;
+}
+
+function mostrarArquivoSelecionado(file) {
+  S.pendingFile = file;
+  document.getElementById('upload-area').innerHTML = `
+    <div class="arquivo-info">
+      <span style="font-size:20px">📄</span>
+      <div>
+        <div class="arq-nome">${esc(file.name)}</div>
+        <div class="arq-size">${fmtSize(file.size)} — selecionado, será enviado ao salvar</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="resetUpload()">✕</button>
+    </div>
+  `;
+}
+
+function mostrarArquivoExistente(arq) {
+  document.getElementById('upload-area').innerHTML = `
+    <div class="arquivo-info">
+      <span style="font-size:20px">📄</span>
+      <div>
+        <div class="arq-nome">${esc(arq.nome || 'Arquivo')}</div>
+        <div class="arq-size">${arq.tamanho ? fmtSize(arq.tamanho) : ''} — PDF já anexado</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="verPdf(${arq.id},'${esc(arq.nome || 'PDF')}')">👁 Ver</button>
+        <button class="btn btn-outline btn-sm" onclick="substituirArquivo(${S.editId})">↺ Substituir</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="removerArquivoDoc(${S.editId})">✕</button>
+      </div>
+    </div>
+  `;
+}
+
+function onFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith('.pdf')) { toast('Apenas PDFs são aceitos.', 'error'); return; }
+  if (file.size > 50 * 1024 * 1024) { toast('Arquivo muito grande (máx. 50 MB).', 'error'); return; }
+  mostrarArquivoSelecionado(file);
+}
+
+function onDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('dragover'); }
+function onDragLeave(e) { e.currentTarget.classList.remove('dragover'); }
+function onDrop(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith('.pdf')) { toast('Apenas PDFs são aceitos.', 'error'); return; }
+  if (file.size > 50 * 1024 * 1024) { toast('Arquivo muito grande (máx. 50 MB).', 'error'); return; }
+  mostrarArquivoSelecionado(file);
+}
+
+function substituirArquivo(did) {
+  S.existingArq = null;
+  resetUpload();
+  document.getElementById('f-pdf').click();
+}
+
+async function removerArquivoDoc(did) {
+  const ok = await confirmar('Remover o PDF anexado a este documento?', 'Remover');
+  if (!ok) return;
+  const r = await API.del(`/api/documentos/${did}/arquivo`);
+  if (!r.ok) { toast('Erro ao remover arquivo.', 'error'); return; }
+  S.existingArq = null;
+  resetUpload();
+  toast('Arquivo removido.', 'success');
+}
+
+// ── PDF viewer ────────────────────────────────────────────────────────────────
+function verPdf(aid, nome) {
+  const token = S.token;
+  document.getElementById('pdf-titulo').textContent = nome || 'Documento';
+  const url = `/api/arquivos/${aid}?inline=1`;
+  // Para o iframe funcionar com auth, buscamos como blob
+  fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
+    .then(r => r.blob())
+    .then(blob => {
+      const burl = URL.createObjectURL(blob);
+      document.getElementById('pdf-frame').src = burl;
+      document.getElementById('pdf-download').href = burl;
+      document.getElementById('pdf-download').download = nome || 'documento.pdf';
+    });
+  abrirModal('modal-pdf');
+}
+
+// ── Usuários ──────────────────────────────────────────────────────────────────
+async function renderUsuarios() {
+  const r = await API.get('/api/usuarios');
+  const lista = await API.json(r);
+  if (!lista) return;
+  const cards = lista.map(u => `
+    <div class="user-card">
+      <div class="uc-avatar">${u.nome[0].toUpperCase()}</div>
+      <div class="uc-info">
+        <div class="uc-nome">${esc(u.nome)}
+          ${u.admin ? '<span class="badge-admin">Admin</span>' : ''}
+          ${!u.ativo ? '<span class="badge-inativo">Inativo</span>' : ''}
+        </div>
+        <div class="uc-user">@${esc(u.username)}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="abrirEditarUsuario(${u.id},'${esc(u.nome)}','${esc(u.username)}',${u.admin},${u.ativo})">✎ Editar</button>
+        ${u.id !== S.user.id ? `<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="excluirUsuario(${u.id},'${esc(u.nome)}')">✕</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('page-content').innerHTML = `<div class="users-grid">${cards || '<p style="color:var(--gray-400)">Nenhum usuário.</p>'}</div>`;
+}
+
+function abrirNovoUsuario() {
+  S.editUid = null;
+  document.getElementById('modal-user-titulo').textContent = 'Novo Usuário';
+  document.getElementById('u-nome').value = '';
+  document.getElementById('u-username').value = '';
+  document.getElementById('u-username').disabled = false;
+  document.getElementById('u-senha').value = '';
+  document.getElementById('u-senha-label').innerHTML = 'Senha <span style="color:var(--red)">*</span>';
+  document.getElementById('u-admin').checked = false;
+  document.getElementById('u-ativo-row').style.display = 'none';
+  abrirModal('modal-usuario');
+}
+
+function abrirEditarUsuario(id, nome, username, admin, ativo) {
+  S.editUid = id;
+  document.getElementById('modal-user-titulo').textContent = 'Editar Usuário';
+  document.getElementById('u-nome').value = nome;
+  document.getElementById('u-username').value = username;
+  document.getElementById('u-username').disabled = true;
+  document.getElementById('u-senha').value = '';
+  document.getElementById('u-senha-label').innerHTML = 'Nova senha <span style="color:var(--gray-400);font-weight:400">(deixe em branco para não alterar)</span>';
+  document.getElementById('u-admin').checked = !!admin;
+  document.getElementById('u-ativo').checked = !!ativo;
+  document.getElementById('u-ativo-row').style.display = '';
+  abrirModal('modal-usuario');
+}
+
+async function salvarUsuario() {
+  const nome  = document.getElementById('u-nome').value.trim();
+  const senha = document.getElementById('u-senha').value;
+  const admin = document.getElementById('u-admin').checked;
+  if (!nome) { toast('Nome é obrigatório.', 'error'); return; }
+  let r, d;
+  if (S.editUid) {
+    const payload = { nome, admin, ativo: document.getElementById('u-ativo').checked };
+    if (senha) payload.senha = senha;
+    r = await API.put(`/api/usuarios/${S.editUid}`, payload);
+  } else {
+    const username = document.getElementById('u-username').value.trim();
+    if (!username) { toast('Usuário é obrigatório.', 'error'); return; }
+    if (!senha)    { toast('Senha é obrigatória.', 'error'); return; }
+    r = await API.post('/api/usuarios', { username, nome, senha, admin });
+  }
+  d = await API.json(r);
+  if (!r.ok) { toast(d?.error || 'Erro ao salvar.', 'error'); return; }
+  toast(S.editUid ? 'Usuário atualizado.' : 'Usuário criado.', 'success');
+  fecharModal('modal-usuario');
+  await renderUsuarios();
+}
+
+async function excluirUsuario(id, nome) {
+  const ok = await confirmar(`Excluir o usuário <strong>${esc(nome)}</strong>?`, 'Excluir');
+  if (!ok) return;
+  const r = await API.del(`/api/usuarios/${id}`);
+  const d = await API.json(r);
+  if (!r.ok) { toast(d?.error || 'Erro ao excluir.', 'error'); return; }
+  toast('Usuário excluído.', 'success');
+  await renderUsuarios();
+}
+
+// ── Auditoria ─────────────────────────────────────────────────────────────────
+async function renderAuditoria() {
+  const r = await API.get('/api/auditoria?per=200');
+  const d = await API.json(r);
+  if (!d) return;
+  const rows = d.items.length ? d.items.map(e => `
+    <tr>
+      <td>${fmtDataHora(e.em)}</td>
+      <td>${esc(e.usuario_nome || '—')}</td>
+      <td><span class="audit-acao">${esc(e.acao)}</span></td>
+      <td>${e.documento_id || '—'}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.detalhes||'')}">${esc(e.detalhes || '—')}</td>
+    </tr>
+  `).join('') : `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--gray-400)">Sem registros.</td></tr>`;
+  document.getElementById('page-content').innerHTML = `
+    <div class="table-wrap">
+      <table class="audit-table">
+        <thead><tr><th>Data/hora</th><th>Usuário</th><th>Ação</th><th>Doc. ID</th><th>Detalhes</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── Backup ────────────────────────────────────────────────────────────────────
+function renderBackup() {
+  document.getElementById('page-content').innerHTML = `
+    <div class="table-wrap" style="max-width:560px;padding:28px">
+      <div class="section-title">💾 Backup e restauração</div>
+      <p style="color:var(--gray-600);margin-bottom:20px;line-height:1.6">
+        O backup exporta todos os documentos, PDFs e usuários em um único arquivo JSON.
+        Guarde em local seguro — servidor de rede, nuvem institucional ou mídia externa.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <button class="btn btn-primary" onclick="exportarBackup()">⬇ Exportar backup completo</button>
+        <div style="border-top:1px solid var(--gray-200);padding-top:12px">
+          <p style="color:var(--gray-500);font-size:12px;margin-bottom:10px">
+            ⚠ A restauração substitui <strong>todos</strong> os dados atuais.
+          </p>
+          <label class="btn btn-outline" style="cursor:pointer">
+            <input type="file" accept=".json" style="display:none" onchange="importarBackup(event)">
+            ↑ Restaurar a partir de backup
+          </label>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function exportarBackup() {
+  const r = await fetch('/api/backup', { headers: { Authorization: `Bearer ${S.token}` } });
+  if (!r.ok) { toast('Erro ao exportar backup.', 'error'); return; }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sgdp_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup exportado com sucesso.', 'success');
+}
+
+async function importarBackup(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const ok = await confirmar(
+    `<strong>Atenção:</strong> isso substituirá <em>todos</em> os documentos, PDFs e usuários pelos dados do backup.<br><br>Esta ação é irreversível. Deseja continuar?`,
+    'Sim, restaurar'
+  );
+  if (!ok) { e.target.value = ''; return; }
+  const r = await API.upload('/api/backup/restore', file);
+  const d = await API.json(r);
+  if (!r || !r.ok) { toast(d?.error || 'Erro ao restaurar backup.', 'error'); return; }
+  toast(`Restaurado: ${d.documentos} documentos, ${d.arquivos} arquivos.`, 'success');
+  e.target.value = '';
+  await navegar('dashboard');
+}
+
+// ── Modais ────────────────────────────────────────────────────────────────────
+function abrirModal(id) {
+  const m = document.getElementById(id);
+  m.classList.add('open');
+  m.addEventListener('click', e => { if (e.target === m) fecharModal(id); }, { once: true });
+}
+
+function fecharModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'modal-pdf') {
+    document.getElementById('pdf-frame').src = '';
+  }
+}
+
+// ── Confirmação ───────────────────────────────────────────────────────────────
+function confirmar(msg, btnLabel = 'Confirmar') {
+  return new Promise(resolve => {
+    S.confirmCb = resolve;
+    document.getElementById('confirm-msg').innerHTML = msg;
+    document.getElementById('confirm-ok').textContent = btnLabel;
+    abrirModal('modal-confirm');
+  });
+}
+
+function confirmarResp(resp) {
+  fecharModal('modal-confirm');
+  if (S.confirmCb) { S.confirmCb(resp); S.confirmCb = null; }
+}
+
+// ── Toasts ────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const box = document.getElementById('toast-box');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  box.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── Utilitários ───────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtNum(numero, ano) {
+  return `nº ${String(numero).padStart(3,'0')}/${ano}`;
+}
+
+function fmtData(d) {
+  if (!d) return '—';
+  const [y,m,day] = d.split('T')[0].split('-');
+  return `${day}/${m}/${y}`;
+}
+
+function fmtDataHora(d) {
+  if (!d) return '—';
+  const dt = new Date(d.replace('T',' ') + (d.includes('+') ? '' : ' '));
+  return isNaN(dt) ? d : dt.toLocaleString('pt-BR');
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes/1024).toFixed(1)} KB`;
+  return `${(bytes/1048576).toFixed(1)} MB`;
+}
+
+function hoje() {
+  return new Date().toISOString().slice(0,10);
+}
+
+// ── Atalhos de teclado ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['modal-pdf','modal-doc','modal-usuario','modal-confirm'].forEach(id => {
+      if (document.getElementById(id).classList.contains('open')) fecharModal(id);
+    });
+  }
+});
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

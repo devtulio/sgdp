@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+sgdp.db
+uploads/
+sgdp_backup_*.json
