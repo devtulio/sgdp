@@ -2074,14 +2074,30 @@ function previewBrasao(input) {
   if (!input.files[0]) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const url = e.target.result;
-    localStorage.setItem('sgdp-brasao-dataurl', url);
-    const prev = document.getElementById('cfg-brasao-preview');
-    prev.src = url; prev.style.display = 'inline-block';
-    document.getElementById('btn-remove-brasao').style.display = 'inline-flex';
-    const sb = document.getElementById('sidebar-brasao');
-    sb.src = url; sb.style.display = 'block';
-    toast('Brasão atualizado.', 'success');
+    // Redimensiona para max 256px antes de salvar (evita estouro de localStorage)
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 256;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const url = canvas.toDataURL('image/png');
+      try {
+        localStorage.setItem('sgdp-brasao-dataurl', url);
+      } catch(_) {
+        toast('Imagem muito grande para salvar. Use um arquivo menor.', 'error'); return;
+      }
+      const prev = document.getElementById('cfg-brasao-preview');
+      if (prev) { prev.src = url; prev.style.display = 'inline-block'; }
+      const btnRem = document.getElementById('btn-remove-brasao');
+      if (btnRem) btnRem.style.display = 'inline-flex';
+      const sb = document.getElementById('sidebar-brasao');
+      sb.src = url; sb.style.display = 'block';
+      toast('Brasão atualizado.', 'success');
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(input.files[0]);
 }
