@@ -608,30 +608,47 @@ tr:hover td { background: var(--gray-50); }
         </div>
       </div>
       <!-- Campos específicos de Parecer -->
-      <div class="form-row cols-2" id="f-parecer-row" style="display:none">
-        <div class="form-group">
-          <label>Tipo de Processo</label>
-          <select id="f-processo-tipo">
-            <option value="">— Nenhum —</option>
-            <option value="PA">PA — Processo Administrativo</option>
-            <option value="DL">DL — Dispensa de Licitação</option>
-            <option value="IL">IL — Inexigibilidade de Licitação</option>
-            <option value="PE">PE — Pregão Eletrônico</option>
-            <option value="CE">CE — Concorrência Eletrônica</option>
-            <option value="RP">RP — Registro de Preços</option>
-            <option value="TA">TA — Tomada de Preços</option>
-            <option value="CC">CC — Convite</option>
-            <option value="CT">CT — Contrato</option>
-            <option value="AT">AT — Aditivo Contratual</option>
-            <option value="CV">CV — Convênio</option>
-            <option value="PP">PP — Processo de Pessoal</option>
-            <option value="PAD">PAD — Proc. Administrativo Disciplinar</option>
-            <option value="Outro">Outro</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Nº do Processo</label>
-          <input id="f-processo-ref" type="text" placeholder="Ex: 001/2025 ou 2025.0001">
+      <!-- Campos específicos de Parecer: PA (processo-pai) + modalidade (processo-filho) -->
+      <div id="f-parecer-row" style="display:none">
+        <div class="form-row cols-2">
+          <div class="form-group">
+            <label>PA — Proc. Administrativo</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px;font-weight:700;color:var(--gray-500);white-space:nowrap">PA</span>
+              <input id="f-processo-pa" type="text" placeholder="Ex: 10/2026" style="flex:1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Modalidade / Processo-filho</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <select id="f-processo-tipo" style="width:auto;min-width:90px">
+                <option value="">— —</option>
+                <option value="DL">DL</option>
+                <option value="IL">IL</option>
+                <option value="PE">PE</option>
+                <option value="CE">CE</option>
+                <option value="RP">RP</option>
+                <option value="TA">TA</option>
+                <option value="CC">CC</option>
+                <option value="CT">CT</option>
+                <option value="AT">AT</option>
+                <option value="RJ">RJ</option>
+                <option value="RE">RE</option>
+                <option value="PR">PR</option>
+                <option value="CV">CV</option>
+                <option value="PP">PP</option>
+                <option value="PAD">PAD</option>
+                <option value="Outro">Outro</option>
+              </select>
+              <input id="f-processo-ref" type="text" placeholder="Ex: 05/2026" style="flex:1">
+            </div>
+            <span class="form-hint" id="f-processo-hint"></span>
+          </div>
+        <div style="font-size:11px;color:var(--gray-500);line-height:1.6;padding:0 2px 6px">
+          DL Dispensa · IL Inexigibilidade · PE Pregão Eletrônico · CE Concorrência Eletrônica ·
+          RP Registro de Preços · TA Tomada de Preços · CC Convite · CT Contrato ·
+          AT Aditivo · RJ Reajuste · RE Reequilíbrio Econômico · PR Prorrogação ·
+          CV Convênio · PP Pessoal · PAD Proc. Disciplinar
         </div>
       </div>
       <!-- Campos específicos de Portaria -->
@@ -1274,8 +1291,9 @@ async function abrirNovoDoc(tipo) {
   document.getElementById('f-ementa').value = '';
   document.getElementById('f-partes').value = '';
   document.getElementById('f-obs').value = '';
+  document.getElementById('f-processo-pa').value   = '';
   document.getElementById('f-processo-tipo').value = '';
-  document.getElementById('f-processo-ref').value = '';
+  document.getElementById('f-processo-ref').value  = '';
   document.getElementById('f-ato-tipo').value = '';
   document.getElementById('f-cargo').value = '';
   _populaAssunto(tipo, ASSUNTOS_GERAL[0]);
@@ -1301,6 +1319,7 @@ async function abrirEditarDoc(id) {
   document.getElementById('f-ementa').value = doc.ementa || '';
   document.getElementById('f-partes').value = doc.partes || '';
   document.getElementById('f-obs').value = doc.observacoes || '';
+  document.getElementById('f-processo-pa').value   = doc.processo_pa   || '';
   document.getElementById('f-processo-tipo').value = doc.processo_tipo || '';
   document.getElementById('f-processo-ref').value  = doc.processo_ref  || '';
   document.getElementById('f-ato-tipo').value       = doc.ato_tipo      || '';
@@ -1364,6 +1383,7 @@ async function salvarDocumento() {
     numero:     document.getElementById('f-numero').value || null,
     ano:        parseInt(document.getElementById('f-ano').value),
     assunto:       document.getElementById('f-assunto').value,
+    processo_pa:   document.getElementById('f-processo-pa').value.trim(),
     processo_tipo: document.getElementById('f-processo-tipo').value,
     processo_ref:  document.getElementById('f-processo-ref').value.trim(),
     ato_tipo:      document.getElementById('f-ato-tipo').value,
