@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.1.0</title>
+<title>Manual Operacional — SGDP v1.2.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -79,7 +79,7 @@
     <div class="cover-title">Sistema de Gestão de Documentos<br>da Procuradoria</div>
     <div class="cover-subtitle">Manual Operacional</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.1.0</div>
+    <div class="cover-version">Versão 1.2.0</div>
     <div class="cover-legal">
       Documentação de uso interno.<br>
       Desenvolvido para gestão de atos jurídicos municipais.
@@ -421,6 +421,44 @@
     <strong>Suporte técnico:</strong> em caso de dúvidas ou problemas não cobertos neste manual,
     entre em contato com o responsável pelo desenvolvimento do sistema.
   </div>
+</div>
+
+<!-- ── SEÇÃO 9 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
+<div class="page">
+  <h2 id="s9">9. Histórico de Versões</h2>
+
+  <h3>v1.2.0 — 28/06/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Atalho de área de trabalho</strong> — execute <code>Criar Atalho SGDP.bat</code> para gerar um atalho <code>.lnk</code> na área de trabalho com ícone personalizado</li>
+    <li><strong>Ícone personalizado</strong> (<code>sgdp.ico</code>) — Selo Soberano: anel duplo dourado com símbolo §, marcações e fundo circular transparente, disponível em múltiplas resoluções (16–256 px)</li>
+  </ul>
+  <p><strong>Melhorado</strong></p>
+  <ul>
+    <li><strong>Login — restauração de sessão</strong> — ao fazer logout, o campo usuário é pré-preenchido com o último usuário logado e o foco é direcionado automaticamente para o campo senha</li>
+    <li><strong>Ícones da barra lateral</strong> — emojis substituídos por ícones SVG vetoriais que se adaptam automaticamente ao tema claro/escuro</li>
+    <li><strong>Ajuste de tamanho de fonte</strong> — zoom aplicado exclusivamente ao painel principal, sem afetar a barra lateral</li>
+  </ul>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li>Ícone do Windows Terminal exibido corretamente na janela do servidor</li>
+    <li>Links na janela do servidor exibidos como texto simples (compatível com CMD)</li>
+    <li>Alinhamento da caixa de boas-vindas do servidor corrigido</li>
+  </ul>
+
+  <h3>v1.1.0 — 27/06/2026</h3>
+  <ul>
+    <li>Sessões migradas para SQLite (sobrevivem a reinicializações)</li>
+    <li>Arquitetura do <code>server.py</code> alinhada com o padrão SGCD</li>
+    <li>Roteamento separado por verbo HTTP (GET/POST/PUT/DELETE)</li>
+    <li>Caminhos absolutos para banco e pasta de uploads</li>
+  </ul>
+
+  <h3>v1.0.0 — 27/06/2026</h3>
+  <ul>
+    <li>Versão inicial do sistema com CRUD completo para 5 tipos de documento</li>
+    <li>Upload e visualização de PDF, login multiusuário, auditoria e backup</li>
+  </ul>
 </div>
 
 </body>

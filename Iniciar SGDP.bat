@@ -11,16 +11,4 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo.
-echo  ================================================
-echo   SGDP -- Gestao de Documentos da Procuradoria
-echo   http://localhost:3001
-echo  ================================================
-echo.
-echo  Login inicial: usuario=admin  senha=sgdp2024
-echo  Altere a senha apos o primeiro acesso.
-echo.
-echo  Pressione Ctrl+C para encerrar o servidor.
-echo.
-
-python "%~dp0server.py"
+start "SGDP - Servidor local" python "%~dp0server.py"

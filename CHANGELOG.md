@@ -5,6 +5,25 @@
 
 ---
 
+## [1.2.0] — 2026-06-28
+
+### Adicionado
+- **Atalho de área de trabalho** — `Criar Atalho SGDP.bat` gera um atalho `.lnk` na área de trabalho com ícone personalizado
+- **Ícone personalizado** (`sgdp.ico`) — Selo Soberano: anel duplo dourado com símbolo §, marcações e fundo circular transparente, multi-resolução (16–256 px)
+- **Scripts de atalho** — `Criar Atalho SGDP.ps1` e `Criar Atalho SGDP.bat` para criação e atualização do atalho
+
+### Melhorado
+- **Login — restauração de sessão** — ao fazer logout, o campo usuário é pré-preenchido com o último usuário logado e o foco vai automaticamente para o campo senha
+- **Ícones da barra lateral** — emojis substituídos por ícones SVG inline (`stroke="currentColor"`), adaptam-se ao tema claro/escuro
+- **Ajuste de tamanho de fonte** — zoom aplicado exclusivamente ao painel `#main`, sem afetar a sidebar; corrige bug onde a sidebar sumia ao alterar o tamanho da fonte
+
+### Corrigido
+- **Janela do servidor — ícone correto** — removida flag `/min` do `Iniciar SGDP.bat`; Windows Terminal exibe seu próprio ícone em vez do ícone do Python
+- **Links no servidor (CMD)** — removida função `_link()` com sequências OSC 8 não suportadas pelo CMD; URLs exibidas como texto simples
+- **Alinhamento da caixa ASCII** — corrigida largura da borda `╔═╝` em `_selecionar_modo()` no `server.py`
+
+---
+
 ## [1.1.0] — 2026-06-27
 
 ### Alterado
