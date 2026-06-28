@@ -121,10 +121,13 @@ def init_db():
             ('auto_backup_enabled',  '1'),
             ('auto_backup_keep',     str(BACKUP_KEEP)),
         ])
-        # Migração: coluna assunto (v1.3)
+        # Migrações de colunas
         cols = [r[1] for r in conn.execute('PRAGMA table_info(documentos)').fetchall()]
-        if 'assunto' not in cols:
-            conn.execute("ALTER TABLE documentos ADD COLUMN assunto TEXT DEFAULT 'Outros'")
+        if 'assunto'        not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assunto        TEXT DEFAULT 'Outros'")
+        if 'processo_tipo'  not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN processo_tipo  TEXT DEFAULT ''")
+        if 'processo_ref'   not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN processo_ref   TEXT DEFAULT ''")
+        if 'ato_tipo'       not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN ato_tipo       TEXT DEFAULT ''")
+        if 'cargo'          not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN cargo          TEXT DEFAULT ''")
         # Sessões são descartadas a cada início do servidor (evita sessões órfãs)
         conn.execute('DELETE FROM sessions')
         conn.commit()
@@ -616,11 +619,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             numero = int(data['numero']) if data.get('numero') not in (None, '') else proximo_numero(conn, tipo, ano)
             try:
                 conn.execute(
-                    'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,criado_por,atualizado_por)'
-                    ' VALUES (?,?,?,?,?,?,?,?,?,?)',
+                    'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_tipo,processo_ref,ato_tipo,cargo,criado_por,atualizado_por)'
+                    ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     (tipo, numero, ano, data_d, ementa,
                      data.get('partes') or '', data.get('observacoes') or '',
                      data.get('assunto') or 'Outros',
+                     data.get('processo_tipo') or '', data.get('processo_ref') or '',
+                     data.get('ato_tipo') or '', data.get('cargo') or '',
                      s['user_id'], s['user_id'])
                 )
                 bump_contador(conn, tipo, ano, numero)
@@ -638,7 +643,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
             if not row: self._json(404, {'error': 'Não encontrado'}); return
             fields = {'atualizado_por': s['user_id'], 'atualizado_em': time.strftime('%Y-%m-%dT%H:%M:%S')}
-            for f in ('ementa', 'partes', 'observacoes', 'data', 'assunto'):
+            for f in ('ementa', 'partes', 'observacoes', 'data', 'assunto', 'processo_tipo', 'processo_ref', 'ato_tipo', 'cargo'):
                 if f in data: fields[f] = data[f]
             if 'numero' in data: fields['numero'] = int(data['numero'])
             if 'ano'    in data: fields['ano']    = int(data['ano'])

@@ -598,24 +598,71 @@ tr:hover td { background: var(--gray-50); }
         </div>
         <div class="form-group">
           <label>Assunto <span style="color:var(--red)">*</span></label>
-          <select id="f-assunto">
-            <option value="Administrativo Geral">Administrativo Geral</option>
-            <option value="Pessoal e RH">Pessoal e RH</option>
-            <option value="Contratos e Convênios">Contratos e Convênios</option>
-            <option value="Tributário e Fiscal">Tributário e Fiscal</option>
-            <option value="Urbanismo e Obras">Urbanismo e Obras</option>
-            <option value="Saúde Pública">Saúde Pública</option>
-            <option value="Educação">Educação</option>
-            <option value="Infraestrutura">Infraestrutura</option>
-            <option value="Legislação Municipal">Legislação Municipal</option>
-            <option value="Outros">Outros</option>
-          </select>
+          <select id="f-assunto"></select>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label>Ementa <span style="color:var(--red)">*</span></label>
           <textarea id="f-ementa" rows="3" placeholder="Descrição resumida do documento…"></textarea>
+        </div>
+      </div>
+      <!-- Campos específicos de Parecer -->
+      <div class="form-row cols-2" id="f-parecer-row" style="display:none">
+        <div class="form-group">
+          <label>Tipo de Processo</label>
+          <select id="f-processo-tipo">
+            <option value="">— Nenhum —</option>
+            <option value="PA">PA — Processo Administrativo</option>
+            <option value="DL">DL — Dispensa de Licitação</option>
+            <option value="IL">IL — Inexigibilidade de Licitação</option>
+            <option value="PE">PE — Pregão Eletrônico</option>
+            <option value="CE">CE — Concorrência Eletrônica</option>
+            <option value="RP">RP — Registro de Preços</option>
+            <option value="TA">TA — Tomada de Preços</option>
+            <option value="CC">CC — Convite</option>
+            <option value="CT">CT — Contrato</option>
+            <option value="AT">AT — Aditivo Contratual</option>
+            <option value="CV">CV — Convênio</option>
+            <option value="PP">PP — Processo de Pessoal</option>
+            <option value="PAD">PAD — Proc. Administrativo Disciplinar</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nº do Processo</label>
+          <input id="f-processo-ref" type="text" placeholder="Ex: 001/2025 ou 2025.0001">
+        </div>
+      </div>
+      <!-- Campos específicos de Portaria -->
+      <div class="form-row cols-2" id="f-portaria-row" style="display:none">
+        <div class="form-group">
+          <label>Tipo de Ato</label>
+          <select id="f-ato-tipo">
+            <option value="">— Selecione —</option>
+            <option value="Nomeação">Nomeação</option>
+            <option value="Exoneração">Exoneração</option>
+            <option value="Designação">Designação</option>
+            <option value="Remoção">Remoção</option>
+            <option value="Afastamento">Afastamento</option>
+            <option value="Concessão de Férias">Concessão de Férias</option>
+            <option value="Licença Médica">Licença Médica</option>
+            <option value="Licença Maternidade/Paternidade">Licença Maternidade/Paternidade</option>
+            <option value="Licença Especial">Licença Especial</option>
+            <option value="Concessão de Adicional">Concessão de Adicional</option>
+            <option value="Progressão Funcional">Progressão Funcional</option>
+            <option value="Suspensão Disciplinar">Suspensão Disciplinar</option>
+            <option value="Abertura de PAD">Abertura de PAD</option>
+            <option value="Conclusão de PAD">Conclusão de PAD</option>
+            <option value="Delegação de Competência">Delegação de Competência</option>
+            <option value="Instituição de Comissão">Instituição de Comissão</option>
+            <option value="Regulamentação Interna">Regulamentação Interna</option>
+            <option value="Outros">Outros</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Cargo / Função</label>
+          <input id="f-cargo" type="text" placeholder="Ex: Secretário Municipal de Saúde">
         </div>
       </div>
       <div class="form-row">
@@ -909,7 +956,6 @@ function mostrarApp() {
 
 // ── Navegação ─────────────────────────────────────────────────────────────────
 async function navegar(view) {
-  playClick();
   S.view = view;
   S.pag  = { page: 1, total: 0, per: 50 };
   S.filtros = { q: '', ano: '' };
@@ -1225,10 +1271,15 @@ async function abrirNovoDoc(tipo) {
   document.getElementById('f-numero').value = '';
   document.getElementById('f-ano').value = ANO_ATUAL;
   document.getElementById('f-data').value = hoje();
-  document.getElementById('f-assunto').value = 'Administrativo Geral';
   document.getElementById('f-ementa').value = '';
   document.getElementById('f-partes').value = '';
   document.getElementById('f-obs').value = '';
+  document.getElementById('f-processo-tipo').value = '';
+  document.getElementById('f-processo-ref').value = '';
+  document.getElementById('f-ato-tipo').value = '';
+  document.getElementById('f-cargo').value = '';
+  _populaAssunto(tipo, ASSUNTOS_GERAL[0]);
+  onTipoChange();
   resetUpload();
   abrirModal('modal-doc');
 }
@@ -1246,10 +1297,15 @@ async function abrirEditarDoc(id) {
   document.getElementById('f-numero').value = doc.numero;
   document.getElementById('f-ano').value = doc.ano;
   document.getElementById('f-data').value = doc.data;
-  document.getElementById('f-assunto').value = doc.assunto || 'Administrativo Geral';
+  _populaAssunto(doc.tipo, doc.assunto);
   document.getElementById('f-ementa').value = doc.ementa || '';
   document.getElementById('f-partes').value = doc.partes || '';
   document.getElementById('f-obs').value = doc.observacoes || '';
+  document.getElementById('f-processo-tipo').value = doc.processo_tipo || '';
+  document.getElementById('f-processo-ref').value  = doc.processo_ref  || '';
+  document.getElementById('f-ato-tipo').value       = doc.ato_tipo      || '';
+  document.getElementById('f-cargo').value          = doc.cargo         || '';
+  onTipoChange();
   if (S.existingArq) {
     mostrarArquivoExistente(S.existingArq);
   } else {
@@ -1258,8 +1314,43 @@ async function abrirEditarDoc(id) {
   abrirModal('modal-doc');
 }
 
+const ASSUNTOS_GERAL = [
+  'Administrativo Geral','Pessoal e RH','Contratos e Convênios','Tributário e Fiscal',
+  'Urbanismo e Obras','Saúde Pública','Educação','Infraestrutura','Assistência Social',
+  'Meio Ambiente','Transporte e Mobilidade','Finanças e Orçamento','Legislação Municipal','Outros'
+];
+const ASSUNTOS_PARECER = [
+  'Licitações e Contratos','Dispensa de Licitação','Inexigibilidade de Licitação',
+  'Pregão Eletrônico','Concorrência Eletrônica','Contrato Administrativo','Aditivo Contratual',
+  'Fiscalização de Contrato','Registro de Preços','Tomada de Preços',
+  'Admissão e Concurso Público','Nomeação e Posse','Exoneração e Demissão',
+  'Aposentadoria e Benefícios','Regime Disciplinar e PAD','Licenças e Afastamentos',
+  'Estágio Probatório','Progressão e Promoção Funcional',
+  'Imposto sobre Serviços (ISS)','IPTU e ITBI','Contribuição de Melhoria',
+  'Dívida Ativa e Cobrança','Isenção e Imunidade Fiscal','Parcelamento de Débitos',
+  'Alvará de Construção e Obras','Habite-se e Regularização','Parcelamento do Solo',
+  'Uso e Ocupação do Solo','Desapropriação','Regularização Fundiária',
+  'Licenciamento Ambiental','Resíduos Sólidos e Saneamento','Arborização e Áreas Verdes',
+  'Concessão de Serviço Público','Permissão e Autorização de Uso',
+  'Convênio e Termo de Parceria','Consórcio Intermunicipal',
+  'Responsabilidade Fiscal (LRF)','Orçamento e Créditos Adicionais',
+  'Precatórios e RPV','Ação Judicial e Defesa do Município','Recurso Administrativo',
+  'Tombamento e Patrimônio Histórico','Vigilância Sanitária','Proteção ao Consumidor',
+  'Controle Interno e Auditoria','Outros'
+];
+
+function _populaAssunto(tipo, valorAtual) {
+  const lista = tipo === 'parecer' ? ASSUNTOS_PARECER : ASSUNTOS_GERAL;
+  const sel = document.getElementById('f-assunto');
+  sel.innerHTML = lista.map(a => `<option value="${a}"${a===valorAtual?' selected':''}>${a}</option>`).join('');
+  if (valorAtual && lista.includes(valorAtual)) sel.value = valorAtual;
+}
+
 function onTipoChange() {
-  // futuro: campos específicos por tipo
+  const tipo = document.getElementById('f-tipo').value;
+  _populaAssunto(tipo, document.getElementById('f-assunto').value);
+  document.getElementById('f-parecer-row').style.display  = tipo === 'parecer'  ? '' : 'none';
+  document.getElementById('f-portaria-row').style.display = tipo === 'portaria' ? '' : 'none';
 }
 
 async function salvarDocumento() {
@@ -1272,10 +1363,14 @@ async function salvarDocumento() {
     tipo:       document.getElementById('f-tipo').value,
     numero:     document.getElementById('f-numero').value || null,
     ano:        parseInt(document.getElementById('f-ano').value),
-    assunto:    document.getElementById('f-assunto').value,
+    assunto:       document.getElementById('f-assunto').value,
+    processo_tipo: document.getElementById('f-processo-tipo').value,
+    processo_ref:  document.getElementById('f-processo-ref').value.trim(),
+    ato_tipo:      document.getElementById('f-ato-tipo').value,
+    cargo:         document.getElementById('f-cargo').value.trim(),
     data, ementa,
-    partes:     document.getElementById('f-partes').value.trim(),
-    observacoes: document.getElementById('f-obs').value.trim(),
+    partes:        document.getElementById('f-partes').value.trim(),
+    observacoes:   document.getElementById('f-obs').value.trim(),
   };
 
   let r, doc;
@@ -2213,7 +2308,6 @@ function confirmar(msg, btnLabel = 'Confirmar') {
 }
 
 function confirmarResp(resp) {
-  playClick();
   fecharModal('modal-confirm');
   if (S.confirmCb) { S.confirmCb(resp); S.confirmCb = null; }
 }
@@ -2319,6 +2413,12 @@ function hoje() {
 }
 
 // ── Atalhos de teclado ────────────────────────────────────────────────────────
+// Som global em todos os cliques de botão (inclusive conteúdo dinâmico)
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, .btn, .nav-item, .cfg-tab, .btn-login, .btn-sair');
+  if (t && !t.dataset.noSound) playClick();
+}, true);
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     ['modal-pdf','modal-doc','modal-usuario','modal-confirm'].forEach(id => {
