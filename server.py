@@ -121,6 +121,10 @@ def init_db():
             ('auto_backup_enabled',  '1'),
             ('auto_backup_keep',     str(BACKUP_KEEP)),
         ])
+        # Migração: coluna assunto (v1.3)
+        cols = [r[1] for r in conn.execute('PRAGMA table_info(documentos)').fetchall()]
+        if 'assunto' not in cols:
+            conn.execute("ALTER TABLE documentos ADD COLUMN assunto TEXT DEFAULT 'Outros'")
         # Sessões são descartadas a cada início do servidor (evita sessões órfãs)
         conn.execute('DELETE FROM sessions')
         conn.commit()
@@ -330,6 +334,9 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
         elif p == '/api/dashboard':
             self._dashboard()
+
+        elif p == '/api/relatorio':
+            self._relatorio(qs)
 
         elif p == '/api/usuarios':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
@@ -609,10 +616,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             numero = int(data['numero']) if data.get('numero') not in (None, '') else proximo_numero(conn, tipo, ano)
             try:
                 conn.execute(
-                    'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,criado_por,atualizado_por)'
-                    ' VALUES (?,?,?,?,?,?,?,?,?)',
+                    'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,criado_por,atualizado_por)'
+                    ' VALUES (?,?,?,?,?,?,?,?,?,?)',
                     (tipo, numero, ano, data_d, ementa,
                      data.get('partes') or '', data.get('observacoes') or '',
+                     data.get('assunto') or 'Outros',
                      s['user_id'], s['user_id'])
                 )
                 bump_contador(conn, tipo, ano, numero)
@@ -630,7 +638,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
             if not row: self._json(404, {'error': 'Não encontrado'}); return
             fields = {'atualizado_por': s['user_id'], 'atualizado_em': time.strftime('%Y-%m-%dT%H:%M:%S')}
-            for f in ('ementa', 'partes', 'observacoes', 'data'):
+            for f in ('ementa', 'partes', 'observacoes', 'data', 'assunto'):
                 if f in data: fields[f] = data[f]
             if 'numero' in data: fields['numero'] = int(data['numero'])
             if 'ano'    in data: fields['ano']    = int(data['ano'])
@@ -660,6 +668,29 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.execute('DELETE FROM documentos WHERE id=?', (did,))
             conn.commit()
         self._json(200, {'ok': True})
+
+    # ── Relatório ─────────────────────────────────────────────────────────────
+
+    def _relatorio(self, qs):
+        def qp(k, d=None): v = qs.get(k); return v[0] if v else d
+        de  = qp('de',  '1900-01-01')
+        ate = qp('ate', '2999-12-31')
+        with get_db() as conn:
+            total = conn.execute(
+                'SELECT COUNT(*) FROM documentos WHERE data BETWEEN ? AND ?', (de, ate)).fetchone()[0]
+            por_tipo = [dict(r) for r in conn.execute(
+                'SELECT tipo, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? GROUP BY tipo ORDER BY n DESC',
+                (de, ate)).fetchall()]
+            por_assunto = [dict(r) for r in conn.execute(
+                'SELECT assunto, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? GROUP BY assunto ORDER BY n DESC',
+                (de, ate)).fetchall()]
+            por_mes = [dict(r) for r in conn.execute(
+                "SELECT strftime('%Y-%m', data) mes, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? GROUP BY mes ORDER BY mes",
+                (de, ate)).fetchall()]
+            docs = [dict(r) for r in conn.execute(
+                'SELECT id,tipo,numero,ano,data,ementa,assunto FROM documentos WHERE data BETWEEN ? AND ? ORDER BY data DESC, id DESC LIMIT 200',
+                (de, ate)).fetchall()]
+        self._json(200, {'total': total, 'por_tipo': por_tipo, 'por_assunto': por_assunto, 'por_mes': por_mes, 'documentos': docs})
 
     # ── Arquivos ──────────────────────────────────────────────────────────────
 
