@@ -598,7 +598,7 @@ tr:hover td { background: var(--gray-50); }
         </div>
         <div class="form-group">
           <label>Assunto <span style="color:var(--red)">*</span></label>
-          <select id="f-assunto"></select>
+          <select id="f-assunto" onchange="onAssuntoChange()"></select>
         </div>
       </div>
       <div class="form-row">
@@ -644,12 +644,13 @@ tr:hover td { background: var(--gray-50); }
             </div>
             <span class="form-hint" id="f-processo-hint"></span>
           </div>
-        <div style="font-size:11px;color:var(--gray-500);line-height:1.6;padding:0 2px 6px">
-          DL Dispensa · IL Inexigibilidade · PE Pregão Eletrônico · CE Concorrência Eletrônica ·
-          RP Registro de Preços · TA Tomada de Preços · CC Convite · CT Contrato ·
-          AT Aditivo · RJ Reajuste · RE Reequilíbrio Econômico · PR Prorrogação ·
-          CV Convênio · PP Pessoal · PAD Proc. Disciplinar
-        </div>
+      </div>
+      <div id="f-parecer-legenda" style="display:none;font-size:11px;color:var(--gray-500);line-height:1.8;padding:2px 0 8px;width:100%">
+        <strong style="color:var(--gray-600)">Siglas:</strong>
+        DL Dispensa · IL Inexigibilidade · PE Pregão Eletrônico · CE Concorrência Eletrônica ·
+        RP Registro de Preços · TA Tomada de Preços · CC Convite · CT Contrato ·
+        AT Aditivo · RJ Reajuste · RE Reequilíbrio Econômico-Financeiro · PR Prorrogação ·
+        CV Convênio · PP Pessoal · PAD Proc. Administrativo Disciplinar
       </div>
       <!-- Campos específicos de Portaria -->
       <div class="form-row cols-2" id="f-portaria-row" style="display:none">
@@ -1365,10 +1366,32 @@ function _populaAssunto(tipo, valorAtual) {
   if (valorAtual && lista.includes(valorAtual)) sel.value = valorAtual;
 }
 
+// Assuntos do Parecer que ativam os campos de processo licitatório
+const ASSUNTOS_LICITACAO = new Set([
+  'Licitações e Contratos','Dispensa de Licitação','Inexigibilidade de Licitação',
+  'Pregão Eletrônico','Concorrência Eletrônica','Contrato Administrativo','Aditivo Contratual',
+  'Fiscalização de Contrato','Registro de Preços','Tomada de Preços',
+]);
+
+function _mostraProcesso(visivel) {
+  document.getElementById('f-parecer-row').style.display   = visivel ? '' : 'none';
+  document.getElementById('f-parecer-legenda').style.display = visivel ? '' : 'none';
+}
+
+function onAssuntoChange() {
+  if (document.getElementById('f-tipo').value !== 'parecer') return;
+  _mostraProcesso(ASSUNTOS_LICITACAO.has(document.getElementById('f-assunto').value));
+}
+
 function onTipoChange() {
   const tipo = document.getElementById('f-tipo').value;
   _populaAssunto(tipo, document.getElementById('f-assunto').value);
-  document.getElementById('f-parecer-row').style.display  = tipo === 'parecer'  ? '' : 'none';
+  // campos de processo: só para parecer E assunto de licitação
+  if (tipo === 'parecer') {
+    _mostraProcesso(ASSUNTOS_LICITACAO.has(document.getElementById('f-assunto').value));
+  } else {
+    _mostraProcesso(false);
+  }
   document.getElementById('f-portaria-row').style.display = tipo === 'portaria' ? '' : 'none';
 }
 
@@ -1870,7 +1893,10 @@ async function exportBackup() {
   const blob = await r.blob();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `SIS_SGDP_BACKUP_${new Date().toISOString().slice(0,10)}.json`;
+  const _now = new Date();
+  const _ds  = _now.toISOString().slice(0,10);
+  const _ts  = _now.toTimeString().slice(0,8).replace(/:/g,'-');
+  a.download = `SIS_SGDP_BACKUP_${_ds}_${_ts}.json`;
   a.click(); URL.revokeObjectURL(a.href);
   toast('Backup exportado com sucesso.', 'success');
 }
