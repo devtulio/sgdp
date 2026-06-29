@@ -5,6 +5,16 @@
 
 ---
 
+## [1.5.0] — 2026-06-29
+
+### Adicionado
+- **Diagnóstico de rede** (`diagnostico.py`) — verifica IP local, porta 3001, estado do firewall, regras de entrada e acessibilidade pela LAN; relatório com ✅/⚠️/❌ por item e instruções de correção em linguagem simples
+- **`Diagnostico SGDP.bat`** — atalho clicável para rodar o diagnóstico sem abrir o servidor
+- **`Liberar Porta SGDP.bat`** — cria regra de entrada no Windows Defender Firewall para a porta 3001 (requer execução como Administrador)
+- **Opção [3] Diagnóstico no menu de inicialização** — acessível diretamente ao iniciar o `server.py`, sem necessidade de rodar o `.bat` separado
+
+---
+
 ## [1.4.0] — 2026-06-29
 
 ### Adicionado

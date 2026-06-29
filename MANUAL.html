@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.4.0</title>
+<title>Manual Operacional — SGDP v1.5.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -79,7 +79,7 @@
     <div class="cover-title">Sistema de Gestão de Documentos<br>da Procuradoria</div>
     <div class="cover-subtitle">Manual Operacional</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.4.0</div>
+    <div class="cover-version">Versão 1.5.0</div>
     <div class="cover-legal">
       Documentação de uso interno.<br>
       Desenvolvido para gestão de atos jurídicos municipais.
@@ -426,6 +426,15 @@
 <!-- ── SEÇÃO 9 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s9">9. Histórico de Versões</h2>
+
+  <h3>v1.5.0 — 29/06/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Diagnóstico de rede</strong> (<code>diagnostico.py</code>) — verifica IP local, porta 3001, estado do firewall do Windows, regras de entrada e acessibilidade pela rede local; exibe relatório com ✅/⚠️/❌ por item e instruções de correção em linguagem acessível</li>
+    <li><strong>Diagnostico SGDP.bat</strong> — atalho clicável para rodar o diagnóstico independentemente do servidor estar ativo ou não</li>
+    <li><strong>Liberar Porta SGDP.bat</strong> — cria automaticamente a regra de entrada no Windows Defender Firewall para a porta 3001; requer execução como Administrador</li>
+    <li><strong>Opção [3] Diagnóstico no menu de inicialização</strong> — ao iniciar o <code>server.py</code>, o usuário pode selecionar a opção 3 para rodar o diagnóstico sem precisar abrir o arquivo <code>.bat</code> separado</li>
+  </ul>
 
   <h3>v1.4.0 — 29/06/2026</h3>
   <p><strong>Adicionado</strong></p>
