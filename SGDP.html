@@ -867,7 +867,9 @@ async function init() {
 
   if (S.token && S.user) {
     mostrarApp();
-    navegar('dashboard');
+    const views = ['dashboard','lei','decreto','portaria','parecer','oficio','relatorio','auditoria','configuracoes'];
+    const hash = location.hash.replace('#','');
+    navegar(views.includes(hash) ? hash : 'dashboard');
   } else {
     const lastUser = localStorage.getItem('sgdp-last-user');
     if (lastUser) {
@@ -973,6 +975,7 @@ function mostrarApp() {
 
 // ── Navegação ─────────────────────────────────────────────────────────────────
 async function navegar(view) {
+  location.hash = view;
   S.view = view;
   S.pag  = { page: 1, total: 0, per: 50 };
   S.filtros = { q: '', ano: '' };
