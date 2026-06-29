@@ -949,7 +949,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self._cors()
         self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Content-Disposition', f'attachment; filename="sgdp_backup_{time.strftime("%Y-%m-%d_%H-%M-%S")}.json"')
+        self.send_header('Content-Disposition', f'attachment; filename="SIS_SGDP_BACKUP_{time.strftime("%Y-%m-%d_%H-%M-%S")}.json"')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -1049,7 +1049,7 @@ def _do_json_backup(cfg=None):
     import base64
     if cfg is None: cfg = _get_backup_cfg()
     bdir = cfg['path']; os.makedirs(bdir, exist_ok=True)
-    name = time.strftime('sgdp_backup_%Y-%m-%d_%H-%M-%S.json')
+    name = time.strftime('SIS_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.json')
     try:
         with get_db() as conn:
             docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
@@ -1076,7 +1076,7 @@ def _do_json_backup(cfg=None):
 def _do_db_backup(cfg=None):
     if cfg is None: cfg = _get_backup_cfg()
     bdir = cfg['path']; os.makedirs(bdir, exist_ok=True)
-    name = time.strftime('sgdp_db_%Y-%m-%d_%H-%M-%S.db')
+    name = time.strftime('SIS_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.db')
     try:
         with sqlite3.connect(DB_PATH) as src, sqlite3.connect(os.path.join(bdir, name)) as bk:
             src.backup(bk)
