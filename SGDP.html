@@ -607,9 +607,8 @@ tr:hover td { background: var(--gray-50); }
           <textarea id="f-ementa" rows="3" placeholder="Descrição resumida do documento…"></textarea>
         </div>
       </div>
-      <!-- Campos específicos de Parecer -->
-      <!-- Campos específicos de Parecer: PA (processo-pai) + modalidade (processo-filho) -->
-      <div id="f-parecer-row" style="display:none">
+      <!-- Campos PA + Modalidade — visíveis apenas para Parecer com assunto de licitação -->
+      <div id="f-processo-row" style="display:none">
         <div class="form-row cols-2">
           <div class="form-group">
             <label>PA — Proc. Administrativo</label>
@@ -642,15 +641,15 @@ tr:hover td { background: var(--gray-50); }
               </select>
               <input id="f-processo-ref" type="text" placeholder="Ex: 05/2026" style="flex:1">
             </div>
-            <span class="form-hint" id="f-processo-hint"></span>
           </div>
-      </div>
-      <div id="f-parecer-legenda" style="display:none;font-size:11px;color:var(--gray-500);line-height:1.8;padding:2px 0 8px;width:100%">
-        <strong style="color:var(--gray-600)">Siglas:</strong>
-        DL Dispensa · IL Inexigibilidade · PE Pregão Eletrônico · CE Concorrência Eletrônica ·
-        RP Registro de Preços · TA Tomada de Preços · CC Convite · CT Contrato ·
-        AT Aditivo · RJ Reajuste · RE Reequilíbrio Econômico-Financeiro · PR Prorrogação ·
-        CV Convênio · PP Pessoal · PAD Proc. Administrativo Disciplinar
+        </div>
+        <div style="font-size:11px;color:var(--gray-500);line-height:1.8;padding:2px 0 10px;grid-column:1/-1">
+          <strong style="color:var(--gray-600)">Siglas:</strong>
+          DL Dispensa · IL Inexigibilidade · PE Pregão Eletrônico · CE Concorrência Eletrônica ·
+          RP Registro de Preços · TA Tomada de Preços · CC Convite · CT Contrato ·
+          AT Aditivo · RJ Reajuste · RE Reequilíbrio Econômico-Financeiro · PR Prorrogação ·
+          CV Convênio · PP Pessoal · PAD Proc. Administrativo Disciplinar
+        </div>
       </div>
       <!-- Campos específicos de Portaria -->
       <div class="form-row cols-2" id="f-portaria-row" style="display:none">
@@ -1373,25 +1372,18 @@ const ASSUNTOS_LICITACAO = new Set([
   'Fiscalização de Contrato','Registro de Preços','Tomada de Preços',
 ]);
 
-function _mostraProcesso(visivel) {
-  document.getElementById('f-parecer-row').style.display   = visivel ? '' : 'none';
-  document.getElementById('f-parecer-legenda').style.display = visivel ? '' : 'none';
-}
-
 function onAssuntoChange() {
   if (document.getElementById('f-tipo').value !== 'parecer') return;
-  _mostraProcesso(ASSUNTOS_LICITACAO.has(document.getElementById('f-assunto').value));
+  document.getElementById('f-processo-row').style.display =
+    ASSUNTOS_LICITACAO.has(document.getElementById('f-assunto').value) ? '' : 'none';
 }
 
 function onTipoChange() {
   const tipo = document.getElementById('f-tipo').value;
   _populaAssunto(tipo, document.getElementById('f-assunto').value);
   // campos de processo: só para parecer E assunto de licitação
-  if (tipo === 'parecer') {
-    _mostraProcesso(ASSUNTOS_LICITACAO.has(document.getElementById('f-assunto').value));
-  } else {
-    _mostraProcesso(false);
-  }
+  document.getElementById('f-processo-row').style.display =
+    (tipo === 'parecer' && ASSUNTOS_LICITACAO.has(document.getElementById('f-assunto').value)) ? '' : 'none';
   document.getElementById('f-portaria-row').style.display = tipo === 'portaria' ? '' : 'none';
 }
 
