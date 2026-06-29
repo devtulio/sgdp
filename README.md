@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.2.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.4.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -14,13 +14,19 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 
 - **Gestão de 5 tipos de documento:** Lei, Decreto, Portaria, Parecer e Ofício
 - **Numeração automática** por tipo e ano, com possibilidade de ajuste manual
+- **Campo Assunto** com categorias dinâmicas: 14 gerais e 46 jurídicas específicas para Parecer
+- **Campos específicos por tipo** — Parecer: PA + Modalidade licitatória (ativados por assunto); Portaria: tipo de ato e cargo
+- **Relatório Gerencial** — produção por tipo, assunto e mês com filtros de período e gráfico SVG
+- **Sons de notificação** — feedback sonoro para cliques, sucesso e erro via Web Audio API
+- **Brasão do município** na sidebar, configurável e persistido em localStorage
 - **Upload e visualização de PDF** assinado diretamente no navegador
 - **Login multiusuário** com sessões de 8 horas — até N procuradores simultâneos
 - **Busca e filtros** por número, ementa, partes envolvidas e ano
 - **Trilha de auditoria** completa de todas as ações (criar, editar, excluir, upload)
 - **Gestão de usuários** com perfil administrador e perfil padrão
-- **Backup e restauração** — exporta um arquivo JSON com todos os documentos e PDFs incluídos
-- **Encerramento automático** do servidor ao fechar todas as janelas do navegador
+- **Backup e restauração** — exporta JSON com todos os documentos e PDFs; backup automático do banco de dados
+- **Navegação persistente** — F5 mantém o usuário na tela atual via `location.hash`
+- **Encerramento do sistema** com tela de confirmação e desligamento do servidor
 
 ---
 

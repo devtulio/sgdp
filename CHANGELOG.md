@@ -5,6 +5,29 @@
 
 ---
 
+## [1.4.0] — 2026-06-29
+
+### Adicionado
+- **Sons de notificação** — Web Audio API com sons distintos para click, sucesso, erro e notificação; listener global em fase de captura cobre todos os botões, incluindo os gerados dinamicamente
+- **Brasão do município na sidebar** — upload de imagem nas configurações, redimensionada para máx 256 px antes de salvar no localStorage (evita QuotaExceededError); exibida no topo da barra lateral
+- **Campo Assunto** — categorias dinâmicas por tipo de documento: 14 categorias gerais para Lei, Decreto, Portaria e Ofício; 46 categorias jurídicas específicas para Parecer
+- **Relatório Gerencial** — resumo de produção com contagem por tipo, por assunto e por mês; filtros de período (semana, mês, trimestre, ano, total); gráfico de barras SVG inline
+- **Campos específicos de Parecer** — PA (Processo Administrativo) + Modalidade/processo-filho, ativados automaticamente quando o assunto selecionado é de licitação; legenda de siglas em largura total
+- **Campos específicos de Portaria** — ato_tipo (Nomeação, Exoneração, etc.) e cargo, exibidos apenas para Portarias
+- **Navegação persistente via hash** — `location.hash` atualizado a cada navegação; F5 ou recarga mantém o usuário na mesma tela
+- **Tela de encerramento** — ao clicar em "Fechar sistema", a página exibe tela preta com mensagem de encerramento antes de tentar fechar a aba
+
+### Corrigido
+- **Bug estrutural no modal de Parecer** — `div#f-parecer-row` sem fechamento correto fazia upload de PDF e outros campos sumirem ao selecionar assunto fora do grupo de licitação; reestruturado como `f-processo-row` com fechamento adequado
+- **Brasão não persistia** — QuotaExceededError silencioso ao salvar imagem grande; corrigido com canvas de redimensionamento e try/catch com toast de erro
+- **Nomenclatura de backups** — padronizado para `SIS_SGDP_BACKUP_YYYY-MM-DD_HH-MM-SS` (.json e .db) em todos os pontos de geração
+
+### Alterado
+- **Versão do backup** — campo `sgdp_version` nos arquivos JSON atualizado para `1.4.0`
+- **Siglas do processo licitatório** — adicionados RJ (Reajuste), RE (Reequilíbrio Econômico-Financeiro) e PR (Prorrogação)
+
+---
+
 ## [1.2.0] — 2026-06-28
 
 ### Adicionado

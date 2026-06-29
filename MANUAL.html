@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.2.0</title>
+<title>Manual Operacional — SGDP v1.4.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -79,7 +79,7 @@
     <div class="cover-title">Sistema de Gestão de Documentos<br>da Procuradoria</div>
     <div class="cover-subtitle">Manual Operacional</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.2.0</div>
+    <div class="cover-version">Versão 1.4.0</div>
     <div class="cover-legal">
       Documentação de uso interno.<br>
       Desenvolvido para gestão de atos jurídicos municipais.
@@ -426,6 +426,25 @@
 <!-- ── SEÇÃO 9 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s9">9. Histórico de Versões</h2>
+
+  <h3>v1.4.0 — 29/06/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Sons de notificação</strong> — feedback sonoro para cliques, sucesso, erro e notificações via Web Audio API; cobre todos os botões da interface, inclusive os gerados dinamicamente no Relatório</li>
+    <li><strong>Brasão do município na sidebar</strong> — faça upload da imagem nas Configurações; o brasão é exibido no topo da barra lateral e persiste entre sessões via <code>localStorage</code></li>
+    <li><strong>Campo Assunto</strong> — categorias dinâmicas por tipo: 14 categorias gerais (Lei, Decreto, Portaria, Ofício) e 46 categorias jurídicas específicas para Parecer</li>
+    <li><strong>Relatório Gerencial</strong> — painel de produção com contagem por tipo de documento, por assunto e por mês; filtros de período (semana, mês, trimestre, ano, total) e gráfico de barras</li>
+    <li><strong>Campos específicos de Parecer</strong> — PA (Processo Administrativo) e Modalidade/processo-filho (DL, IL, PE, CE, RP, AT, RJ, RE, PR…); ativados automaticamente quando o assunto pertence ao grupo de licitação</li>
+    <li><strong>Campos específicos de Portaria</strong> — tipo de ato (Nomeação, Exoneração, Designação…) e cargo; exibidos apenas para Portarias</li>
+    <li><strong>Navegação persistente</strong> — F5 ou recarga da página mantém o usuário na mesma tela; a view atual é gravada no hash da URL (<code>#configuracoes</code>, <code>#relatorio</code>, etc.)</li>
+    <li><strong>Tela de encerramento</strong> — ao clicar em "Fechar sistema" a página exibe confirmação visual antes de tentar fechar a aba</li>
+  </ul>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Upload sumia no Parecer</strong> — bug estrutural no HTML fazia o campo de anexar PDF desaparecer ao selecionar assunto fora do grupo de licitação; reestruturado com fechamento correto de divs</li>
+    <li><strong>Brasão não persistia</strong> — imagens grandes causavam <code>QuotaExceededError</code> silencioso no localStorage; corrigido com redimensionamento automático para máx 256 px via Canvas</li>
+    <li><strong>Nomenclatura de backups</strong> — todos os backups gerados (JSON automático, JSON manual e banco .db) seguem agora o padrão <code>SIS_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS</code></li>
+  </ul>
 
   <h3>v1.2.0 — 28/06/2026</h3>
   <p><strong>Adicionado</strong></p>
