@@ -1,6 +1,8 @@
 # SGDP v1.4.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
+import socket
+import sys
 import os
 import json
 import sqlite3
@@ -1170,14 +1172,29 @@ def _selecionar_modo():
     print('                  Não abre navegador automaticamente')
     print('                  Fica rodando continuamente (Ctrl+C para parar)')
     print()
+    print('  [3] Diagnóstico — Verifica rede, firewall e acessibilidade')
+    print()
     while True:
         try:
-            op = input('  Opção [1/2]: ').strip()
+            op = input('  Opção [1/2/3]: ').strip()
         except (EOFError, KeyboardInterrupt):
             op = '1'
-        if op in ('1', '2'):
+        if op in ('1', '2', '3'):
             break
-        print('  Digite 1 ou 2.')
+        print('  Digite 1, 2 ou 3.')
+    if op == '3':
+        import importlib.util, pathlib
+        diag = pathlib.Path(__file__).parent / 'diagnostico.py'
+        spec = importlib.util.spec_from_file_location('diagnostico', diag)
+        mod  = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.info_maquina()
+        srv_ativo = mod.checar_porta()
+        regra_fw  = mod.checar_firewall()
+        mod.checar_conectividade(socket.gethostbyname(socket.gethostname()), srv_ativo)
+        mod.resumo(socket.gethostbyname(socket.gethostname()), srv_ativo, regra_fw)
+        input('  Pressione Enter para fechar...')
+        sys.exit(0)
     _modo_servidor = (op == '2')
     print()
     print(f'  Modo: {"SERVIDOR CONTÍNUO" if _modo_servidor else "PESSOAL"}')
