@@ -1049,7 +1049,7 @@ def _do_json_backup(cfg=None):
     import base64
     if cfg is None: cfg = _get_backup_cfg()
     bdir = cfg['path']; os.makedirs(bdir, exist_ok=True)
-    name = time.strftime('SIS_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.json')
+    name = time.strftime('sgdp_backup_%Y-%m-%d_%H-%M-%S.json')
     try:
         with get_db() as conn:
             docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
