@@ -1,4 +1,5 @@
 @echo off
+:: SGDP v1.5.0 — Inicializador do servidor
 
 python --version >nul 2>&1
 if errorlevel 1 (
