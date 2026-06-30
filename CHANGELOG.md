@@ -5,6 +5,19 @@
 
 ---
 
+## [1.6.0] — 2026-06-29
+
+### Adicionado
+- **Canvas de nós animado na tela de login** — fundo ardósia (`#1a1f2e`) com partículas flutuantes conectadas por linhas que reagem ao movimento do cursor/toque; idêntico ao SGCD
+- **Painel de configuração do efeito** — botão ⚙️ discreto no canto inferior direito da tela de login abre painel com sliders para ajustar quantidade de nós, distância de conexão e velocidade; configurações persistidas em `localStorage` (`sgdp_lc_config`)
+- **`/api/public/org-info`** — endpoint público que retorna nome do órgão e município sem exigir autenticação, usado para exibir o card institucional em acessos via rede em novos navegadores
+
+### Corrigido
+- **Canvas não iniciava** — `_loginCanvasStart()` era chamado antes do layout terminar; corrigido com `requestAnimationFrame()` para garantir dimensões válidas do container
+- **Canvas não voltava após logout** — `sair()` exibia a tela de login mas não reiniciava a animação; corrigido com chamada a `_loginCanvasStart()` via `requestAnimationFrame`
+
+---
+
 ## [1.5.0] — 2026-06-29
 
 ### Adicionado
