@@ -68,14 +68,8 @@ body.tema-escuro fieldset     { border-color: var(--gray-200) !important; }
 /* ── Login ──────────────────────────────────────────────────────────────── */
 #tela-login {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand) 60%, #2a5298 100%);
+  background: #1a1f2e;
   padding: 24px; position: relative; overflow: hidden;
-}
-#tela-login::before {
-  content: ''; position: absolute; inset: 0;
-  background-image: repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,.03) 40px),
-                    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,.03) 40px);
-  pointer-events: none;
 }
 .login-card {
   background: #fff; border-radius: 16px; box-shadow: var(--shadow-lg);
@@ -426,6 +420,46 @@ tr:hover td { background: var(--gray-50); }
 
 <!-- ── Tela de login ───────────────────────────────────────────────────────── -->
 <div id="tela-login">
+  <canvas id="login-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+
+  <!-- Configurações do efeito de fundo -->
+  <div style="position:absolute;bottom:18px;right:18px;z-index:2">
+    <button onclick="_lcToggleConfig()" title="Configurar efeito de fundo"
+      style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;font-size:0;padding:0"
+      onmouseover="this.style.background='rgba(255,255,255,.16)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <div id="lc-config-panel" style="display:none;position:absolute;bottom:40px;right:0;width:220px;background:rgba(10,22,48,.92);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:14px 16px;backdrop-filter:blur(8px)">
+      <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.08em;margin-bottom:12px;text-transform:uppercase">Efeito de fundo</div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:11px;color:rgba(255,255,255,.65)">Quantidade de nós</span>
+          <span id="lc-out-nodes" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.9)">60</span>
+        </div>
+        <input type="range" id="lc-sl-nodes" min="20" max="120" value="60" oninput="_lcParam('count',+this.value,'lc-out-nodes')"
+          style="width:100%;height:3px;accent-color:rgba(180,190,210,.8);cursor:pointer">
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:11px;color:rgba(255,255,255,.65)">Distância de conexão</span>
+          <span id="lc-out-dist" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.9)">110</span>
+        </div>
+        <input type="range" id="lc-sl-dist" min="60" max="200" value="110" oninput="_lcParam('dist',+this.value,'lc-out-dist')"
+          style="width:100%;height:3px;accent-color:rgba(180,190,210,.8);cursor:pointer">
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:11px;color:rgba(255,255,255,.65)">Velocidade</span>
+          <span id="lc-out-speed" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.9)">4</span>
+        </div>
+        <input type="range" id="lc-sl-speed" min="1" max="10" value="4" oninput="_lcParam('speed',+this.value,'lc-out-speed')"
+          style="width:100%;height:3px;accent-color:rgba(180,190,210,.8);cursor:pointer">
+      </div>
+      <button onclick="_lcResetConfig()" style="width:100%;padding:5px 0;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:6px;color:rgba(255,255,255,.5);font-size:10px;cursor:pointer;letter-spacing:.04em"
+        onmouseover="this.style.background='rgba(255,255,255,.13)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">Restaurar padrões</button>
+    </div>
+  </div>
+
   <div class="login-card">
     <div class="login-hd">
       <div class="login-ico">
@@ -871,6 +905,17 @@ async function init() {
     const hash = location.hash.replace('#','');
     navegar(views.includes(hash) ? hash : 'dashboard');
   } else {
+    _loginCanvasStart();
+    // exibe nome do órgão no primeiro acesso via rede (sem localStorage)
+    if (!document.getElementById('login-orgao-nome').textContent || document.getElementById('login-orgao-nome').textContent === 'Procuradoria-Geral') {
+      fetch('/api/public/org-info').then(r => r.ok ? r.json() : {}).then(d => {
+        if (d.orgao) {
+          document.getElementById('login-orgao-nome').textContent = d.orgao;
+          document.getElementById('login-orgao-avatar').textContent = d.orgao[0].toUpperCase();
+        }
+        if (d.municipio) document.getElementById('login-orgao-muni').textContent = d.municipio;
+      }).catch(() => {});
+    }
     const lastUser = localStorage.getItem('sgdp-last-user');
     if (lastUser) {
       document.getElementById('l-user').value = lastUser;
@@ -966,6 +1011,7 @@ async function fecharSistema() {
 }
 
 function mostrarApp() {
+  _loginCanvasStop();
   document.getElementById('tela-login').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   document.getElementById('user-nome').textContent = S.user.nome;
@@ -2464,6 +2510,133 @@ function hoje() {
 
 // ── Atalhos de teclado ────────────────────────────────────────────────────────
 // Som global em todos os cliques de botão (inclusive conteúdo dinâmico)
+// ── Canvas de nós animado na tela de login ────────────────────────────────
+let _lcRaf = null, _lcNodes = [], _lcMouse = { x: -9999, y: -9999 };
+const _LC_DEFAULTS = { count: 60, dist: 110, speed: 4 };
+const _LC = Object.assign({}, _LC_DEFAULTS);
+
+function _lcLoadConfig() {
+  try {
+    const s = JSON.parse(localStorage.getItem('sgdp_lc_config') || '{}');
+    if (s.count) _LC.count = s.count;
+    if (s.dist)  _LC.dist  = s.dist;
+    if (s.speed) _LC.speed = s.speed;
+  } catch {}
+  const sl = id => document.getElementById(id);
+  if (sl('lc-sl-nodes')) { sl('lc-sl-nodes').value = _LC.count; sl('lc-out-nodes').textContent = _LC.count; }
+  if (sl('lc-sl-dist'))  { sl('lc-sl-dist').value  = _LC.dist;  sl('lc-out-dist').textContent  = _LC.dist;  }
+  if (sl('lc-sl-speed')) { sl('lc-sl-speed').value = _LC.speed; sl('lc-out-speed').textContent = _LC.speed; }
+}
+function _lcSaveConfig() {
+  localStorage.setItem('sgdp_lc_config', JSON.stringify({ count: _LC.count, dist: _LC.dist, speed: _LC.speed }));
+}
+function _lcToggleConfig() {
+  const p = document.getElementById('lc-config-panel');
+  if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+function _lcParam(key, val, outId) {
+  document.getElementById(outId).textContent = val;
+  if (key === 'count') {
+    _LC.count = val;
+    while (_lcNodes.length < val) {
+      const c = document.getElementById('login-canvas');
+      _lcNodes.push({ x: Math.random()*(c?.width||800), y: Math.random()*(c?.height||600),
+        vx: (Math.random()-.5)*_lcSpeedVal(), vy: (Math.random()-.5)*_lcSpeedVal(), r: Math.random()*1.6+1 });
+    }
+    while (_lcNodes.length > val) _lcNodes.pop();
+  } else if (key === 'dist') {
+    _LC.dist = val;
+  } else if (key === 'speed') {
+    _LC.speed = val;
+    const s = _lcSpeedVal();
+    for (const n of _lcNodes) {
+      const a = Math.atan2(n.vy, n.vx);
+      const m = Math.random() * s + s * .3;
+      n.vx = Math.cos(a) * m; n.vy = Math.sin(a) * m;
+    }
+  }
+  _lcSaveConfig();
+}
+function _lcResetConfig() {
+  Object.assign(_LC, _LC_DEFAULTS);
+  _lcSaveConfig();
+  _lcLoadConfig();
+  _lcNodes = [];
+}
+function _lcSpeedVal() { return _LC.speed * 0.08; }
+
+function _loginCanvasStart() {
+  const canvas = document.getElementById('login-canvas');
+  if (!canvas) return;
+  const overlay = document.getElementById('tela-login');
+  const ctx = canvas.getContext('2d');
+  _lcLoadConfig();
+  function resize() { canvas.width = overlay.offsetWidth; canvas.height = overlay.offsetHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  if (_lcNodes.length === 0) {
+    for (let i = 0; i < _LC.count; i++) {
+      const s = _lcSpeedVal();
+      _lcNodes.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+        vx: (Math.random()-.5)*s*2, vy: (Math.random()-.5)*s*2, r: Math.random()*1.6+1 });
+    }
+  }
+  function onMove(e) {
+    const r = overlay.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    _lcMouse.x = src.clientX - r.left; _lcMouse.y = src.clientY - r.top;
+  }
+  function onLeave() { _lcMouse.x = -9999; _lcMouse.y = -9999; }
+  overlay.addEventListener('mousemove', onMove);
+  overlay.addEventListener('touchmove', onMove, { passive: true });
+  overlay.addEventListener('mouseleave', onLeave);
+  canvas._lcCleanup = () => {
+    overlay.removeEventListener('mousemove', onMove);
+    overlay.removeEventListener('touchmove', onMove);
+    overlay.removeEventListener('mouseleave', onLeave);
+    window.removeEventListener('resize', resize);
+  };
+  function frame() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    const ns = _lcNodes, D = _LC.dist, mx = _lcMouse.x, my = _lcMouse.y;
+    for (let i = 0; i < ns.length; i++) {
+      const a = ns[i];
+      for (let j = i+1; j < ns.length; j++) {
+        const b = ns[j], dx = a.x-b.x, dy = a.y-b.y, d = Math.sqrt(dx*dx+dy*dy);
+        if (d < D) {
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+          ctx.strokeStyle = `rgba(180,190,210,${(1-d/D)*0.35})`; ctx.lineWidth = .7; ctx.stroke();
+        }
+      }
+      const mdx = a.x-mx, mdy = a.y-my, md = Math.sqrt(mdx*mdx+mdy*mdy);
+      if (md < D*1.5) {
+        ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(mx,my);
+        ctx.strokeStyle = `rgba(180,190,210,${(1-md/(D*1.5))*0.65})`; ctx.lineWidth = 1; ctx.stroke();
+      }
+    }
+    for (const n of ns) {
+      const mdx = n.x-mx, mdy = n.y-my, near = Math.sqrt(mdx*mdx+mdy*mdy) < D*1.2;
+      ctx.beginPath(); ctx.arc(n.x,n.y,n.r*(near?1.5:1),0,Math.PI*2);
+      ctx.fillStyle = `rgba(180,190,210,${near?0.9:0.45})`; ctx.fill();
+      n.x += n.vx; n.y += n.vy;
+      if (n.x<0||n.x>W) { n.vx*=-1; n.x=Math.max(0,Math.min(W,n.x)); }
+      if (n.y<0||n.y>H) { n.vy*=-1; n.y=Math.max(0,Math.min(H,n.y)); }
+    }
+    _lcRaf = requestAnimationFrame(frame);
+  }
+  if (_lcRaf) cancelAnimationFrame(_lcRaf);
+  _lcRaf = requestAnimationFrame(frame);
+}
+
+function _loginCanvasStop() {
+  if (_lcRaf) { cancelAnimationFrame(_lcRaf); _lcRaf = null; }
+  const canvas = document.getElementById('login-canvas');
+  if (canvas?._lcCleanup) { canvas._lcCleanup(); canvas._lcCleanup = null; }
+  _lcNodes = [];
+  _lcMouse = { x: -9999, y: -9999 };
+}
+
 document.addEventListener('click', e => {
   const t = e.target.closest('button, .btn, .nav-item, .cfg-tab, .btn-login, .btn-sair');
   if (t && !t.dataset.noSound) playClick();

@@ -269,6 +269,15 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif p == '/api/config/public':
             cfg = get_config()
             self._json(200, {'orgao_nome': cfg.get('orgao_nome',''), 'municipio': cfg.get('municipio','')})
+        elif p == '/api/public/org-info':
+            try:
+                with get_db() as conn:
+                    rows = conn.execute(
+                        "SELECT key,value FROM sys_settings WHERE key IN ('orgao','municipio','cnpj_orgao')"
+                    ).fetchall()
+                self._json(200, {r['key']: r['value'] for r in rows})
+            except Exception:
+                self._json(200, {})
         elif p.startswith('/api/'):
             s = self._auth()
             if s: self._route_get(p, qs, s)
