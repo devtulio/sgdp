@@ -905,7 +905,7 @@ async function init() {
     const hash = location.hash.replace('#','');
     navegar(views.includes(hash) ? hash : 'dashboard');
   } else {
-    _loginCanvasStart();
+    requestAnimationFrame(() => _loginCanvasStart());
     // exibe nome do órgão no primeiro acesso via rede (sem localStorage)
     if (!document.getElementById('login-orgao-nome').textContent || document.getElementById('login-orgao-nome').textContent === 'Procuradoria-Geral') {
       fetch('/api/public/org-info').then(r => r.ok ? r.json() : {}).then(d => {
@@ -986,6 +986,7 @@ async function sair() {
   document.getElementById('app').classList.remove('visible');
   document.getElementById('tela-login').style.display = 'flex';
   document.getElementById('l-pass').value = '';
+  requestAnimationFrame(() => _loginCanvasStart());
   const lastUser = localStorage.getItem('sgdp-last-user');
   if (lastUser) {
     document.getElementById('l-user').value = lastUser;
