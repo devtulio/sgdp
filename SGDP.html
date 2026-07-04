@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SGDP — Procuradoria-Geral</title>
+<link rel="icon" type="image/x-icon" href="sgdp.ico">
 <style>
 /* ── Variáveis ──────────────────────────────────────────────────────────── */
 :root {
@@ -179,6 +180,7 @@ body.tema-escuro fieldset     { border-color: var(--gray-200) !important; }
 }
 .sidebar-logo {
   padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,.12);
+  text-align: center;
 }
 .sidebar-brasao { width: 80px; height: 80px; object-fit: contain; display: block; margin: 0 auto 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
 .sidebar-logo .s-title { font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
@@ -810,6 +812,7 @@ tr:hover td { background: var(--gray-50); }
     <div class="modal-hd">
       <h2 id="pdf-titulo">Visualizar PDF</h2>
       <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-outline btn-sm" onclick="imprimirPdf()">🖨 Imprimir / Salvar PDF</button>
         <a id="pdf-download" href="#" class="btn btn-outline btn-sm" download>⬇ Baixar</a>
         <button class="btn-close" onclick="fecharModal('modal-pdf')">✕</button>
       </div>
@@ -1987,6 +1990,12 @@ function verPdf(aid, nome) {
       document.getElementById('pdf-download').download = nome || 'documento.pdf';
     });
   abrirModal('modal-pdf');
+}
+
+function imprimirPdf() {
+  const frame = document.getElementById('pdf-frame');
+  try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+  catch (_) { window.open(frame.src, '_blank'); }
 }
 
 // ── Usuários ──────────────────────────────────────────────────────────────────
