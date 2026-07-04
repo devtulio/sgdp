@@ -99,6 +99,12 @@ SGDP/
 
 ---
 
+## Contribuição
+
+Contribuições são bem-vindas! Veja o [CONTRIBUTING.md](CONTRIBUTING.md) para orientações sobre como reportar bugs, sugerir funcionalidades e enviar Pull Requests.
+
+---
+
 ## Licença
 
 MIT © Município — uso interno da Procuradoria-Geral.
