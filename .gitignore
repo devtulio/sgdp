@@ -2,5 +2,8 @@
 __pycache__/
 *.pyc
 sgdp.db
+sgdp.db-shm
+sgdp.db-wal
+sgdp_errors.log
 uploads/
 backups/
