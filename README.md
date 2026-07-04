@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.8.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.9.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -18,7 +18,7 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Campos específicos por tipo** — Parecer: PA + Modalidade licitatória (ativados por assunto); Portaria: tipo de ato e cargo
 - **Relatório Gerencial** — produção por tipo, assunto e mês com filtros de período e gráfico SVG
 - **Sons de notificação** — feedback sonoro para cliques, sucesso e erro via Web Audio API
-- **Brasão do município** na sidebar, configurável e persistido em localStorage
+- **Brasão do município** na sidebar, configurável e persistido no servidor (visível para todos os procuradores)
 - **Upload e visualização de PDF** assinado diretamente no navegador
 - **Login multiusuário** com sessões de 8 horas — até N procuradores simultâneos
 - **Busca e filtros** por número, ementa, partes envolvidas e ano

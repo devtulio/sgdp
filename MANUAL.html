@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.8.0</title>
+<title>Manual Operacional — SGDP v1.9.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -438,6 +438,14 @@
   <ul>
     <li>Canvas não iniciava por ser chamado antes do layout terminar — corrigido com <code>requestAnimationFrame</code></li>
     <li>Canvas não voltava após logout — <code>sair()</code> agora reinicia a animação ao exibir a tela de login</li>
+  </ul>
+
+  <h3>v1.9.0 — 04/07/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Alinhamento da sidebar</strong> — logo, brasão e nome do órgão agora centralizados, igual ao SGCD (faltava <code>text-align: center</code> no bloco superior da barra lateral)</li>
+    <li><strong>Botão "Imprimir / Salvar PDF"</strong> — adicionado ao modal de visualização de PDF, chamando a impressão do navegador sobre o conteúdo exibido no iframe</li>
+    <li><strong>Novo ícone do sistema</strong> — <code>sgdp.ico</code> regenerado a partir de <code>SGDP_Icone_documento_juridico.png</code> (multi-resolução 16–256 px); adicionado favicon na aba do navegador</li>
   </ul>
 
   <h3>v1.8.0 — 04/07/2026</h3>

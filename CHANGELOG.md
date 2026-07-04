@@ -18,6 +18,15 @@
 
 ---
 
+## [1.9.0] — 2026-07-04
+
+### Corrigido
+- **Alinhamento da sidebar** — logo, brasão e nome do órgão agora centralizados, paridade visual com o SGCD
+- **Botão "Imprimir / Salvar PDF"** no modal de visualização de PDF, igual ao padrão de documentos do SGCD
+- **Novo ícone do sistema** — `sgdp.ico` regenerado a partir de `SGDP_Icone_documento_juridico.png` (multi-resolução 16–256px) + favicon na aba do navegador
+
+---
+
 ## [1.8.0] — 2026-07-04
 
 ### Alterado
