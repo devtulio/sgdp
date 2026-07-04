@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.9.1-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.10.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -25,6 +25,7 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Trilha de auditoria** completa de todas as ações (criar, editar, excluir, upload)
 - **Gestão de usuários** com perfil administrador e perfil padrão
 - **Backup e restauração** — exporta JSON com todos os documentos e PDFs; backup automático do banco de dados
+- **Sincronização de backup entre agentes** — mescla dados de outra instalação (soma o que é novo, revisa o que conflita) sem substituir o banco inteiro
 - **Navegação persistente** — F5 mantém o usuário na tela atual via `location.hash`
 - **Encerramento do sistema** com tela de confirmação e desligamento do servidor
 - **Diagnóstico de rede** — verifica IP, porta 3001, regras de firewall e acessibilidade pela LAN; disponível como script independente e no menu de inicialização

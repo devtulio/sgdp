@@ -18,6 +18,14 @@
 
 ---
 
+## [1.10.0] — 2026-07-04
+
+### Adicionado
+- **Sincronização de backup entre agentes** — mescla o backup (JSON) de outra instalação com os dados atuais; documentos casam por (tipo, número, ano), não pelo id interno; revisão de conflitos um a um antes de aplicar; backup de segurança automático
+- **Botão "Imprimir / Salvar PDF"** no Manual Operacional, igual ao SGCD
+
+---
+
 ## [1.9.1] — 2026-07-04
 
 ### Corrigido
