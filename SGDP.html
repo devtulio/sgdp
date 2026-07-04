@@ -1201,7 +1201,9 @@ async function _atualizarBadgeNotif() {
 
 // ── Navegação ─────────────────────────────────────────────────────────────────
 async function navegar(view) {
-  location.hash = view;
+  // replaceState (não location.hash=) evita empilhar histórico de navegação,
+  // que impede window.close() em janelas --app do Chrome
+  history.replaceState(null, '', '#' + view);
   S.view = view;
   S.pag  = { page: 1, total: 0, per: 50 };
   S.filtros = { q: '', ano: '' };
