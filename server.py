@@ -505,6 +505,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                              'auto_backup_keep': cfg.get('auto_backup_keep', str(BACKUP_KEEP)),
                              'backup_path': cfg.get('backup_path', BACKUP_DIR)})
 
+        elif p in ('/api/settings/brasao', '/api/settings/brasao/'):
+            cfg = get_config()
+            self._json(200, {'brasao_dataurl': cfg.get('brasao_dataurl', '')})
+
         else:
             self._json(404, {'error': 'Rota não encontrada'})
 
@@ -574,6 +578,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif p == '/api/config/smtp':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             self._update_smtp(body, s)
+        elif p in ('/api/settings/brasao', '/api/settings/brasao/'):
+            self._update_brasao(body, s)
         elif re.fullmatch(r'/api/lembretes/\d+', p):
             self._update_lembrete(int(p.split('/')[-1]), body, s)
         else:
@@ -846,6 +852,18 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self._json(200, {'ok': True})
 
     # ── E-mail ────────────────────────────────────────────────────────────────
+
+    def _update_brasao(self, body, s):
+        data = json.loads(body) if body else {}
+        dataurl = data.get('brasao_dataurl', '')
+        with get_db() as conn:
+            if dataurl:
+                conn.execute('INSERT OR REPLACE INTO sys_settings (key,value) VALUES (?,?)', ('brasao_dataurl', dataurl))
+            else:
+                conn.execute("DELETE FROM sys_settings WHERE key='brasao_dataurl'")
+            audit(conn, s['user_id'], s['nome'], 'alterar_brasao', detalhes='removido' if not dataurl else f'{len(dataurl)} bytes')
+            conn.commit()
+        self._json(200, {'ok': True})
 
     def _update_smtp(self, body, s):
         data = json.loads(body) if body else {}

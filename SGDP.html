@@ -1028,8 +1028,6 @@ const API = {
 // ── Inicialização ───────────────────────────────────────────────────────────
 async function init() {
   applyUiPrefs();
-  const brasao = localStorage.getItem('sgdp-brasao-dataurl');
-  if (brasao) { const img = document.getElementById('sidebar-brasao'); img.src = brasao; img.style.display = 'block'; }
   // Carrega nome do órgão para exibir na tela de login
   try {
     const r = await fetch('/api/config/public');
@@ -1175,6 +1173,18 @@ function mostrarApp() {
   setInterval(() => { if (S.token) API.get('/api/auth/ping').catch(() => {}); }, 5000);
   _atualizarBadgeNotif();
   _atualizarBadgeAgenda();
+  _carregarBrasao();
+}
+
+let S_brasaoDataUrl = '';
+
+async function _carregarBrasao() {
+  const r = await API.get('/api/settings/brasao');
+  const d = await API.json(r);
+  S_brasaoDataUrl = d?.brasao_dataurl || '';
+  const sb = document.getElementById('sidebar-brasao');
+  if (S_brasaoDataUrl) { sb.src = S_brasaoDataUrl; sb.style.display = 'block'; }
+  else { sb.src = ''; sb.style.display = 'none'; }
 }
 
 async function _atualizarBadgeNotif() {
@@ -2599,11 +2609,10 @@ async function renderConfiguracoes(abaInicial) {
     </div>
   `;
 
-  // restaura preview do brasão se existir
-  const _brasaoUrl = localStorage.getItem('sgdp-brasao-dataurl');
-  if (_brasaoUrl) {
+  // restaura preview do brasão se existir (servidor — visível para todos os usuários)
+  if (S_brasaoDataUrl) {
     const prev = document.getElementById('cfg-brasao-preview');
-    if (prev) { prev.src = _brasaoUrl; prev.style.display = 'inline-block'; }
+    if (prev) { prev.src = S_brasaoDataUrl; prev.style.display = 'inline-block'; }
     const btn = document.getElementById('btn-remove-brasao');
     if (btn) btn.style.display = 'inline-flex';
   }
@@ -2679,9 +2688,9 @@ function previewBrasao(input) {
   if (!input.files[0]) return;
   const reader = new FileReader();
   reader.onload = e => {
-    // Redimensiona para max 256px antes de salvar (evita estouro de localStorage)
+    // Redimensiona para max 256px antes de enviar ao servidor
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
       const MAX = 256;
       const scale = Math.min(1, MAX / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
@@ -2689,11 +2698,9 @@ function previewBrasao(input) {
       canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       const url = canvas.toDataURL('image/png');
-      try {
-        localStorage.setItem('sgdp-brasao-dataurl', url);
-      } catch(_) {
-        toast('Imagem muito grande para salvar. Use um arquivo menor.', 'error'); return;
-      }
+      const r = await API.put('/api/settings/brasao', { brasao_dataurl: url });
+      if (!r.ok) { toast('Erro ao salvar o brasão no servidor.', 'error'); return; }
+      S_brasaoDataUrl = url;
       const prev = document.getElementById('cfg-brasao-preview');
       if (prev) { prev.src = url; prev.style.display = 'inline-block'; }
       const btnRem = document.getElementById('btn-remove-brasao');
@@ -2707,8 +2714,10 @@ function previewBrasao(input) {
   reader.readAsDataURL(input.files[0]);
 }
 
-function removerBrasao() {
-  localStorage.removeItem('sgdp-brasao-dataurl');
+async function removerBrasao() {
+  const r = await API.put('/api/settings/brasao', { brasao_dataurl: '' });
+  if (!r.ok) { toast('Erro ao remover o brasão.', 'error'); return; }
+  S_brasaoDataUrl = '';
   document.getElementById('cfg-brasao-preview').style.display = 'none';
   document.getElementById('btn-remove-brasao').style.display = 'none';
   document.getElementById('cfg-brasao-input').value = '';
