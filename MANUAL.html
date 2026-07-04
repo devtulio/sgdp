@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.9.0</title>
+<title>Manual Operacional — SGDP v1.9.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -79,7 +79,7 @@
     <div class="cover-title">Sistema de Gestão de Documentos<br>da Procuradoria</div>
     <div class="cover-subtitle">Manual Operacional</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.8.0</div>
+    <div class="cover-version">Versão 1.9.1</div>
     <div class="cover-legal">
       Documentação de uso interno.<br>
       Desenvolvido para gestão de atos jurídicos municipais.
@@ -438,6 +438,12 @@
   <ul>
     <li>Canvas não iniciava por ser chamado antes do layout terminar — corrigido com <code>requestAnimationFrame</code></li>
     <li>Canvas não voltava após logout — <code>sair()</code> agora reinicia a animação ao exibir a tela de login</li>
+  </ul>
+
+  <h3>v1.9.1 — 04/07/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Botão "Fechar Sistema" não fechava a janela</strong> — <code>navegar()</code> usava <code>location.hash = view</code> a cada troca de tela, empilhando histórico de navegação; o Chrome só permite <code>window.close()</code> via script em janelas sem histórico acumulado. Trocado para <code>history.replaceState()</code>, que atualiza a URL sem empilhar histórico — a tela permanece após F5, e o fechamento da janela volta a funcionar.</li>
   </ul>
 
   <h3>v1.9.0 — 04/07/2026</h3>

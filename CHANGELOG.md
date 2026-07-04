@@ -18,6 +18,13 @@
 
 ---
 
+## [1.9.1] — 2026-07-04
+
+### Corrigido
+- **Botão "Fechar Sistema" não fechava a janela** — `navegar()` empilhava uma entrada de histórico do navegador a cada troca de tela (`location.hash = view`); o Chrome só permite `window.close()` via script em janelas sem histórico acumulado. Trocado para `history.replaceState()`, que preserva a tela após F5 sem impedir o fechamento da janela.
+
+---
+
 ## [1.9.0] — 2026-07-04
 
 ### Corrigido
