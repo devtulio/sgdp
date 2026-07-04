@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.10.0</title>
+<title>Manual Operacional — SGDP v1.10.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -87,7 +87,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.10.0</div>
+    <div class="cover-version">Versão 1.10.1</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -118,13 +118,23 @@
     <div class="toc-item h3"><a href="#s4-1">4.1 Campos do formulário</a><span class="toc-num">5</span></div>
     <div class="toc-item h3"><a href="#s4-2">4.2 Numeração automática</a><span class="toc-num">6</span></div>
     <div class="toc-item h3"><a href="#s4-3">4.3 Anexar PDF assinado</a><span class="toc-num">6</span></div>
+    <div class="toc-item h3"><a href="#s4-4">4.4 Assunto e campos específicos por tipo</a><span class="toc-num">6</span></div>
+    <div class="toc-item h3"><a href="#s4-5">4.5 Importação em lote via CSV</a><span class="toc-num">7</span></div>
     <div class="toc-item h2"><a href="#s5">5. Busca e Filtros</a><span class="toc-num">7</span></div>
     <div class="toc-item h2"><a href="#s6">6. Administração</a><span class="toc-num">7</span></div>
     <div class="toc-item h3"><a href="#s6-1">6.1 Gestão de usuários</a><span class="toc-num">7</span></div>
     <div class="toc-item h3"><a href="#s6-2">6.2 Auditoria</a><span class="toc-num">8</span></div>
     <div class="toc-item h3"><a href="#s6-3">6.3 Backup e restauração</a><span class="toc-num">8</span></div>
-    <div class="toc-item h2"><a href="#s7">7. Fluxo de Trabalho Recomendado</a><span class="toc-num">9</span></div>
-    <div class="toc-item h2"><a href="#s8">8. Perguntas Frequentes</a><span class="toc-num">9</span></div>
+    <div class="toc-item h3"><a href="#s6-4">6.4 Sincronização de backup entre agentes</a><span class="toc-num">8</span></div>
+    <div class="toc-item h3"><a href="#s6-5">6.5 Personalização (tema, fonte, brasão, sons)</a><span class="toc-num">9</span></div>
+    <div class="toc-item h3"><a href="#s6-6">6.6 Configuração de e-mail (SMTP)</a><span class="toc-num">9</span></div>
+    <div class="toc-item h3"><a href="#s6-7">6.7 Diagnóstico de rede</a><span class="toc-num">9</span></div>
+    <div class="toc-item h2"><a href="#s7">7. Relatório Gerencial</a><span class="toc-num">10</span></div>
+    <div class="toc-item h2"><a href="#s8">8. Agenda</a><span class="toc-num">10</span></div>
+    <div class="toc-item h2"><a href="#s9">9. Lixeira</a><span class="toc-num">10</span></div>
+    <div class="toc-item h2"><a href="#s10">10. Fluxo de Trabalho Recomendado</a><span class="toc-num">11</span></div>
+    <div class="toc-item h2"><a href="#s11">11. Perguntas Frequentes</a><span class="toc-num">11</span></div>
+    <div class="toc-item h2"><a href="#s12">12. Histórico de Versões</a><span class="toc-num">12</span></div>
   </div>
 </div>
 
@@ -253,7 +263,8 @@
       <tr><td>Número</td><td>Não</td><td>Preenchido automaticamente com o próximo número disponível; pode ser ajustado</td></tr>
       <tr><td>Ano</td><td>Sim</td><td>Preenchido com o ano atual; editável</td></tr>
       <tr><td>Data</td><td>Sim</td><td>Data do ato (assinatura, publicação ou expedição)</td></tr>
-      <tr><td>Ementa / Assunto</td><td>Sim</td><td>Descrição resumida do conteúdo do documento</td></tr>
+      <tr><td>Ementa</td><td>Sim</td><td>Descrição resumida do conteúdo do documento</td></tr>
+      <tr><td>Assunto</td><td>Sim</td><td>Categoria do documento, selecionada em lista pré-definida (ver 4.4)</td></tr>
       <tr><td>Partes / Envolvidos</td><td>Não</td><td>Nomes das partes, requerentes, destinatários ou interessados</td></tr>
       <tr><td>Observações</td><td>Não</td><td>Informações internas adicionais; não aparecem em relatórios</td></tr>
       <tr><td>PDF Assinado</td><td>Não</td><td>Arquivo PDF do documento já assinado digitalmente</td></tr>
@@ -286,10 +297,56 @@
     Para substituir um PDF já anexado, clique em <strong>↺ Substituir</strong>.
     Para visualizar, clique em <strong>👁 Ver</strong>; para baixar, em <strong>⬇</strong>.
   </p>
+  <p>
+    Na tela de visualização do PDF há também os botões <strong>🖨 Imprimir / Salvar PDF</strong>
+    (imprime ou salva uma cópia do documento exibido) e <strong>✉ Enviar por e-mail</strong>
+    (envia o PDF assinado como anexo — requer SMTP configurado, ver 6.6).
+  </p>
   <div class="dica">
     <strong>Dica:</strong> você também pode arrastar o arquivo PDF diretamente para a área de upload
     em vez de clicar para selecionar.
   </div>
+
+  <h3 id="s4-4">4.4 Assunto e campos específicos por tipo</h3>
+  <p>
+    O campo <strong>Assunto</strong> é preenchido a partir de uma lista de categorias que muda
+    conforme o tipo de documento: <strong>14 categorias gerais</strong> (Administrativo Geral,
+    Pessoal e RH, Contratos e Convênios etc.) para Lei, Decreto, Portaria e Ofício; e
+    <strong>46 categorias jurídicas específicas</strong> para Parecer, cobrindo temas de
+    licitações, pessoal, tributário, urbanismo, meio ambiente e mais.
+  </p>
+  <p>Alguns tipos de documento exibem campos adicionais, ativados automaticamente conforme o Assunto selecionado:</p>
+  <table>
+    <thead><tr><th>Tipo</th><th>Campo</th><th>Quando aparece</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="2"><span class="badge badge-parecer">Parecer</span></td>
+          <td><strong>PA</strong> (Processo Administrativo)</td>
+          <td rowspan="2">Quando o Assunto pertence ao grupo de licitações (ex: "Dispensa de Licitação", "Pregão Eletrônico")</td></tr>
+      <tr><td><strong>Modalidade / processo-filho</strong> (DL, PE, CE, IL, RP, AT, RJ, RE, PR…)</td></tr>
+      <tr><td rowspan="2"><span class="badge badge-portaria">Portaria</span></td>
+          <td><strong>Tipo de ato</strong> (Nomeação, Exoneração, Designação…)</td>
+          <td rowspan="2">Sempre, ao selecionar o tipo Portaria</td></tr>
+      <tr><td><strong>Cargo</strong></td></tr>
+    </tbody>
+  </table>
+  <div class="nota">
+    <strong>Nota:</strong> o vínculo PA + Modalidade conecta o Parecer ao processo correspondente
+    no Departamento de Licitações — por exemplo, "PA 10/2026 DL 05/2026" identifica o Processo
+    Administrativo 10/2026 e a Dispensa de Licitação 05/2026 vinculada a ele.
+  </div>
+
+  <h3 id="s4-5">4.5 Importação em lote via CSV</h3>
+  <p>
+    Para cadastrar vários documentos de uma vez (ex: digitalizar um arquivo histórico), use o botão
+    <strong>⇪ Importar CSV</strong> disponível em cada tela de listagem de documentos.
+  </p>
+  <ol>
+    <li>Prepare um arquivo <code>.csv</code> com cabeçalho na primeira linha e as colunas:
+      <code>numero, ano, data, ementa, partes, observacoes, assunto</code> (o campo <code>tipo</code> é opcional — usa o tipo da tela atual se omitido)</li>
+    <li>Clique em <em>Importar CSV</em>, selecione o arquivo e confira a prévia</li>
+    <li>Clique em <em>Importar</em> — documentos sem <code>numero</code> informado recebem numeração automática</li>
+  </ol>
+  <p>Ao final, o sistema exibe quantos documentos foram importados e lista erros por linha (ex: número já existente para aquele tipo/ano).</p>
 </div>
 
 <!-- ── SEÇÃO 5–6 ───────────────────────────────────────────────────────────────── -->
@@ -373,11 +430,111 @@
     <strong>Recomendação:</strong> realize o backup ao menos semanalmente, sempre ao final do
     expediente de sexta-feira, e armazene em local externo ao computador servidor.
   </div>
+
+  <h3 id="s6-4">6.4 Sincronização de backup entre agentes</h3>
+  <p>
+    Quando mais de uma instalação do SGDP é usada (ex: computadores diferentes que não compartilham
+    o mesmo banco), o botão <strong>↻ Sincronizar backup</strong> mescla o conteúdo de um backup
+    <code>.json</code> exportado em outra máquina com os dados atuais, em vez de substituir tudo.
+  </p>
+  <ol>
+    <li>Clique em <em>Sincronizar backup</em> e selecione o arquivo <code>.json</code> exportado na outra instalação</li>
+    <li>O sistema mostra quantos documentos são novos e quantos foram alterados nos dois lados</li>
+    <li>Documentos alterados em ambos os lados são revisados um a um — escolha "Manter atual" ou "Usar backup" para cada</li>
+    <li>Confirme para aplicar; um backup de segurança do banco atual é criado automaticamente antes</li>
+  </ol>
+  <div class="nota">
+    <strong>Como funciona o casamento de documentos:</strong> a sincronização identifica o mesmo
+    documento em instalações diferentes pelo conjunto <em>tipo + número + ano</em> (ex: "Lei 12/2026"),
+    nunca pelo identificador interno do banco — cada instalação numera seus próprios registros
+    de forma independente.
+  </div>
+
+  <h3 id="s6-5">6.5 Personalização (tema, fonte, brasão, sons)</h3>
+  <p>Na aba <strong>Interface</strong> de Configurações:</p>
+  <ul>
+    <li><strong>Tema de aparência:</strong> claro ou escuro, aplicado imediatamente</li>
+    <li><strong>Tamanho da fonte:</strong> afeta todo o sistema; útil para monitores menores ou acessibilidade</li>
+    <li><strong>Brasão do município:</strong> upload de imagem exibida no topo da barra lateral para todos os procuradores (armazenado no servidor, não apenas no navegador de quem enviou)</li>
+  </ul>
+  <p>
+    O sistema também toca <strong>sons de notificação</strong> distintos para clique, sucesso, erro
+    e alertas — não é configurável, mas pode ser silenciado no volume geral do sistema operacional.
+  </p>
+
+  <h3 id="s6-6">6.6 Configuração de e-mail (SMTP)</h3>
+  <p>
+    Para habilitar o botão <strong>✉ Enviar por e-mail</strong> (ver 4.3), configure um servidor SMTP
+    na aba <strong>Segurança</strong> de Configurações: servidor, porta, usuário, senha e remetente.
+    Sem essa configuração, o botão de envio exibe uma mensagem de erro orientando a configurá-lo.
+  </p>
+
+  <h3 id="s6-7">6.7 Diagnóstico de rede</h3>
+  <p>
+    A aba <strong>Diagnóstico</strong> verifica a integridade dos dados (contadores de numeração,
+    arquivos órfãos no disco ou no banco) e, para o modo Servidor, também é possível rodar o
+    diagnóstico de rede (IP local, porta 3001, regras de firewall) pela opção <strong>[3] Diagnóstico</strong>
+    no menu de inicialização, ou executando <code>Diagnostico SGDP.bat</code> diretamente — útil quando
+    outro computador não consegue acessar o sistema pela rede.
+  </p>
 </div>
 
-<!-- ── SEÇÃO 7–8 ───────────────────────────────────────────────────────────────── -->
+<!-- ── SEÇÃO 7 — RELATÓRIO GERENCIAL ────────────────────────────────────────────── -->
 <div class="page">
-  <h2 id="s7">7. Fluxo de Trabalho Recomendado</h2>
+  <h2 id="s7">7. Relatório Gerencial</h2>
+  <p>
+    Acesse <strong>Relatório</strong> na barra lateral para acompanhar a produção de documentos ao
+    longo do tempo — útil para prestação de contas e planejamento da Procuradoria.
+  </p>
+  <ul>
+    <li><strong>Filtros de período:</strong> esta semana, este mês, últimos 3 meses, este ano, todo o período ou personalizado (data inicial/final)</li>
+    <li><strong>Total de documentos</strong> no período selecionado, com contagem por tipo (Lei, Decreto, Portaria, Parecer, Ofício)</li>
+    <li><strong>Evolução mensal:</strong> gráfico de barras mostrando a quantidade de documentos produzidos mês a mês</li>
+    <li><strong>Por assunto:</strong> tabela com a quantidade e o percentual de documentos em cada categoria de Assunto</li>
+    <li><strong>Lista de documentos no período</strong>, com tipo, número, data, assunto e ementa</li>
+  </ul>
+  <p>Clique em <strong>🖨 Imprimir</strong> para gerar uma versão impressa ou PDF do relatório exibido.</p>
+</div>
+
+<!-- ── SEÇÃO 8 — AGENDA ─────────────────────────────────────────────────────────── -->
+<div class="page">
+  <h2 id="s8">8. Agenda</h2>
+  <p>
+    A tela <strong>Agenda</strong> permite cadastrar lembretes com prazo, opcionalmente vinculados
+    a um documento específico — por exemplo, revisar uma Portaria em uma data futura.
+  </p>
+  <ol>
+    <li>Clique em <em>+ Novo Lembrete</em></li>
+    <li>Informe o título e o prazo</li>
+    <li>Salve — o lembrete aparece na lista ordenado por prazo</li>
+  </ol>
+  <p>
+    Marque a caixa de seleção ao lado do lembrete para indicá-lo como concluído. A barra lateral
+    exibe um contador com a quantidade de lembretes pendentes já vencidos.
+  </p>
+</div>
+
+<!-- ── SEÇÃO 9 — LIXEIRA ─────────────────────────────────────────────────────────── -->
+<div class="page">
+  <h2 id="s9">9. Lixeira</h2>
+  <p>
+    Ao excluir um documento na listagem, ele não é apagado imediatamente — é enviado para a
+    <strong>Lixeira</strong>, acessível pela barra lateral, onde fica disponível por
+    <strong>30 dias</strong> antes da remoção definitiva e automática.
+  </p>
+  <ul>
+    <li><strong>↺ Restaurar:</strong> devolve o documento para a listagem normal, como se nunca tivesse sido excluído</li>
+    <li><strong>✕ Excluir de vez:</strong> remove o documento e o PDF anexado permanentemente, sem esperar os 30 dias — ação irreversível</li>
+  </ul>
+  <div class="aviso">
+    <strong>Atenção:</strong> a exclusão definitiva (seja pelo botão "Excluir de vez" ou pela purga
+    automática após 30 dias) não pode ser desfeita, exceto restaurando um backup anterior.
+  </div>
+</div>
+
+<!-- ── SEÇÃO 10–11 ───────────────────────────────────────────────────────────────── -->
+<div class="page">
+  <h2 id="s10">10. Fluxo de Trabalho Recomendado</h2>
   <p>O fluxo típico para cada ato jurídico:</p>
   <ol>
     <li><strong>Elaboração:</strong> o procurador redige o documento no Word, utilizando o modelo do tipo correspondente (Lei, Decreto, Portaria etc.)</li>
@@ -388,7 +545,7 @@
     <li><strong>Distribuição:</strong> compartilhe o PDF a partir do botão de download do SGDP ou diretamente pelo e-mail/sistema de protocolo</li>
   </ol>
 
-  <h2 id="s8">8. Perguntas Frequentes</h2>
+  <h2 id="s11">11. Perguntas Frequentes</h2>
 
   <h3>O servidor não abre ao clicar no .bat</h3>
   <p>
@@ -436,9 +593,9 @@
   </div>
 </div>
 
-<!-- ── SEÇÃO 9 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
+<!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
-  <h2 id="s9">9. Histórico de Versões</h2>
+  <h2 id="s12">12. Histórico de Versões</h2>
 
   <h3>v1.6.0 — 29/06/2026</h3>
   <p><strong>Adicionado</strong></p>
@@ -451,6 +608,12 @@
   <ul>
     <li>Canvas não iniciava por ser chamado antes do layout terminar — corrigido com <code>requestAnimationFrame</code></li>
     <li>Canvas não voltava após logout — <code>sair()</code> agora reinicia a animação ao exibir a tela de login</li>
+  </ul>
+
+  <h3>v1.10.1 — 04/07/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Manual desatualizado</strong> — o corpo do manual (Seções 1–8) não descrevia diversas funcionalidades já lançadas: Assunto e campos específicos por tipo, Importação via CSV, Sincronização de backup, Personalização (tema/fonte/brasão/sons), Configuração de e-mail, Diagnóstico de rede, Relatório Gerencial, Agenda e Lixeira. Adicionadas as Seções 4.4, 4.5, 6.4–6.7, 7, 8 e 9 cobrindo essas funcionalidades; capítulos renumerados a partir da Seção 10.</li>
   </ul>
 
   <h3>v1.10.0 — 04/07/2026</h3>

@@ -18,6 +18,14 @@
 
 ---
 
+## [1.10.1] — 2026-07-04
+
+### Corrigido
+- **Manual desatualizado** — o corpo do `MANUAL.html` não descrevia Assunto/campos específicos, Importação CSV, Sincronização de backup, Personalização (brasão/sons), configuração de e-mail, diagnóstico de rede, Relatório Gerencial, Agenda e Lixeira, embora já lançados. Seções adicionadas e sumário/histórico renumerados.
+- README: adicionada seção "Contribuição" apontando para `CONTRIBUTING.md`
+
+---
+
 ## [1.10.0] — 2026-07-04
 
 ### Adicionado
