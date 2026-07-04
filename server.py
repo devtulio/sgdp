@@ -547,6 +547,14 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             self._import_backup(s)
 
+        elif p == '/api/backup/sync-preview':
+            if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
+            self._sync_preview()
+
+        elif p == '/api/backup/sync-apply':
+            if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
+            self._sync_apply(s)
+
         elif p == '/api/backups/db/now':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             name = _do_db_backup()
@@ -1244,6 +1252,103 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             audit(conn, s['user_id'], s['nome'], 'restaurar_backup', detalhes=f"{ndoc} documentos, {narq} arquivos")
             conn.commit()
         self._json(200, {'ok': True, 'documentos': ndoc, 'arquivos': narq})
+
+    def _read_backup_body(self):
+        length = int(self.headers.get('Content-Length', 0))
+        if length > 500 * 1024 * 1024: self._json(413, {'error': 'Backup muito grande'}); return None
+        try:
+            backup = json.loads(self.rfile.read(length).decode('utf-8'))
+        except Exception:
+            self._json(400, {'error': 'Arquivo inválido'}); return None
+        if 'sgdp_version' not in backup: self._json(400, {'error': 'Não é um backup SGDP'}); return None
+        return backup
+
+    def _diff_sync(self, backup):
+        """Compara documentos do backup com os locais por (tipo,numero,ano) — nunca por id,
+        pois cada instalação tem seu próprio autoincrement e os ids colidem entre máquinas."""
+        with get_db() as conn:
+            locais = conn.execute('SELECT * FROM documentos').fetchall()
+        por_chave = {(r['tipo'], r['numero'], r['ano']): dict(r) for r in locais}
+        novos, conflitos = [], []
+        for doc in backup.get('documentos', []):
+            chave = (doc['tipo'], doc['numero'], doc['ano'])
+            local = por_chave.get(chave)
+            if local is None:
+                novos.append(doc)
+            elif (doc.get('atualizado_em') or '') > (local.get('atualizado_em') or '') and (
+                doc.get('ementa') != local.get('ementa') or doc.get('partes') != local.get('partes') or
+                doc.get('observacoes') != local.get('observacoes') or doc.get('assunto') != local.get('assunto')
+            ):
+                conflitos.append({'chave': f"{chave[0]}|{chave[1]}|{chave[2]}", 'local': local, 'backup': doc})
+        return novos, conflitos
+
+    def _sync_preview(self):
+        backup = self._read_backup_body()
+        if backup is None: return
+        novos, conflitos = self._diff_sync(backup)
+        self._json(200, {
+            'novos': len(novos), 'conflitos': conflitos,
+            'exported_at': backup.get('exported_at'),
+        })
+
+    def _sync_apply(self, s):
+        data = json.loads(self._body())
+        backup = data.get('backup')
+        aceitar = set(data.get('aceitar') or [])
+        if not backup or 'sgdp_version' not in backup:
+            self._json(400, {'error': 'Backup inválido'}); return
+        novos, conflitos = self._diff_sync(backup)
+        arqs_backup = {a['id']: a for a in backup.get('arquivos', [])}
+
+        def _anexar_arquivo(conn, did, arquivo_id_backup):
+            arq = arqs_backup.get(arquivo_id_backup)
+            if not arq or not arq.get('data_b64'): return
+            import base64
+            nome_disco = f"{secrets.token_hex(16)}.pdf"
+            with open(os.path.join(UPLOADS_DIR, nome_disco), 'wb') as f:
+                f.write(base64.b64decode(arq['data_b64']))
+            conn.execute('INSERT INTO arquivos (nome_original,nome_disco,tamanho,enviado_por) VALUES (?,?,?,?)',
+                         (arq['nome_original'], nome_disco, arq['tamanho'], s['user_id']))
+            aid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+            conn.execute('UPDATE documentos SET arquivo_id=? WHERE id=?', (aid, did))
+
+        n_novos = n_conflitos = 0
+        with get_db() as conn:
+            for doc in novos:
+                try:
+                    conn.execute(
+                        'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,'
+                        'processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,criado_por,atualizado_por)'
+                        ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                        (doc['tipo'], doc['numero'], doc['ano'], doc['data'], doc['ementa'],
+                         doc.get('partes') or '', doc.get('observacoes') or '', doc.get('assunto') or 'Outros',
+                         doc.get('processo_pa') or '', doc.get('processo_tipo') or '', doc.get('processo_ref') or '',
+                         doc.get('ato_tipo') or '', doc.get('cargo') or '', s['user_id'], s['user_id'])
+                    )
+                    did = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+                    bump_contador(conn, doc['tipo'], doc['ano'], doc['numero'])
+                    if doc.get('arquivo_id'): _anexar_arquivo(conn, did, doc['arquivo_id'])
+                    n_novos += 1
+                except sqlite3.IntegrityError:
+                    pass
+            for c in conflitos:
+                if c['chave'] not in aceitar: continue
+                doc = c['backup']; local = c['local']
+                conn.execute(
+                    'UPDATE documentos SET data=?,ementa=?,partes=?,observacoes=?,assunto=?,'
+                    'processo_pa=?,processo_tipo=?,processo_ref=?,ato_tipo=?,cargo=?,atualizado_por=?,atualizado_em=? '
+                    'WHERE id=?',
+                    (doc['data'], doc['ementa'], doc.get('partes') or '', doc.get('observacoes') or '',
+                     doc.get('assunto') or 'Outros', doc.get('processo_pa') or '', doc.get('processo_tipo') or '',
+                     doc.get('processo_ref') or '', doc.get('ato_tipo') or '', doc.get('cargo') or '',
+                     s['user_id'], time.strftime('%Y-%m-%dT%H:%M:%S'), local['id'])
+                )
+                if doc.get('arquivo_id'): _anexar_arquivo(conn, local['id'], doc['arquivo_id'])
+                n_conflitos += 1
+            audit(conn, s['user_id'], s['nome'], 'sincronizar_backup',
+                  detalhes=f"{n_novos} novos, {n_conflitos} conflitos resolvidos")
+            conn.commit()
+        self._json(200, {'novos': n_novos, 'conflitos_aplicados': n_conflitos})
 
     # ── Utilitários HTTP ──────────────────────────────────────────────────────
 

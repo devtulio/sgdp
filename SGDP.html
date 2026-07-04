@@ -2264,6 +2264,16 @@ async function renderBackup(container) {
 
         <hr style="border:none;border-top:1px solid var(--gray-100);margin:4px 0 12px">
 
+        <!-- Sincronizar com outro agente -->
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px">Sincronizar com outro agente</div>
+        <p style="font-size:11px;color:var(--gray-400);margin-bottom:8px;line-height:1.5">Mescla o backup (JSON) de outra máquina com os dados atuais — soma o que é novo, mantém o que já existe, e deixa você revisar registros que foram alterados nos dois lados antes de aplicar.</p>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer;justify-content:flex-start;margin-bottom:12px;display:inline-flex">
+          ↻ Sincronizar backup
+          <input type="file" accept=".json" style="display:none" onchange="sincronizarBackup(this.files[0]).then(()=>this.value='')">
+        </label>
+
+        <hr style="border:none;border-top:1px solid var(--gray-100);margin:4px 0 12px">
+
         <!-- Backup automático -->
         <div style="display:flex;align-items:flex-start;gap:10px">
           <label style="display:flex;align-items:center;gap:0;cursor:pointer;flex-shrink:0;margin-top:1px">
@@ -2354,6 +2364,93 @@ async function importBackup(file) {
   if (!r?.ok) { toast(d?.error || 'Erro ao restaurar backup.', 'error'); return; }
   toast(`Restaurado: ${d.documentos} documentos, ${d.arquivos} arquivos.`, 'success');
   await navegar('dashboard');
+}
+
+async function sincronizarBackup(file) {
+  if (!file) return;
+  let backup;
+  try { backup = JSON.parse(await file.text()); }
+  catch (_) { toast('Arquivo inválido.', 'error'); return; }
+  if (!backup.sgdp_version) { toast('Não é um backup SGDP.', 'error'); return; }
+
+  const r = await API.post('/api/backup/sync-preview', backup);
+  const d = await API.json(r);
+  if (!r.ok) { toast(d?.error || 'Erro ao ler o backup.', 'error'); return; }
+
+  if (d.novos === 0 && d.conflitos.length === 0) {
+    toast('Nenhuma novidade — este backup não contém dados diferentes dos seus.', 'info');
+    return;
+  }
+
+  const resumo = [
+    d.novos && `${d.novos} documento(s) novo(s)`,
+    d.conflitos.length && `${d.conflitos.length} registro(s) alterado(s) nos dois lados`,
+  ].filter(Boolean).join(', ');
+  const ok = await confirmar(
+    `Backup exportado em ${d.exported_at ? new Date(d.exported_at).toLocaleString('pt-BR') : '—'}.<br><br>` +
+    `Serão somados automaticamente: ${resumo}.<br><br>` +
+    (d.conflitos.length ? 'Na próxima tela você escolhe, um a um, qual versão manter.' : 'Nenhum conflito a revisar.') +
+    '<br><br>Será feito um backup de segurança do banco atual antes de aplicar qualquer alteração.',
+    'Continuar'
+  );
+  if (!ok) return;
+
+  let aceitar = [];
+  if (d.conflitos.length) {
+    aceitar = await _revisarConflitosSync(d.conflitos);
+    if (aceitar === null) { toast('Sincronização cancelada.', 'info'); return; }
+  }
+
+  await API.post('/api/backups/db/now', {});
+  const r2 = await API.post('/api/backup/sync-apply', { backup, aceitar });
+  const d2 = await API.json(r2);
+  if (!r2.ok) { toast(d2?.error || 'Erro ao sincronizar.', 'error'); return; }
+  toast(`Sincronizado: ${d2.novos} novo(s), ${d2.conflitos_aplicados} conflito(s) aplicado(s).`, 'success');
+  await navegar('dashboard');
+}
+
+function _revisarConflitosSync(conflitos) {
+  return new Promise(resolve => {
+    const rows = conflitos.map((c, i) => `
+      <tr>
+        <td style="padding:8px 6px;border-bottom:1px solid var(--gray-100)">
+          <span class="badge-tipo tipo-${c.local.tipo}">${TIPOS_LABELS[c.local.tipo] || c.local.tipo}</span>
+          ${fmtNum(c.local.numero, c.local.ano)}
+        </td>
+        <td style="padding:8px 6px;border-bottom:1px solid var(--gray-100);font-size:12px">
+          <div><strong>Atual:</strong> ${esc(c.local.ementa || '')}</div>
+          <div><strong>Backup:</strong> ${esc(c.backup.ementa || '')}</div>
+        </td>
+        <td style="padding:8px 6px;border-bottom:1px solid var(--gray-100);white-space:nowrap">
+          <label style="font-size:12px;margin-right:10px"><input type="radio" name="conf-${i}" value="atual" checked> Manter atual</label>
+          <label style="font-size:12px"><input type="radio" name="conf-${i}" value="backup" data-chave="${c.chave}"> Usar backup</label>
+        </td>
+      </tr>`).join('');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:800px;width:92vw">
+        <div class="modal-hd"><h2>Revisar conflitos de sincronização</h2></div>
+        <div class="modal-body" style="max-height:60vh;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr><th style="text-align:left;padding:6px">Documento</th><th style="text-align:left;padding:6px">Ementa</th><th style="text-align:left;padding:6px">Escolha</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="modal-ft">
+          <button class="btn btn-outline" id="btn-sync-cancelar">Cancelar</button>
+          <button class="btn btn-primary" id="btn-sync-aplicar">Aplicar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#btn-sync-cancelar').onclick = () => { overlay.remove(); resolve(null); };
+    overlay.querySelector('#btn-sync-aplicar').onclick = () => {
+      const aceitos = [...overlay.querySelectorAll('input[type=radio][value=backup]:checked')].map(el => el.dataset.chave);
+      overlay.remove();
+      resolve(aceitos);
+    };
+  });
 }
 
 async function exportarBackupDB() {
