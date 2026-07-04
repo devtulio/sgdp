@@ -291,6 +291,13 @@ tr:hover td { background: var(--gray-50); }
   background: var(--tb); color: var(--tc);
 }
 
+/* ── Skeleton loading ────────────────────────────────────────────────────── */
+.skeleton { background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius); }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.skeleton-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 20px; }
+.skeleton-stat { background: #fff; border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); border-left: 4px solid var(--gray-200); display: flex; flex-direction: column; gap: 10px; }
+.skeleton-card { background: #fff; border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); margin-bottom: 10px; height: 60px; }
+
 /* ── Busca Global ────────────────────────────────────────────────────────── */
 #global-search-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1100;
@@ -1293,7 +1300,19 @@ async function renderRelatorio(periodo, de, ate) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
+function _dashSkeleton() {
+  const stats = Array(5).fill(`
+    <div class="skeleton-stat">
+      <div class="skeleton" style="height:10px;width:50%"></div>
+      <div class="skeleton" style="height:28px;width:40%"></div>
+      <div class="skeleton" style="height:8px;width:70%"></div>
+    </div>`).join('');
+  const cards = Array(4).fill('<div class="skeleton skeleton-card"></div>').join('');
+  return `<div class="skeleton-stats">${stats}</div>${cards}`;
+}
+
 async function renderDashboard() {
+  document.getElementById('page-content').innerHTML = _dashSkeleton();
   const r = await API.get('/api/dashboard');
   const d = await API.json(r);
   if (!d) return;
@@ -1336,6 +1355,10 @@ async function renderDashboard() {
 // ── Lista de documentos ───────────────────────────────────────────────────────
 async function renderDocumentos(tipo, page = 1) {
   S.pag.page = page;
+  const pc = document.getElementById('page-content');
+  if (pc && !pc.querySelector('.table-wrap')) {
+    pc.innerHTML = Array(4).fill('<div class="skeleton skeleton-card"></div>').join('');
+  }
   const qs = new URLSearchParams({ tipo, page, per: S.pag.per });
   if (S.filtros.q)   qs.set('q',   S.filtros.q);
   if (S.filtros.ano) qs.set('ano', S.filtros.ano);
