@@ -18,6 +18,13 @@
 
 ---
 
+## [1.8.0] — 2026-07-04
+
+### Alterado
+- **Brasão armazenado no servidor** — antes salvo em `localStorage` (por navegador), agora persistido em `sys_settings` via `GET`/`PUT /api/settings/brasao`. Num sistema multiusuário em rede, todos os procuradores passam a ver o mesmo brasão, independente do computador; mesma lógica de armazenamento usada no SGCD.
+
+---
+
 ## [1.7.0] — 2026-07-04
 
 ### Adicionado
