@@ -550,7 +550,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.6.0</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.7.0</span>
     </div>
   </div>
 </div>
@@ -600,6 +600,13 @@ tr:hover td { background: var(--gray-50); }
       <div class="nav-section">Gestão</div>
       <div class="nav-item" data-view="relatorio" onclick="navegar('relatorio')">
         <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><rect x="3" y="2" width="18" height="20" rx="1.5" fill="none" stroke="none"/></svg></span> Relatório
+      </div>
+      <div class="nav-item" data-view="agenda" onclick="navegar('agenda')">
+        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Agenda
+        <span class="nav-badge" id="badge-agenda" style="display:none">0</span>
+      </div>
+      <div class="nav-item" data-view="lixeira" onclick="navegar('lixeira')">
+        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></span> Lixeira
       </div>
       <div class="nav-item" id="btn-notif" onclick="toggleNotificacoes()">
         <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span> Notificações
@@ -857,6 +864,80 @@ tr:hover td { background: var(--gray-50); }
   </div>
 </div>
 
+<!-- ── Modal: Novo Lembrete ───────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-lembrete">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Novo Lembrete</h2>
+      <button class="btn-close" onclick="fecharModal('modal-lembrete')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Título</label>
+        <input id="f-lembrete-titulo" type="text" placeholder="Ex: Revisar Portaria 12/2026">
+      </div>
+      <div class="form-group">
+        <label>Prazo</label>
+        <input id="f-lembrete-prazo" type="date">
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="fecharModal('modal-lembrete')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarLembrete()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Enviar E-mail ───────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-email">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Enviar por E-mail — <span id="email-doc-label"></span></h2>
+      <button class="btn-close" onclick="fecharModal('modal-email')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Para</label>
+        <input id="f-email-to" type="email" placeholder="destinatario@exemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Assunto</label>
+        <input id="f-email-subject" type="text" placeholder="(opcional)">
+      </div>
+      <div class="form-group">
+        <label>Mensagem</label>
+        <textarea id="f-email-body" rows="4" placeholder="(opcional — usa a ementa por padrão)"></textarea>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="fecharModal('modal-email')">Cancelar</button>
+      <button class="btn btn-primary" onclick="enviarEmailDoc()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Importar CSV ────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-csv">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Importar Documentos via CSV</h2>
+      <button class="btn-close" onclick="fecharModal('modal-csv')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">
+        Colunas esperadas: <code>numero,ano,data,ementa,partes,observacoes,assunto</code>.
+        Primeira linha deve ser o cabeçalho. Campo <code>tipo</code> é opcional (usa o tipo da tela atual).
+      </p>
+      <input type="file" id="csv-file-input" accept=".csv,text/csv" onchange="carregarCsv(this)">
+      <div id="csv-preview" style="margin-top:12px"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="fecharModal('modal-csv')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-csv-import" onclick="importarCsv()" disabled>Importar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Modal: Confirmação ─────────────────────────────────────────────────── -->
 <div class="modal-overlay" id="modal-confirm">
   <div class="modal">
@@ -1093,6 +1174,7 @@ function mostrarApp() {
   // Ping a cada 5s para manter a sessão viva (SESSION_TTL=15s)
   setInterval(() => { if (S.token) API.get('/api/auth/ping').catch(() => {}); }, 5000);
   _atualizarBadgeNotif();
+  _atualizarBadgeAgenda();
 }
 
 async function _atualizarBadgeNotif() {
@@ -1116,20 +1198,25 @@ async function navegar(view) {
   const titles = {
     dashboard: 'Dashboard', lei: 'Leis', decreto: 'Decretos',
     portaria: 'Portarias', parecer: 'Pareceres', oficio: 'Ofícios',
-    relatorio: 'Relatório Gerencial',
+    relatorio: 'Relatório Gerencial', agenda: 'Agenda', lixeira: 'Lixeira',
     auditoria: 'Auditoria', configuracoes: 'Configurações',
   };
   document.getElementById('page-title').textContent = titles[view] || view;
   const ha = document.getElementById('header-actions');
   ha.innerHTML = '';
   if (['lei','decreto','portaria','parecer','oficio'].includes(view)) {
-    ha.innerHTML = `<button class="btn btn-primary" onclick="abrirNovoDoc('${view}')">+ ${TIPOS_NOVO[view]}</button>`;
+    ha.innerHTML = `<button class="btn btn-outline" onclick="abrirModalCsv('${view}')">⇪ Importar CSV</button>
+      <button class="btn btn-primary" onclick="abrirNovoDoc('${view}')">+ ${TIPOS_NOVO[view]}</button>`;
+  } else if (view === 'agenda') {
+    ha.innerHTML = `<button class="btn btn-primary" onclick="abrirNovoLembrete()">+ Novo Lembrete</button>`;
   }
   const pc = document.getElementById('page-content');
   pc.innerHTML = '<div class="loading">Carregando…</div>';
   if (view === 'dashboard') await renderDashboard();
   else if (['lei','decreto','portaria','parecer','oficio'].includes(view)) await renderDocumentos(view);
   else if (view === 'relatorio')     await renderRelatorio();
+  else if (view === 'agenda')        await renderAgenda();
+  else if (view === 'lixeira')       await renderLixeira();
   else if (view === 'auditoria')     await renderAuditoria();
   else if (view === 'configuracoes') await renderConfiguracoes();
 }
@@ -1382,6 +1469,7 @@ async function renderDocumentos(tipo, page = 1) {
       <td>
         <div class="td-acoes">
           <button class="btn btn-outline btn-sm" onclick="abrirEditarDoc(${doc.id})">✎ Editar</button>
+          <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalEmail(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Enviar por e-mail">✉</button>
           <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')">✕</button>
         </div>
       </td>
@@ -1590,15 +1678,205 @@ async function salvarDocumento() {
 }
 
 async function excluirDoc(id, label) {
-  const ok = await confirmar(`Excluir permanentemente <strong>${label}</strong>?<br><br>O arquivo PDF também será removido, se houver.`, 'Excluir');
+  const ok = await confirmar(`Enviar <strong>${label}</strong> para a lixeira?<br><br>Pode ser restaurado em até 30 dias.`, 'Excluir');
   if (!ok) return;
   const r = await API.del(`/api/documentos/${id}`);
   const d = await API.json(r);
   if (!r.ok) { toast(d?.error || 'Erro ao excluir.', 'error'); return; }
-  toast('Documento excluído.', 'success');
+  toast('Documento enviado à lixeira.', 'success');
   if (['lei','decreto','portaria','parecer','oficio'].includes(S.view)) {
     await renderDocumentos(S.view, S.pag.page);
   }
+}
+
+// ── Lixeira ────────────────────────────────────────────────────────────────
+async function renderLixeira() {
+  const r = await API.get('/api/lixeira');
+  const d = await API.json(r);
+  if (!d) return;
+  const rows = d.items.length ? d.items.map(doc => `
+    <tr>
+      <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano)}</span></td>
+      <td>${fmtData(doc.data)}</td>
+      <td class="td-ementa"><span title="${esc(doc.ementa)}">${esc(doc.ementa)}</span></td>
+      <td>${fmtData(doc.excluido_em.slice(0,10))}</td>
+      <td>
+        <div class="td-acoes">
+          <button class="btn btn-outline btn-sm" onclick="restaurarDoc(${doc.id})">↺ Restaurar</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="purgarDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')">✕ Excluir de vez</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') : `<tr class="empty-row"><td colspan="5">A lixeira está vazia.</td></tr>`;
+  document.getElementById('page-content').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Número</th><th>Data</th><th>Ementa</th><th>Excluído em</th><th>Ações</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function restaurarDoc(id) {
+  const r = await API.post(`/api/lixeira/${id}/restaurar`, {});
+  if (!r.ok) { toast('Erro ao restaurar.', 'error'); return; }
+  toast('Documento restaurado.', 'success');
+  renderLixeira();
+}
+
+async function purgarDoc(id, label) {
+  const ok = await confirmar(`Excluir <strong>${label}</strong> permanentemente?<br><br>Esta ação não pode ser desfeita.`, 'Excluir de vez');
+  if (!ok) return;
+  const r = await API.del(`/api/lixeira/${id}`);
+  if (!r.ok) { toast('Erro ao excluir.', 'error'); return; }
+  toast('Documento excluído permanentemente.', 'success');
+  renderLixeira();
+}
+
+// ── Agenda ───────────────────────────────────────────────────────────────────
+async function renderAgenda() {
+  const r = await API.get('/api/lembretes');
+  const d = await API.json(r);
+  if (!d) return;
+  const hoje = new Date().toISOString().slice(0,10);
+  const rows = d.items.length ? d.items.map(l => {
+    const atrasado = !l.concluido && l.data_prazo < hoje;
+    return `
+    <tr style="${l.concluido ? 'opacity:.5' : ''}">
+      <td>
+        <input type="checkbox" ${l.concluido ? 'checked' : ''} onchange="toggleLembrete(${l.id}, this.checked)">
+      </td>
+      <td>${esc(l.titulo)}</td>
+      <td style="${atrasado ? 'color:var(--red);font-weight:600' : ''}">${fmtData(l.data_prazo)}${atrasado ? ' (atrasado)' : ''}</td>
+      <td>${l.documento_id ? `<span class="badge-tipo tipo-${l.doc_tipo}">${fmtNum(l.doc_numero, l.doc_ano)}</span>` : '—'}</td>
+      <td><button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirLembrete(${l.id})">✕</button></td>
+    </tr>`;
+  }).join('') : `<tr class="empty-row"><td colspan="5">Nenhum lembrete cadastrado.</td></tr>`;
+  document.getElementById('page-content').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Título</th><th>Prazo</th><th>Documento</th><th>Ações</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function abrirNovoLembrete() {
+  document.getElementById('f-lembrete-titulo').value = '';
+  document.getElementById('f-lembrete-prazo').value = '';
+  abrirModal('modal-lembrete');
+}
+
+async function salvarLembrete() {
+  const titulo = document.getElementById('f-lembrete-titulo').value.trim();
+  const prazo  = document.getElementById('f-lembrete-prazo').value;
+  if (!titulo || !prazo) { toast('Preencha título e prazo.', 'error'); return; }
+  const r = await API.post('/api/lembretes', { titulo, data_prazo: prazo });
+  if (!r.ok) { toast('Erro ao salvar lembrete.', 'error'); return; }
+  fecharModal('modal-lembrete');
+  toast('Lembrete criado.', 'success');
+  renderAgenda();
+  _atualizarBadgeAgenda();
+}
+
+async function toggleLembrete(id, concluido) {
+  await API.put(`/api/lembretes/${id}`, { concluido: concluido ? 1 : 0 });
+  _atualizarBadgeAgenda();
+}
+
+async function excluirLembrete(id) {
+  const ok = await confirmar('Excluir este lembrete?', 'Excluir');
+  if (!ok) return;
+  await API.del(`/api/lembretes/${id}`);
+  toast('Lembrete excluído.', 'success');
+  renderAgenda();
+  _atualizarBadgeAgenda();
+}
+
+async function _atualizarBadgeAgenda() {
+  const r = await API.get('/api/lembretes?pendentes=1');
+  const d = await API.json(r);
+  const hoje = new Date().toISOString().slice(0,10);
+  const n = (d?.items || []).filter(l => l.data_prazo <= hoje).length;
+  const el = document.getElementById('badge-agenda');
+  el.style.display = n ? '' : 'none';
+  el.textContent = n;
+}
+
+// ── E-mail ───────────────────────────────────────────────────────────────────
+function abrirModalEmail(id, label) {
+  S.emailDocId = id;
+  document.getElementById('email-doc-label').textContent = label;
+  document.getElementById('f-email-to').value = '';
+  document.getElementById('f-email-subject').value = '';
+  document.getElementById('f-email-body').value = '';
+  abrirModal('modal-email');
+}
+
+async function enviarEmailDoc() {
+  const to = document.getElementById('f-email-to').value.trim();
+  if (!to) { toast('Informe o destinatário.', 'error'); return; }
+  const body = {
+    to,
+    subject: document.getElementById('f-email-subject').value.trim(),
+    body: document.getElementById('f-email-body').value.trim(),
+  };
+  const r = await API.post(`/api/documentos/${S.emailDocId}/email`, body);
+  const d = await API.json(r);
+  if (!r.ok) { toast(d?.error || 'Erro ao enviar e-mail.', 'error'); return; }
+  fecharModal('modal-email');
+  toast('E-mail enviado.', 'success');
+}
+
+// ── Importação CSV ───────────────────────────────────────────────────────────
+let _csvTipoAtual = null, _csvRows = [];
+
+function abrirModalCsv(tipo) {
+  _csvTipoAtual = tipo;
+  _csvRows = [];
+  document.getElementById('csv-file-input').value = '';
+  document.getElementById('csv-preview').innerHTML = '';
+  document.getElementById('btn-csv-import').disabled = true;
+  abrirModal('modal-csv');
+}
+
+function _parseCsvLine(line) {
+  return line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+}
+
+function carregarCsv(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { toast('CSV vazio ou sem dados.', 'error'); return; }
+    const headers = _parseCsvLine(lines[0]).map(h => h.toLowerCase());
+    _csvRows = lines.slice(1).map(line => {
+      const cols = _parseCsvLine(line);
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = cols[i] || '');
+      if (!obj.tipo) obj.tipo = _csvTipoAtual;
+      return obj;
+    });
+    document.getElementById('csv-preview').innerHTML =
+      `<p style="font-size:13px;color:var(--gray-600)">${_csvRows.length} linha(s) prontas para importar.</p>`;
+    document.getElementById('btn-csv-import').disabled = false;
+  };
+  reader.readAsText(file);
+}
+
+async function importarCsv() {
+  if (!_csvRows.length) return;
+  const r = await API.post('/api/import/csv', { rows: _csvRows });
+  const d = await API.json(r);
+  if (!r.ok) { toast(d?.error || 'Erro ao importar.', 'error'); return; }
+  fecharModal('modal-csv');
+  toast(`${d.importados} documento(s) importado(s).${d.erros.length ? ' ' + d.erros.length + ' erro(s).' : ''}`,
+        d.erros.length ? 'error' : 'success');
+  if (_csvTipoAtual) await renderDocumentos(_csvTipoAtual, 1);
 }
 
 // ── Upload de PDF ─────────────────────────────────────────────────────────────
@@ -2284,6 +2562,21 @@ async function renderConfiguracoes(abaInicial) {
             <button class="btn btn-primary btn-sm" onclick="alterarSenha()">Salvar nova senha</button>
             <p id="senha-status"></p>
           </div>
+          ${isAdmin ? `
+          <div class="cfg-section" style="margin-top:24px">
+            <h3>Servidor de E-mail (SMTP)</h3>
+            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Usado para enviar documentos por e-mail direto do sistema.</p>
+            <div class="form-row cols-2">
+              <div class="form-group"><label>Servidor SMTP</label><input id="smtp-host" type="text" placeholder="smtp.gmail.com"></div>
+              <div class="form-group"><label>Porta</label><input id="smtp-port" type="number" placeholder="587"></div>
+            </div>
+            <div class="form-row cols-2">
+              <div class="form-group"><label>Usuário</label><input id="smtp-user" type="text" placeholder="usuario@dominio.com"></div>
+              <div class="form-group"><label>Senha</label><input id="smtp-pass" type="password" placeholder="••••••••"></div>
+            </div>
+            <div class="form-group"><label>Remetente (From)</label><input id="smtp-from" type="text" placeholder="procuradoria@municipio.gov.br"></div>
+            <button class="btn btn-primary btn-sm" onclick="salvarSmtp()">Salvar SMTP</button>
+          </div>` : ''}
         </div>
       </div>
 
@@ -2322,6 +2615,7 @@ async function renderConfiguracoes(abaInicial) {
     await renderBackup(document.getElementById('cfg-backup'));
   if (primeiraAba === 'diag' && isAdmin)
     await runDiagnostico();
+  if (isAdmin) await _carregarSmtp();
 }
 
 async function switchCfgTab(id, btn) {
@@ -2333,6 +2627,34 @@ async function switchCfgTab(id, btn) {
   if (id === 'usuarios') await renderUsuarios(panel);
   if (id === 'backup')   await renderBackup(panel);
   if (id === 'diag')     await runDiagnostico();
+  if (id === 'seg' && S.user.admin) await _carregarSmtp();
+}
+
+async function _carregarSmtp() {
+  const el = document.getElementById('smtp-host');
+  if (!el) return;
+  const r = await API.get('/api/config/smtp');
+  const d = await API.json(r);
+  if (!d) return;
+  document.getElementById('smtp-host').value = d.smtp_host || '';
+  document.getElementById('smtp-port').value = d.smtp_port || '587';
+  document.getElementById('smtp-user').value = d.smtp_user || '';
+  document.getElementById('smtp-from').value = d.smtp_from || '';
+}
+
+async function salvarSmtp() {
+  const body = {
+    smtp_host: document.getElementById('smtp-host').value.trim(),
+    smtp_port: document.getElementById('smtp-port').value.trim(),
+    smtp_user: document.getElementById('smtp-user').value.trim(),
+    smtp_from: document.getElementById('smtp-from').value.trim(),
+  };
+  const senha = document.getElementById('smtp-pass').value;
+  if (senha) body.smtp_pass = senha;
+  const r = await API.put('/api/config/smtp', body);
+  if (!r.ok) { toast('Erro ao salvar SMTP.', 'error'); return; }
+  toast('Configuração de e-mail salva.', 'success');
+  document.getElementById('smtp-pass').value = '';
 }
 
 // ── Interface ─────────────────────────────────────────────────────────────────
@@ -2823,7 +3145,7 @@ document.addEventListener('click', e => {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['modal-pdf','modal-doc','modal-usuario','modal-confirm'].forEach(id => {
+    ['modal-pdf','modal-doc','modal-usuario','modal-confirm','modal-lembrete','modal-email','modal-csv'].forEach(id => {
       if (document.getElementById(id).classList.contains('open')) fecharModal(id);
     });
   }

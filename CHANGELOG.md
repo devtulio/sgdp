@@ -18,6 +18,20 @@
 
 ---
 
+## [1.7.0] — 2026-07-04
+
+### Adicionado
+- **Lixeira** — exclusão de documentos passa a ser reversível (soft-delete); itens ficam disponíveis para restauração por 30 dias antes da purga automática; nova tela "Lixeira" na sidebar com Restaurar e Excluir de vez
+- **Agenda** — lembretes com título e prazo, vinculáveis opcionalmente a um documento; badge na sidebar com contagem de pendências vencidas; marcação de concluído via checkbox
+- **Envio de documentos por e-mail** — botão ✉ na listagem de cada tipo de documento abre modal para enviar o PDF assinado anexado por e-mail; configuração de servidor SMTP (host, porta, usuário, senha, remetente) em Configurações → Segurança
+- **Importação de documentos via CSV** — botão "Importar CSV" na listagem de cada tipo; aceita colunas `numero,ano,data,ementa,partes,observacoes,assunto`; numeração automática quando `numero` não informado; relatório de linhas importadas e erros
+
+### Alterado
+- Exclusão de documento agora envia para a lixeira em vez de apagar e remover o PDF imediatamente
+- Dashboard, listas e Relatório Gerencial passam a ignorar documentos na lixeira
+
+---
+
 ## [1.5.0] — 2026-06-29
 
 ### Adicionado

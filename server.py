@@ -1,4 +1,4 @@
-# SGDP v1.6.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.7.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -112,9 +112,19 @@ def init_db():
                 key   TEXT PRIMARY KEY,
                 value TEXT
             );
+            CREATE TABLE IF NOT EXISTS lembretes (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo       TEXT NOT NULL,
+                data_prazo   TEXT NOT NULL,
+                documento_id INTEGER REFERENCES documentos(id) ON DELETE SET NULL,
+                concluido    INTEGER DEFAULT 0,
+                criado_por   INTEGER REFERENCES usuarios(id),
+                criado_em    TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
             CREATE INDEX IF NOT EXISTS idx_docs_tipo ON documentos(tipo);
             CREATE INDEX IF NOT EXISTS idx_docs_ano  ON documentos(ano);
             CREATE INDEX IF NOT EXISTS idx_audit_em  ON auditoria(em);
+            CREATE INDEX IF NOT EXISTS idx_lembretes_prazo ON lembretes(data_prazo);
         ''')
         conn.executemany('INSERT OR IGNORE INTO sys_settings VALUES (?,?)', [
             ('orgao_nome',           'Procuradoria-Geral'),
@@ -122,6 +132,8 @@ def init_db():
             ('backup_path',          BACKUP_DIR),
             ('auto_backup_enabled',  '1'),
             ('auto_backup_keep',     str(BACKUP_KEEP)),
+            ('smtp_host', ''), ('smtp_port', '587'), ('smtp_user', ''),
+            ('smtp_pass', ''), ('smtp_from', ''), ('smtp_tls', '1'),
         ])
         # Migrações de colunas
         cols = [r[1] for r in conn.execute('PRAGMA table_info(documentos)').fetchall()]
@@ -131,6 +143,7 @@ def init_db():
         if 'processo_ref'   not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN processo_ref   TEXT DEFAULT ''")
         if 'ato_tipo'       not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN ato_tipo       TEXT DEFAULT ''")
         if 'cargo'          not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN cargo          TEXT DEFAULT ''")
+        if 'excluido_em'    not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN excluido_em    TEXT DEFAULT NULL")
         # Sessões são descartadas a cada início do servidor (evita sessões órfãs)
         conn.execute('DELETE FROM sessions')
         conn.commit()
@@ -341,6 +354,18 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif re.fullmatch(r'/api/documentos/\d+', p):
             self._get_doc(int(p.split('/')[-1]))
 
+        elif p == '/api/lixeira':
+            self._list_lixeira(qs, s)
+
+        elif p == '/api/lembretes':
+            self._list_lembretes(qs, s)
+
+        elif p == '/api/config/smtp':
+            if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
+            cfg = get_config()
+            self._json(200, {k: cfg.get(k, '') for k in
+                             ('smtp_host','smtp_port','smtp_user','smtp_from','smtp_tls')})
+
         elif re.fullmatch(r'/api/arquivos/\d+', p):
             self._download_arquivo(int(p.split('/')[-1]), qs)
 
@@ -498,6 +523,18 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif re.fullmatch(r'/api/documentos/\d+/arquivo', p):
             self._upload_arquivo(int(p.split('/')[3]), s)
 
+        elif re.fullmatch(r'/api/documentos/\d+/email', p):
+            self._enviar_email(int(p.split('/')[3]), self._body(), s)
+
+        elif re.fullmatch(r'/api/lixeira/\d+/restaurar', p):
+            self._restaurar_doc(int(p.split('/')[3]), s)
+
+        elif p == '/api/lembretes':
+            self._create_lembrete(self._body(), s)
+
+        elif p == '/api/import/csv':
+            self._import_csv(self._body(), s)
+
         elif p == '/api/usuarios':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             self._create_usuario(self._body(), s)
@@ -534,6 +571,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif p == '/api/config':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             self._update_config(body, s)
+        elif p == '/api/config/smtp':
+            if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
+            self._update_smtp(body, s)
+        elif re.fullmatch(r'/api/lembretes/\d+', p):
+            self._update_lembrete(int(p.split('/')[-1]), body, s)
         else:
             self._json(404, {'error': 'Rota não encontrada'})
 
@@ -545,6 +587,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif re.fullmatch(r'/api/usuarios/\d+', p):
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             self._delete_usuario(int(p.split('/')[-1]), s)
+        elif re.fullmatch(r'/api/lixeira/\d+', p):
+            self._purgar_doc_endpoint(int(p.split('/')[-1]), s)
+        elif re.fullmatch(r'/api/lembretes/\d+', p):
+            self._delete_lembrete(int(p.split('/')[-1]), s)
         else:
             self._json(404, {'error': 'Rota não encontrada'})
 
@@ -582,14 +628,14 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         page   = int(qp('page', 1))
         per    = int(qp('per', 50))
 
-        where, params = [], []
+        where, params = ['d.excluido_em IS NULL'], []
         if tipo:   where.append('d.tipo=?');   params.append(tipo)
         if search:
             where.append('(d.ementa LIKE ? OR d.partes LIKE ? OR CAST(d.numero AS TEXT) LIKE ?)')
             params += [f'%{search}%'] * 3
         if ano:    where.append('d.ano=?');    params.append(int(ano))
         if qp('sem_pdf'): where.append('d.arquivo_id IS NULL')
-        w = ('WHERE ' + ' AND '.join(where)) if where else ''
+        w = 'WHERE ' + ' AND '.join(where)
 
         with get_db() as conn:
             total = conn.execute(f'SELECT COUNT(*) FROM documentos d {w}', params).fetchone()[0]
@@ -676,14 +722,53 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with get_db() as conn:
             row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
             if not row: self._json(404, {'error': 'Não encontrado'}); return
-            if row['arquivo_id']:
-                arq = conn.execute('SELECT * FROM arquivos WHERE id=?', (row['arquivo_id'],)).fetchone()
-                if arq:
-                    p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
-                    if os.path.isfile(p): os.remove(p)
-                    conn.execute('DELETE FROM arquivos WHERE id=?', (row['arquivo_id'],))
-            audit(conn, s['user_id'], s['nome'], 'excluir', did, f"{row['tipo']} nº {row['numero']}/{row['ano']}")
-            conn.execute('DELETE FROM documentos WHERE id=?', (did,))
+            audit(conn, s['user_id'], s['nome'], 'excluir', did, f"{row['tipo']} nº {row['numero']}/{row['ano']} (enviado à lixeira)")
+            conn.execute("UPDATE documentos SET excluido_em=? WHERE id=?",
+                         (time.strftime('%Y-%m-%dT%H:%M:%S'), did))
+            conn.commit()
+        self._json(200, {'ok': True})
+
+    def _list_lixeira(self, qs, s):
+        # purga automática após 30 dias na lixeira
+        limite = time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(time.time() - 30*86400))
+        with get_db() as conn:
+            expirados = conn.execute(
+                'SELECT id, arquivo_id FROM documentos WHERE excluido_em IS NOT NULL AND excluido_em < ?',
+                (limite,)).fetchall()
+            for row in expirados:
+                self._purgar_doc(conn, row['id'], row['arquivo_id'])
+            conn.commit()
+            rows = conn.execute(
+                '''SELECT d.*, u.nome criado_por_nome FROM documentos d
+                   LEFT JOIN usuarios u ON d.criado_por=u.id
+                   WHERE d.excluido_em IS NOT NULL ORDER BY d.excluido_em DESC'''
+            ).fetchall()
+        self._json(200, {'items': [dict(r) for r in rows]})
+
+    def _purgar_doc(self, conn, did, arquivo_id):
+        if arquivo_id:
+            arq = conn.execute('SELECT * FROM arquivos WHERE id=?', (arquivo_id,)).fetchone()
+            if arq:
+                p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
+                if os.path.isfile(p): os.remove(p)
+                conn.execute('DELETE FROM arquivos WHERE id=?', (arquivo_id,))
+        conn.execute('DELETE FROM documentos WHERE id=?', (did,))
+
+    def _restaurar_doc(self, did, s):
+        with get_db() as conn:
+            row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+            if not row or not row['excluido_em']: self._json(404, {'error': 'Não encontrado na lixeira'}); return
+            conn.execute('UPDATE documentos SET excluido_em=NULL WHERE id=?', (did,))
+            audit(conn, s['user_id'], s['nome'], 'restaurar', did, f"{row['tipo']} nº {row['numero']}/{row['ano']}")
+            conn.commit()
+        self._json(200, {'ok': True})
+
+    def _purgar_doc_endpoint(self, did, s):
+        with get_db() as conn:
+            row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+            if not row or not row['excluido_em']: self._json(404, {'error': 'Não encontrado na lixeira'}); return
+            audit(conn, s['user_id'], s['nome'], 'excluir_permanente', did, f"{row['tipo']} nº {row['numero']}/{row['ano']}")
+            self._purgar_doc(conn, did, row['arquivo_id'])
             conn.commit()
         self._json(200, {'ok': True})
 
@@ -695,20 +780,157 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         ate = qp('ate', '2999-12-31')
         with get_db() as conn:
             total = conn.execute(
-                'SELECT COUNT(*) FROM documentos WHERE data BETWEEN ? AND ?', (de, ate)).fetchone()[0]
+                'SELECT COUNT(*) FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL', (de, ate)).fetchone()[0]
             por_tipo = [dict(r) for r in conn.execute(
-                'SELECT tipo, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? GROUP BY tipo ORDER BY n DESC',
+                'SELECT tipo, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL GROUP BY tipo ORDER BY n DESC',
                 (de, ate)).fetchall()]
             por_assunto = [dict(r) for r in conn.execute(
-                'SELECT assunto, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? GROUP BY assunto ORDER BY n DESC',
+                'SELECT assunto, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL GROUP BY assunto ORDER BY n DESC',
                 (de, ate)).fetchall()]
             por_mes = [dict(r) for r in conn.execute(
-                "SELECT strftime('%Y-%m', data) mes, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? GROUP BY mes ORDER BY mes",
+                "SELECT strftime('%Y-%m', data) mes, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL GROUP BY mes ORDER BY mes",
                 (de, ate)).fetchall()]
             docs = [dict(r) for r in conn.execute(
-                'SELECT id,tipo,numero,ano,data,ementa,assunto FROM documentos WHERE data BETWEEN ? AND ? ORDER BY data DESC, id DESC LIMIT 200',
+                'SELECT id,tipo,numero,ano,data,ementa,assunto FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL ORDER BY data DESC, id DESC LIMIT 200',
                 (de, ate)).fetchall()]
         self._json(200, {'total': total, 'por_tipo': por_tipo, 'por_assunto': por_assunto, 'por_mes': por_mes, 'documentos': docs})
+
+    # ── Agenda / Lembretes ────────────────────────────────────────────────────
+
+    def _list_lembretes(self, qs, s):
+        so_pendentes = qs.get('pendentes', [None])[0]
+        w = 'WHERE l.concluido=0' if so_pendentes else ''
+        with get_db() as conn:
+            rows = conn.execute(
+                f'''SELECT l.*, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano
+                    FROM lembretes l LEFT JOIN documentos d ON l.documento_id=d.id
+                    {w} ORDER BY l.data_prazo ASC'''
+            ).fetchall()
+        self._json(200, {'items': [dict(r) for r in rows]})
+
+    def _create_lembrete(self, body, s):
+        data = json.loads(body) if body else {}
+        titulo = (data.get('titulo') or '').strip()
+        prazo  = (data.get('data_prazo') or '').strip()
+        if not titulo or not prazo: self._json(400, {'error': 'Título e prazo são obrigatórios'}); return
+        with get_db() as conn:
+            conn.execute(
+                'INSERT INTO lembretes (titulo,data_prazo,documento_id,criado_por) VALUES (?,?,?,?)',
+                (titulo, prazo, data.get('documento_id') or None, s['user_id'])
+            )
+            lid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+            audit(conn, s['user_id'], s['nome'], 'criar_lembrete', detalhes=titulo)
+            conn.commit()
+            row = conn.execute('SELECT * FROM lembretes WHERE id=?', (lid,)).fetchone()
+        self._json(201, dict(row))
+
+    def _update_lembrete(self, lid, body, s):
+        data = json.loads(body) if body else {}
+        with get_db() as conn:
+            row = conn.execute('SELECT * FROM lembretes WHERE id=?', (lid,)).fetchone()
+            if not row: self._json(404, {'error': 'Não encontrado'}); return
+            fields = {}
+            for f in ('titulo', 'data_prazo', 'concluido', 'documento_id'):
+                if f in data: fields[f] = data[f]
+            if fields:
+                conn.execute(f"UPDATE lembretes SET {', '.join(f'{k}=?' for k in fields)} WHERE id=?",
+                             list(fields.values()) + [lid])
+                conn.commit()
+            updated = conn.execute('SELECT * FROM lembretes WHERE id=?', (lid,)).fetchone()
+        self._json(200, dict(updated))
+
+    def _delete_lembrete(self, lid, s):
+        with get_db() as conn:
+            conn.execute('DELETE FROM lembretes WHERE id=?', (lid,))
+            conn.commit()
+        self._json(200, {'ok': True})
+
+    # ── E-mail ────────────────────────────────────────────────────────────────
+
+    def _update_smtp(self, body, s):
+        data = json.loads(body) if body else {}
+        allowed = ('smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_tls')
+        with get_db() as conn:
+            for k in allowed:
+                if k in data:
+                    conn.execute('INSERT INTO sys_settings VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+                                 (k, str(data[k])))
+            audit(conn, s['user_id'], s['nome'], 'alterar_smtp')
+            conn.commit()
+        self._json(200, {'ok': True})
+
+    def _enviar_email(self, did, body, s):
+        data = json.loads(body) if body else {}
+        destinatario = (data.get('to') or '').strip()
+        assunto      = (data.get('subject') or '').strip()
+        corpo        = data.get('body') or ''
+        if not destinatario: self._json(400, {'error': 'Destinatário obrigatório'}); return
+        cfg = get_config()
+        host, port = cfg.get('smtp_host',''), int(cfg.get('smtp_port') or 587)
+        if not host: self._json(400, {'error': 'SMTP não configurado. Configure em Configurações → Segurança.'}); return
+        with get_db() as conn:
+            doc = conn.execute(
+                'SELECT d.*, a.nome_original, a.nome_disco FROM documentos d LEFT JOIN arquivos a ON d.arquivo_id=a.id WHERE d.id=?',
+                (did,)).fetchone()
+        if not doc: self._json(404, {'error': 'Documento não encontrado'}); return
+        try:
+            import smtplib
+            from email.message import EmailMessage
+            msg = EmailMessage()
+            msg['Subject'] = assunto or f"{doc['tipo'].capitalize()} nº {doc['numero']}/{doc['ano']}"
+            msg['From'] = cfg.get('smtp_from') or cfg.get('smtp_user')
+            msg['To'] = destinatario
+            msg.set_content(corpo or doc['ementa'])
+            if doc['nome_disco']:
+                fp = os.path.join(UPLOADS_DIR, doc['nome_disco'])
+                if os.path.isfile(fp):
+                    with open(fp, 'rb') as f:
+                        msg.add_attachment(f.read(), maintype='application', subtype='pdf',
+                                           filename=doc['nome_original'] or 'documento.pdf')
+            with smtplib.SMTP(host, port, timeout=15) as smtp:
+                if cfg.get('smtp_tls', '1') == '1': smtp.starttls()
+                if cfg.get('smtp_user'): smtp.login(cfg['smtp_user'], cfg.get('smtp_pass',''))
+                smtp.send_message(msg)
+            with get_db() as conn:
+                audit(conn, s['user_id'], s['nome'], 'enviar_email', did, f"Para {destinatario}")
+                conn.commit()
+            self._json(200, {'ok': True})
+        except Exception as e:
+            _log.error(f'Erro ao enviar e-mail: {e}')
+            self._json(500, {'error': f'Falha ao enviar e-mail: {e}'})
+
+    # ── Importação CSV ────────────────────────────────────────────────────────
+
+    def _import_csv(self, body, s):
+        data = json.loads(body) if body else {}
+        rows = data.get('rows') or []
+        if not rows: self._json(400, {'error': 'Nenhuma linha para importar'}); return
+        importados, erros = 0, []
+        with get_db() as conn:
+            for i, r in enumerate(rows):
+                tipo = (r.get('tipo') or '').strip().lower()
+                ementa = (r.get('ementa') or '').strip()
+                data_d = (r.get('data') or '').strip()
+                if tipo not in TIPOS:
+                    erros.append(f'Linha {i+1}: tipo inválido "{tipo}"'); continue
+                if not ementa or not data_d:
+                    erros.append(f'Linha {i+1}: ementa e data são obrigatórias'); continue
+                ano = int(r.get('ano') or data_d[:4])
+                numero = int(r['numero']) if r.get('numero') else proximo_numero(conn, tipo, ano)
+                try:
+                    conn.execute(
+                        'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,criado_por,atualizado_por)'
+                        ' VALUES (?,?,?,?,?,?,?,?,?,?)',
+                        (tipo, numero, ano, data_d, ementa, r.get('partes') or '', r.get('observacoes') or '',
+                         r.get('assunto') or 'Outros', s['user_id'], s['user_id'])
+                    )
+                    bump_contador(conn, tipo, ano, numero)
+                    importados += 1
+                except sqlite3.IntegrityError:
+                    erros.append(f'Linha {i+1}: já existe {tipo} nº {numero}/{ano}')
+            audit(conn, s['user_id'], s['nome'], 'import_csv', detalhes=f'{importados} documentos importados')
+            conn.commit()
+        self._json(200, {'importados': importados, 'erros': erros})
 
     # ── Arquivos ──────────────────────────────────────────────────────────────
 
@@ -804,11 +1026,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
     def _dashboard(self):
         ano = time.localtime().tm_year
         with get_db() as conn:
-            totais   = {t: conn.execute('SELECT COUNT(*) FROM documentos WHERE tipo=?', (t,)).fetchone()[0] for t in TIPOS}
-            ano_atual = {t: conn.execute('SELECT COUNT(*) FROM documentos WHERE tipo=? AND ano=?', (t, ano)).fetchone()[0] for t in TIPOS}
+            totais   = {t: conn.execute('SELECT COUNT(*) FROM documentos WHERE tipo=? AND excluido_em IS NULL', (t,)).fetchone()[0] for t in TIPOS}
+            ano_atual = {t: conn.execute('SELECT COUNT(*) FROM documentos WHERE tipo=? AND ano=? AND excluido_em IS NULL', (t, ano)).fetchone()[0] for t in TIPOS}
             recentes = conn.execute(
                 '''SELECT d.id, d.tipo, d.numero, d.ano, d.data, d.ementa, d.arquivo_id, u.nome criado_por_nome
                    FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
+                   WHERE d.excluido_em IS NULL
                    ORDER BY d.criado_em DESC LIMIT 10'''
             ).fetchall()
         self._json(200, {'totais': totais, 'ano_atual': ano_atual, 'recentes': [dict(r) for r in recentes]})
@@ -955,7 +1178,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.6.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.7.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
@@ -1075,7 +1298,7 @@ def _do_json_backup(cfg=None):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.6.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.7.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
                   'arquivos': arqs, 'settings': settings}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:

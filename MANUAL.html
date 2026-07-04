@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.6.0</title>
+<title>Manual Operacional — SGDP v1.7.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -79,7 +79,7 @@
     <div class="cover-title">Sistema de Gestão de Documentos<br>da Procuradoria</div>
     <div class="cover-subtitle">Manual Operacional</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.6.0</div>
+    <div class="cover-version">Versão 1.7.0</div>
     <div class="cover-legal">
       Documentação de uso interno.<br>
       Desenvolvido para gestão de atos jurídicos municipais.
@@ -438,6 +438,20 @@
   <ul>
     <li>Canvas não iniciava por ser chamado antes do layout terminar — corrigido com <code>requestAnimationFrame</code></li>
     <li>Canvas não voltava após logout — <code>sair()</code> agora reinicia a animação ao exibir a tela de login</li>
+  </ul>
+
+  <h3>v1.7.0 — 04/07/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Lixeira</strong> — a exclusão de um documento passa a ser reversível: fica disponível na tela "Lixeira" por até 30 dias antes da purga automática. É possível restaurar ou excluir definitivamente a qualquer momento</li>
+    <li><strong>Agenda</strong> — cadastro de lembretes com título e prazo, podendo ser vinculados a um documento específico; a sidebar exibe um contador de pendências vencidas</li>
+    <li><strong>Envio de documentos por e-mail</strong> — cada documento pode ser enviado por e-mail com o PDF assinado anexado; requer configurar um servidor SMTP em Configurações → Segurança</li>
+    <li><strong>Importação via CSV</strong> — cadastro em lote de documentos a partir de um arquivo CSV, com numeração automática e relatório de erros por linha</li>
+  </ul>
+  <p><strong>Alterado</strong></p>
+  <ul>
+    <li>Exclusão de documento não é mais imediata — o item vai para a lixeira e o PDF só é removido do disco na exclusão definitiva</li>
+    <li>Dashboard, listas e Relatório Gerencial ignoram documentos que estão na lixeira</li>
   </ul>
 
   <h3>v1.5.0 — 29/06/2026</h3>
