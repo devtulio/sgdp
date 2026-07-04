@@ -12,10 +12,11 @@
 
   /* Capa */
   .cover { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240mm; text-align: center; border: 3px double #1a3a6b; padding: 30mm 20mm; }
-  .cover-logo { font-size: 52pt; font-weight: 900; color: #1a3a6b; letter-spacing: -2px; margin-bottom: 16pt; }
-  .cover-title { font-size: 22pt; font-weight: bold; color: #1a3a6b; margin-bottom: 8pt; }
-  .cover-subtitle { font-size: 14pt; color: #b8962e; margin-bottom: 6pt; font-style: italic; }
-  .cover-system { font-size: 12pt; color: #444; margin-bottom: 30pt; }
+  .cover-logo { margin-bottom: 20pt; }
+  .cover-logo img { width: 96pt; height: 96pt; object-fit: contain; }
+  .cover-title { font-size: 24pt; font-weight: bold; color: #1a3a6b; margin-bottom: 8pt; }
+  .cover-subtitle { font-size: 16pt; color: #b8962e; margin-bottom: 6pt; }
+  .cover-system { font-size: 13pt; color: #444; margin-bottom: 30pt; }
   .cover-version { font-size: 11pt; color: #666; border: 1px solid #ccc; padding: 4pt 14pt; border-radius: 20px; display: inline-block; margin-bottom: 16pt; }
   .cover-legal { font-size: 10pt; color: #888; margin-top: 30pt; font-style: italic; border-top: 1px solid #ddd; padding-top: 12pt; }
   .cover-date { font-size: 10pt; color: #999; margin-top: 8pt; }
@@ -82,11 +83,16 @@
 <!-- ── CAPA ─────────────────────────────────────────────────────────────────── -->
 <div class="page">
   <div class="cover">
-    <div class="cover-logo">SGDP</div>
-    <div class="cover-title">Sistema de Gestão de Documentos<br>da Procuradoria</div>
-    <div class="cover-subtitle">Manual Operacional</div>
+    <div class="cover-logo"><img src="sgdp.ico" alt="SGDP"></div>
+    <div class="cover-title">Manual Operacional</div>
+    <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
     <div class="cover-version">Versão 1.10.0</div>
+    <br>
+    <div style="font-size:11pt; color:#555; line-height:1.8;">
+      Aplicação web multiusuário para procuradores municipais<br>
+      Armazenamento local via SQLite · Autenticação server-side · Sem instalação necessária
+    </div>
     <div class="cover-legal">
       Documentação de uso interno.<br>
       Desenvolvido para gestão de atos jurídicos municipais.
