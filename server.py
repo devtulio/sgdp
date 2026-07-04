@@ -588,6 +588,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             where.append('(d.ementa LIKE ? OR d.partes LIKE ? OR CAST(d.numero AS TEXT) LIKE ?)')
             params += [f'%{search}%'] * 3
         if ano:    where.append('d.ano=?');    params.append(int(ano))
+        if qp('sem_pdf'): where.append('d.arquivo_id IS NULL')
         w = ('WHERE ' + ' AND '.join(where)) if where else ''
 
         with get_db() as conn:

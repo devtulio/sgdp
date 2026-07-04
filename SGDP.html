@@ -291,6 +291,33 @@ tr:hover td { background: var(--gray-50); }
   background: var(--tb); color: var(--tc);
 }
 
+/* ── Busca Global ────────────────────────────────────────────────────────── */
+#global-search-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1100;
+  display: flex; align-items: flex-start; justify-content: center; padding-top: 10vh;
+}
+.gsearch-box { background: #fff; border-radius: 10px; width: min(640px,90vw); max-height: 72vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,.22); }
+.gsearch-input-wrap { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--gray-100); }
+.gsearch-input-wrap input { flex: 1; border: none; outline: none; font-size: .95rem; background: transparent; color: var(--gray-900); }
+.gsearch-results { overflow-y: auto; max-height: calc(72vh - 56px); }
+.gsearch-item { padding: 10px 16px; cursor: pointer; border-bottom: 1px solid var(--gray-100); }
+.gsearch-item:hover { background: var(--gray-50); }
+.gsearch-item:last-child { border-bottom: none; }
+.gsearch-empty { padding: 20px 16px; color: var(--gray-500); font-size: .875rem; text-align: center; }
+
+/* ── Painel de Notificações ─────────────────────────────────────────────── */
+#notif-panel { position:fixed;bottom:16px;width:360px;max-height:460px;overflow-y:auto;background:#fff;border:1px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.28);z-index:1200;display:none;flex-direction:column }
+#notif-panel.open { display:flex }
+.notif-header { padding:12px 16px 8px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center }
+.notif-item { padding:10px 16px;border-bottom:1px solid var(--gray-100);cursor:pointer;transition:background .1s;display:flex;gap:10px;align-items:flex-start }
+.notif-item:hover { background:var(--gray-50) }
+.notif-item:last-child { border-bottom:none }
+.notif-icon { width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px }
+.notif-body { flex:1;min-width:0 }
+.notif-title { font-size:.8rem;font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+.notif-sub { font-size:.72rem;color:var(--gray-500);margin-top:2px }
+.notif-empty { padding: 24px 16px; color: var(--gray-500); font-size: .82rem; text-align: center; }
+
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.45);
@@ -531,6 +558,12 @@ tr:hover td { background: var(--gray-50); }
       <div class="s-sub">Procuradoria-Geral</div>
       <div class="s-muni" id="muni-nome">Município</div>
     </div>
+    <button onclick="abrirGlobalSearch()" title="Busca global (Ctrl+K)"
+      style="margin:0 12px 10px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer;width:calc(100% - 24px)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Buscar
+      <span style="margin-left:auto;font-size:10px;opacity:.6;border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:1px 5px">Ctrl+K</span>
+    </button>
     <nav class="sidebar-nav">
       <div class="nav-section">Principal</div>
       <div class="nav-item active" data-view="dashboard" onclick="navegar('dashboard')">
@@ -560,6 +593,10 @@ tr:hover td { background: var(--gray-50); }
       <div class="nav-section">Gestão</div>
       <div class="nav-item" data-view="relatorio" onclick="navegar('relatorio')">
         <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><rect x="3" y="2" width="18" height="20" rx="1.5" fill="none" stroke="none"/></svg></span> Relatório
+      </div>
+      <div class="nav-item" id="btn-notif" onclick="toggleNotificacoes()">
+        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span> Notificações
+        <span class="nav-badge" id="notif-count" style="display:none">0</span>
       </div>
       <div class="nav-section admin-only" id="nav-admin">Administração</div>
       <div class="nav-item admin-only" data-view="auditoria" onclick="navegar('auditoria')">
@@ -828,6 +865,27 @@ tr:hover td { background: var(--gray-50); }
   </div>
 </div>
 
+<!-- ── Busca Global ───────────────────────────────────────────────────────── -->
+<div id="global-search-overlay" style="display:none" onclick="if(event.target===this)fecharGlobalSearch()">
+  <div class="gsearch-box">
+    <div class="gsearch-input-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--gray-500);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="global-search-input" placeholder="Buscar por número, ementa, partes…" oninput="_debouncedGlobalSearch(this.value)">
+      <kbd style="font-size:.7rem;color:var(--gray-500);background:var(--gray-100);padding:2px 6px;border-radius:4px;flex-shrink:0">Esc</kbd>
+    </div>
+    <div class="gsearch-results" id="global-search-results"></div>
+  </div>
+</div>
+
+<!-- ── Painel de Notificações ─────────────────────────────────────────────── -->
+<div id="notif-panel">
+  <div class="notif-header">
+    <span>Alertas</span>
+    <button onclick="toggleNotificacoes()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:.85rem">✕</button>
+  </div>
+  <div id="notif-list"></div>
+</div>
+
 <!-- ── Toasts ─────────────────────────────────────────────────────────────── -->
 <div id="toast-box"></div>
 
@@ -1027,6 +1085,16 @@ function mostrarApp() {
   }
   // Ping a cada 5s para manter a sessão viva (SESSION_TTL=15s)
   setInterval(() => { if (S.token) API.get('/api/auth/ping').catch(() => {}); }, 5000);
+  _atualizarBadgeNotif();
+}
+
+async function _atualizarBadgeNotif() {
+  const r = await API.get('/api/documentos?sem_pdf=1&per=1');
+  const data = await API.json(r);
+  const n = data?.total || 0;
+  const el = document.getElementById('notif-count');
+  el.style.display = n ? '' : 'none';
+  el.textContent = n;
 }
 
 // ── Navegação ─────────────────────────────────────────────────────────────────
@@ -2511,6 +2579,93 @@ function hoje() {
 
 // ── Atalhos de teclado ────────────────────────────────────────────────────────
 // Som global em todos os cliques de botão (inclusive conteúdo dinâmico)
+// ── Busca Global (Ctrl+K) ──────────────────────────────────────────────────
+let _gsTimer = null;
+
+function abrirGlobalSearch() {
+  document.getElementById('global-search-overlay').style.display = 'flex';
+  const input = document.getElementById('global-search-input');
+  input.value = '';
+  document.getElementById('global-search-results').innerHTML = '';
+  setTimeout(() => input.focus(), 30);
+}
+
+function fecharGlobalSearch() {
+  document.getElementById('global-search-overlay').style.display = 'none';
+}
+
+function _debouncedGlobalSearch(q) {
+  clearTimeout(_gsTimer);
+  _gsTimer = setTimeout(() => _buscarGlobal(q), 250);
+}
+
+async function _buscarGlobal(q) {
+  const el = document.getElementById('global-search-results');
+  if (!q || q.trim().length < 2) { el.innerHTML = ''; return; }
+  const r = await API.get(`/api/documentos?q=${encodeURIComponent(q)}&per=20`);
+  const data = await API.json(r);
+  const docs = data?.items || [];
+  if (!docs.length) { el.innerHTML = `<p class="gsearch-empty">Nenhum documento encontrado.</p>`; return; }
+  el.innerHTML = docs.map(d => `
+    <div class="gsearch-item" onclick="fecharGlobalSearch();abrirEditarDoc(${d.id})">
+      <span class="badge-tipo" style="margin-right:8px">${TIPOS_LABELS[d.tipo] || d.tipo}</span>
+      <strong>${d.numero}/${d.ano}</strong> — ${(d.ementa || '').slice(0,90)}
+    </div>`).join('');
+}
+
+// ── Painel de Notificações ─────────────────────────────────────────────────
+let _notifOpen = false;
+
+async function renderNotificacoes() {
+  const list = document.getElementById('notif-list');
+  const r = await API.get('/api/documentos?sem_pdf=1&per=15');
+  const data = await API.json(r);
+  const docs = data?.items || [];
+  document.getElementById('notif-count').style.display = docs.length ? '' : 'none';
+  document.getElementById('notif-count').textContent = docs.length;
+  if (!docs.length) { list.innerHTML = `<p class="notif-empty">Nenhuma pendência. Tudo em dia!</p>`; return; }
+  list.innerHTML = docs.map(d => `
+    <div class="notif-item" onclick="toggleNotificacoes();abrirEditarDoc(${d.id})">
+      <div class="notif-icon" style="background:#fef3c7;color:#92400e">📄</div>
+      <div class="notif-body">
+        <div class="notif-title">${TIPOS_LABELS[d.tipo] || d.tipo} ${d.numero}/${d.ano}</div>
+        <div class="notif-sub">PDF assinado pendente de upload</div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleNotificacoes() {
+  _notifOpen = !_notifOpen;
+  const panel = document.getElementById('notif-panel');
+  panel.classList.toggle('open', _notifOpen);
+  if (_notifOpen) {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarW = sidebar ? sidebar.getBoundingClientRect().width : 240;
+    panel.style.left = (sidebarW + 12) + 'px';
+    renderNotificacoes();
+    setTimeout(() => document.addEventListener('click', _closeNotifOutside, { once: true }), 10);
+  }
+}
+
+function _closeNotifOutside(e) {
+  const panel = document.getElementById('notif-panel');
+  const btn   = document.getElementById('btn-notif');
+  if (!panel?.contains(e.target) && !btn?.contains(e.target)) {
+    _notifOpen = false;
+    panel?.classList.remove('open');
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    if (document.getElementById('global-search-overlay').style.display === 'flex') fecharGlobalSearch();
+    else abrirGlobalSearch();
+  } else if (e.key === 'Escape' && document.getElementById('global-search-overlay').style.display === 'flex') {
+    fecharGlobalSearch();
+  }
+});
+
 // ── Canvas de nós animado na tela de login ────────────────────────────────
 let _lcRaf = null, _lcNodes = [], _lcMouse = { x: -9999, y: -9999 };
 const _LC_DEFAULTS = { count: 60, dist: 110, speed: 4 };
