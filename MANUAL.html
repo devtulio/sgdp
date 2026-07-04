@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.10.1</title>
+<title>Manual Operacional — SGDP v1.11.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -87,7 +87,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.10.1</div>
+    <div class="cover-version">Versão 1.11.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -608,6 +608,18 @@
   <ul>
     <li>Canvas não iniciava por ser chamado antes do layout terminar — corrigido com <code>requestAnimationFrame</code></li>
     <li>Canvas não voltava após logout — <code>sair()</code> agora reinicia a animação ao exibir a tela de login</li>
+  </ul>
+
+  <h3>v1.11.0 — 04/07/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Suíte de testes automatizados</strong> (<code>tests/test_server.py</code>) — sobe o servidor real contra um banco temporário e testa login, CRUD de documentos, numeração automática, lembretes, auditoria, backup e sincronização, usando apenas <code>unittest</code> da biblioteca padrão</li>
+    <li><strong>Fallback de Python portátil</strong> — <code>Iniciar SGDP.bat</code> detecta a ausência do Python no sistema e extrai automaticamente uma versão embarcável incluída no projeto (<code>python-3.12.9-embed-amd64.zip</code>), sem exigir instalação ou privilégio de administrador — útil em servidores corporativos com Python bloqueado por política de TI</li>
+  </ul>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Numeração incorreta em documentos com tipo/ano inéditos</strong> — <code>_create_doc</code> capturava o id do documento recém-criado via <code>SELECT last_insert_rowid()</code> <em>depois</em> de chamar <code>bump_contador()</code>, que na primeira vez que um tipo/ano é usado também faz um <code>INSERT</code> (na tabela de contadores) — sobrescrevendo o <code>last_insert_rowid()</code> e fazendo o sistema tentar buscar um documento com o id errado. Encontrado pela nova suíte de testes; corrigido capturando o id imediatamente após o <code>INSERT</code> do documento, antes de <code>bump_contador()</code>.</li>
+    <li><strong>Vazamento de conexões SQLite</strong> — <code>get_db()</code> nunca fechava a conexão ao final de cada <code>with get_db() as conn:</code>; corrigido com uma subclasse de conexão que fecha automaticamente ao sair do bloco.</li>
   </ul>
 
   <h3>v1.10.1 — 04/07/2026</h3>

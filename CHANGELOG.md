@@ -18,6 +18,18 @@
 
 ---
 
+## [1.11.0] — 2026-07-04
+
+### Adicionado
+- **Suíte de testes automatizados** (`tests/test_server.py`) — testa login, CRUD de documentos, numeração automática, lembretes, auditoria, backup e sincronização usando `unittest` da stdlib
+- **Fallback de Python portátil** — `Iniciar SGDP.bat` extrai automaticamente uma versão embarcável do Python (`python-3.12.9-embed-amd64.zip`) quando não há Python instalado no sistema, sem exigir instalação ou privilégio de administrador
+
+### Corrigido
+- **Numeração incorreta em documentos com tipo/ano inéditos** — `_create_doc` capturava o id via `SELECT last_insert_rowid()` depois de `bump_contador()`, que na primeira vez que um tipo/ano é usado também insere na tabela de contadores, sobrescrevendo o id capturado. Encontrado pela nova suíte de testes.
+- **Vazamento de conexões SQLite** — `get_db()` nunca fechava a conexão ao sair do `with`; corrigido com subclasse de conexão que fecha automaticamente.
+
+---
+
 ## [1.10.1] — 2026-07-04
 
 ### Corrigido

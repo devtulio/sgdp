@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.10.1-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.11.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -42,6 +42,9 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Google Chrome** ou **Microsoft Edge** (recomendado)
 - Windows 10/11
 
+> **Servidor sem Python instalado (ex.: Windows Server bloqueado por política de TI):**
+> o `Iniciar SGDP.bat` detecta automaticamente a ausência do Python e extrai uma versão portátil (embarcável, sem instalador) incluída no próprio projeto (`python-3.12.9-embed-amd64.zip`) para `C:\Python312-embed\` — não exige instalação nem privilégio de administrador.
+
 ---
 
 ## Instalação e uso
@@ -74,7 +77,10 @@ http://192.168.x.x:3001
 SGDP/
 ├── SGDP.html               # Frontend — aplicação web completa
 ├── server.py               # Servidor Python (API REST + SQLite + uploads)
+├── tests/                  # Suíte de testes automatizados do backend
+│   └── test_server.py
 ├── Iniciar SGDP.bat        # Inicializa o servidor
+├── python-3.12.9-embed-amd64.zip  # Python portátil (fallback se não houver Python instalado)
 ├── Criar Atalho SGDP.bat   # Cria atalho na área de trabalho com ícone
 ├── Criar Atalho SGDP.ps1   # Script PowerShell de criação do atalho
 ├── Diagnostico SGDP.bat    # Roda o diagnóstico de rede (clique duplo)
@@ -86,6 +92,16 @@ SGDP/
 ├── README.md
 ├── CHANGELOG.md
 └── MANUAL.html
+```
+
+---
+
+## Testes
+
+O sistema em si continua zero-dependência (Python stdlib + HTML puro). Há uma suíte de testes automatizados do backend (`server.py`), usando só `unittest` da stdlib — sobe o servidor real contra um banco e uploads temporários e testa os endpoints REST (login, documentos, lembretes, auditoria, backup e sincronização):
+
+```bash
+python -m unittest discover -s tests -v
 ```
 
 ---

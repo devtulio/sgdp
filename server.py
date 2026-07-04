@@ -1,4 +1,4 @@
-# SGDP v1.10.1 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.11.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -45,8 +45,18 @@ TIPOS = ('lei', 'decreto', 'portaria', 'parecer', 'oficio')
 
 # ── Banco de dados ────────────────────────────────────────────────────────────
 
+class _ConnAutoClose(sqlite3.Connection):
+    """sqlite3.Connection.__exit__ só faz commit/rollback da transação — não fecha
+    a conexão. Sem isso, todo `with get_db() as conn:` vaza uma conexão aberta por
+    chamada. Fecha a conexão junto, sem precisar alterar nenhum call site."""
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            return super().__exit__(exc_type, exc, tb)
+        finally:
+            self.close()
+
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, factory=_ConnAutoClose)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA foreign_keys=ON')
@@ -691,7 +701,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with get_db() as conn:
             numero = int(data['numero']) if data.get('numero') not in (None, '') else proximo_numero(conn, tipo, ano)
             try:
-                conn.execute(
+                cur = conn.execute(
                     'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,criado_por,atualizado_por)'
                     ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     (tipo, numero, ano, data_d, ementa,
@@ -701,8 +711,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                      data.get('ato_tipo') or '', data.get('cargo') or '',
                      s['user_id'], s['user_id'])
                 )
+                # captura o rowid ANTES de bump_contador — que pode fazer seu próprio
+                # INSERT em contadores na primeira vez que o tipo/ano é usado, o que
+                # sobrescreveria um last_insert_rowid() consultado depois dele
+                did = cur.lastrowid
                 bump_contador(conn, tipo, ano, numero)
-                did = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
                 audit(conn, s['user_id'], s['nome'], 'criar', did, f"{tipo} nº {numero}/{ano}")
                 conn.commit()
             except sqlite3.IntegrityError:
@@ -1204,7 +1217,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.10.1', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.11.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
@@ -1421,7 +1434,7 @@ def _do_json_backup(cfg=None):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.10.1', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.11.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
                   'arquivos': arqs, 'settings': settings}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:
