@@ -61,6 +61,8 @@ html.tema-roxo {
 
 /* ── Largura do conteúdo ─────────────────────────────────────────────────── */
 #main.layout-compacto .page-content { max-width: 1100px; margin: 0 auto; width: 100%; }
+.cfg-wrap { max-width: 700px; }
+#main:not(.layout-compacto) .cfg-wrap { max-width: none; }
 
 /* ── Tema escuro ─────────────────────────────────────────────────────────── */
 body.tema-escuro {
@@ -2239,7 +2241,7 @@ async function renderBackup(container) {
   const enabled = cfg.enabled !== false;
 
   target.innerHTML = `
-    <div style="max-width:700px">
+    <div class="cfg-wrap">
       <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px;margin-bottom:16px">
         <legend style="font-size:11px;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Backup de Dados</legend>
 
@@ -2604,7 +2606,7 @@ async function renderConfiguracoes(abaInicial) {
   const _corDestaque = localStorage.getItem('sgdp-tema-cor') || 'institucional';
 
   document.getElementById('page-content').innerHTML = `
-    <div style="max-width:700px">
+    <div class="cfg-wrap">
       <div class="cfg-tabs">
         <button class="cfg-tab${primeiraAba==='interface'?' active':''}" onclick="switchCfgTab('interface',this)">Interface</button>
         ${isAdmin ? `<button class="cfg-tab${primeiraAba==='org'?' active':''}" onclick="switchCfgTab('org',this)">Organização</button>` : ''}
