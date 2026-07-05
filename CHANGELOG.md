@@ -18,6 +18,15 @@
 
 ---
 
+## [1.12.0] — 2026-07-04
+
+### Adicionado
+- **Largura do conteúdo** — Configurações → Interface: Compacta (padrão) ou Expandida
+- **Cor de destaque** — Configurações → Interface: Institucional, Azul, Verde ou Roxo; altera botões, links e destaques em todo o sistema
+- Mesma lógica e paleta de cores do SGCD, para paridade visual entre os dois sistemas
+
+---
+
 ## [1.11.0] — 2026-07-04
 
 ### Adicionado

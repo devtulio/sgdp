@@ -42,6 +42,26 @@ a { color: var(--brand); text-decoration: none; }
 input, textarea, select, button { font-family: inherit; font-size: inherit; }
 button { cursor: pointer; }
 
+/* ── Temas de cor alternativos (cor de destaque) ────────────────────────── */
+html.tema-azul {
+  --brand:       #0066CC;
+  --brand-light: #e0eeff;
+  --brand-dark:  #0052a3;
+}
+html.tema-verde {
+  --brand:       #1a7a3c;
+  --brand-light: #dcfce7;
+  --brand-dark:  #145e2d;
+}
+html.tema-roxo {
+  --brand:       #5E2750;
+  --brand-light: #f5edf3;
+  --brand-dark:  #44193a;
+}
+
+/* ── Largura do conteúdo ─────────────────────────────────────────────────── */
+#main.layout-compacto .page-content { max-width: 1100px; margin: 0 auto; width: 100%; }
+
 /* ── Tema escuro ─────────────────────────────────────────────────────────── */
 body.tema-escuro {
   --gray-50:  #1a1f2e; --gray-100: #1e2436; --gray-200: #2a3040;
@@ -552,7 +572,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.11.0</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.12.0</span>
     </div>
   </div>
 </div>
@@ -2580,6 +2600,8 @@ async function renderConfiguracoes(abaInicial) {
 
   const _fs = localStorage.getItem('sgdp-ui-font') || 'normal';
   const _tema = localStorage.getItem('sgdp-ui-tema') || 'claro';
+  const _largura = localStorage.getItem('sgdp-layout-width') || 'compacto';
+  const _corDestaque = localStorage.getItem('sgdp-tema-cor') || 'institucional';
 
   document.getElementById('page-content').innerHTML = `
     <div style="max-width:700px">
@@ -2603,6 +2625,42 @@ async function renderConfiguracoes(abaInicial) {
               <option value="escuro" ${_tema==='escuro'?'selected':''}>Escuro — fundo escuro</option>
             </select>
             <p style="font-size:11px;color:var(--gray-500);margin-top:6px;line-height:1.4">A alteração é aplicada imediatamente.</p>
+          </fieldset>
+
+          <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
+            <legend style="font-size:11px;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Largura do conteúdo</legend>
+            <select id="cfg-ui-largura" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px;outline:none">
+              <option value="compacto"  ${_largura==='compacto' ?'selected':''}>Compacta — margens laterais confortáveis</option>
+              <option value="expandido" ${_largura==='expandido'?'selected':''}>Expandida — aproveita toda a tela útil</option>
+            </select>
+            <p style="font-size:11px;color:var(--gray-500);margin-top:6px;line-height:1.4">A alteração é aplicada imediatamente ao salvar.</p>
+          </fieldset>
+
+          <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
+            <legend style="font-size:11px;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Cor de destaque</legend>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                <input type="radio" name="cfg-tema-cor" value="institucional" ${_corDestaque==='institucional'?'checked':''} style="accent-color:#1a3a6b">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#1a3a6b"></span>
+                Institucional
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                <input type="radio" name="cfg-tema-cor" value="azul" ${_corDestaque==='azul'?'checked':''} style="accent-color:#0066CC">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#0066CC"></span>
+                Azul
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                <input type="radio" name="cfg-tema-cor" value="verde" ${_corDestaque==='verde'?'checked':''} style="accent-color:#1a7a3c">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#1a7a3c"></span>
+                Verde
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                <input type="radio" name="cfg-tema-cor" value="roxo" ${_corDestaque==='roxo'?'checked':''} style="accent-color:#5E2750">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#5E2750"></span>
+                Roxo
+              </label>
+            </div>
+            <p style="font-size:11px;color:var(--gray-500);margin-top:8px;line-height:1.4">Altera a cor de botões, links e destaques em todo o sistema.</p>
           </fieldset>
 
           <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
@@ -2781,13 +2839,28 @@ function applyUiPrefs() {
   const main = document.getElementById('main');
   if (main) main.style.zoom = { pequena: '0.88', normal: '1', grande: '1.14' }[font] || '1';
   document.body.classList.toggle('tema-escuro', tema === 'escuro');
+  _applyLayoutWidth(localStorage.getItem('sgdp-layout-width') || 'compacto');
+  _applyTemaCor(localStorage.getItem('sgdp-tema-cor') || 'institucional');
+}
+
+function _applyLayoutWidth(val) {
+  document.getElementById('main')?.classList.toggle('layout-compacto', val !== 'expandido');
+}
+
+function _applyTemaCor(val) {
+  document.documentElement.classList.remove('tema-azul', 'tema-verde', 'tema-roxo');
+  if (val && val !== 'institucional') document.documentElement.classList.add('tema-' + val);
 }
 
 function salvarInterface() {
   const font = document.getElementById('cfg-ui-font')?.value  || 'normal';
   const tema = document.getElementById('cfg-ui-tema')?.value  || 'claro';
+  const largura = document.getElementById('cfg-ui-largura')?.value || 'compacto';
+  const corDestaque = document.querySelector('input[name="cfg-tema-cor"]:checked')?.value || 'institucional';
   localStorage.setItem('sgdp-ui-font',  font);
   localStorage.setItem('sgdp-ui-tema',  tema);
+  localStorage.setItem('sgdp-layout-width', largura);
+  localStorage.setItem('sgdp-tema-cor', corDestaque);
   applyUiPrefs();
   toast('Preferências salvas.', 'success');
 }
