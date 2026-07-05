@@ -18,6 +18,13 @@
 
 ---
 
+## [1.12.1] — 2026-07-04
+
+### Corrigido
+- **Configurações não expandia com Largura do Conteúdo = Expandida** — o painel de Configurações (e a aba Backup) tinha `max-width:700px` fixo, ignorando a opção escolhida. Corrigido usando a mesma classe/toggle das demais telas.
+
+---
+
 ## [1.12.0] — 2026-07-04
 
 ### Adicionado
