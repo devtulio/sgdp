@@ -18,6 +18,13 @@
 
 ---
 
+## [1.12.2] — 2026-07-04
+
+### Corrigido
+- **Configurações não centralizada no modo Compacta** — a classe `.cfg-wrap`, introduzida na correção anterior (v1.12.1) para o modo Expandida, ficou sem `margin: 0 auto`, deixando o painel de Configurações alinhado à esquerda no modo Compacta (padrão).
+
+---
+
 ## [1.12.1] — 2026-07-04
 
 ### Corrigido
