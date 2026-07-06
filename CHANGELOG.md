@@ -5,6 +5,12 @@
 
 ---
 
+## [1.12.4] — 2026-07-06
+
+### Corrigido
+- **Console crashava em ambiente não-UTF8** — prints com caracteres de caixa (╔═╗) e emojis quebravam com `UnicodeEncodeError` em consoles Windows usando cp1252/cp850; o servidor nem chegava a iniciar. Corrigido forçando UTF-8 em stdout/stderr na inicialização — SGCD/SGCA já tinham essa correção, aplicada aqui também
+- **Seleção de modo travava em ambiente não-interativo** — `_selecionar_modo()` esperava input de teclado mesmo quando stdin não é um terminal (scripts, automação); adicionado o fallback `if not sys.stdin.isatty(): op = "2"` (assume modo servidor), já presente no SGCD/SGCA
+
 ## [1.12.3] — 2026-07-06
 
 ### Adicionado
