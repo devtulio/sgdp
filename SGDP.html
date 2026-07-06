@@ -6,6 +6,10 @@
 <title>SGDP — Procuradoria-Geral</title>
 <link rel="icon" type="image/x-icon" href="sgdp.ico">
 <style>
+html { font-size: 16px; }
+html.font-pequena { font-size: 14px; }
+html.font-grande  { font-size: 18px; }
+
 /* ── Variáveis ──────────────────────────────────────────────────────────── */
 :root {
   --brand:        #1a3a6b;
@@ -2850,8 +2854,9 @@ window.addEventListener('beforeunload', (e) => {
 function applyUiPrefs() {
   const font = localStorage.getItem('sgdp-ui-font') || 'normal';
   const tema = localStorage.getItem('sgdp-ui-tema') || 'claro';
-  const main = document.getElementById('main');
-  if (main) main.style.zoom = { pequena: '0.88', normal: '1', grande: '1.14' }[font] || '1';
+  document.documentElement.classList.remove('font-pequena', 'font-grande');
+  if (font === 'pequena') document.documentElement.classList.add('font-pequena');
+  if (font === 'grande')  document.documentElement.classList.add('font-grande');
   document.body.classList.toggle('tema-escuro', tema === 'escuro');
   _applyLayoutWidth(localStorage.getItem('sgdp-layout-width') || 'compacto');
   _applyTemaCor(localStorage.getItem('sgdp-tema-cor') || 'institucional');

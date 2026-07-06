@@ -600,19 +600,6 @@
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
 
-  <h3>v1.6.0 — 29/06/2026</h3>
-  <p><strong>Adicionado</strong></p>
-  <ul>
-    <li><strong>Canvas de nós animado na tela de login</strong> — fundo ardósia com partículas flutuantes conectadas por linhas que reagem ao movimento do cursor; efeito visual idêntico ao SGCD</li>
-    <li><strong>Painel de configuração do efeito</strong> — botão ⚙️ no canto inferior direito da tela de login abre painel com sliders para ajustar quantidade de nós, distância de conexão e velocidade; configurações salvas automaticamente</li>
-    <li><strong>Exibição do órgão em modo rede</strong> — novo endpoint público <code>/api/public/org-info</code> retorna nome do órgão sem exigir login, exibindo o card institucional mesmo em acessos via IP em novos navegadores</li>
-  </ul>
-  <p><strong>Corrigido</strong></p>
-  <ul>
-    <li>Canvas não iniciava por ser chamado antes do layout terminar — corrigido com <code>requestAnimationFrame</code></li>
-    <li>Canvas não voltava após logout — <code>sair()</code> agora reinicia a animação ao exibir a tela de login</li>
-  </ul>
-
   <h3>v1.12.3 — 06/07/2026</h3>
   <p><strong>Adicionado</strong></p>
   <ul>
@@ -623,6 +610,7 @@
   <p><strong>Corrigido</strong></p>
   <ul>
     <li><strong>Cache do navegador após atualização</strong> — o servidor agora instrui o navegador a revalidar o SGDP.html a cada acesso; antes, após uma atualização de versão, o navegador podia continuar exibindo a versão antiga do sistema</li>
+    <li><strong>Ajuste de tamanho de fonte</strong> — a opção Pequena/Normal/Grande usava <code>zoom</code> no CSS (propriedade não padronizada); trocado para as mesmas classes <code>font-pequena</code>/<code>font-grande</code> do SGCD, aplicadas no elemento raiz</li>
   </ul>
 
   <h3>v1.12.2 — 04/07/2026</h3>
