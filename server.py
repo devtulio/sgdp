@@ -16,6 +16,15 @@ import logging
 import mimetypes
 from urllib.parse import urlparse, parse_qs
 
+# Windows: console pode usar cp1252/cp850 em vez de UTF-8, quebrando prints
+# com caracteres especiais (╔═╗, emojis). Força UTF-8 para evitar UnicodeEncodeError.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, 'reconfigure'):
+        try:
+            _stream.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass
+
 PORT              = 3001
 _BASE             = os.path.dirname(os.path.abspath(__file__))
 DB_PATH           = os.path.join(_BASE, 'sgdp.db')
@@ -1550,14 +1559,17 @@ def _selecionar_modo():
     print()
     print('  [3] Diagnóstico — Verifica rede, firewall e acessibilidade')
     print()
-    while True:
-        try:
-            op = input('  Opção [1/2/3]: ').strip()
-        except (EOFError, KeyboardInterrupt):
-            op = '1'
-        if op in ('1', '2', '3'):
-            break
-        print('  Digite 1, 2 ou 3.')
+    if not sys.stdin.isatty():
+        op = '2'
+    else:
+        while True:
+            try:
+                op = input('  Opção [1/2/3]: ').strip()
+            except (EOFError, KeyboardInterrupt):
+                op = '1'
+            if op in ('1', '2', '3'):
+                break
+            print('  Digite 1, 2 ou 3.')
     if op == '3':
         import importlib.util, pathlib
         diag = pathlib.Path(__file__).parent / 'diagnostico.py'
