@@ -1,4 +1,4 @@
-# SGDP v1.12.2 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.12.3 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -270,6 +270,13 @@ def audit(conn, uid, nome, acao, doc_id=None, detalhes=None):
 # ── HTTP Handler ──────────────────────────────────────────────────────────────
 
 class SGDPHandler(http.server.SimpleHTTPRequestHandler):
+
+    def end_headers(self):
+        # SGDP.html/JS mudam com frequência entre versões; sem isso o navegador
+        # pode servir do cache sem revalidar com o servidor (heurística por Last-Modified).
+        if self.command == 'GET' and urlparse(self.path).path.rstrip('/').endswith(('.html', '.js', '.css')):
+            self.send_header('Cache-Control', 'no-cache, must-revalidate')
+        super().end_headers()
 
     def do_OPTIONS(self):
         self.send_response(200)
@@ -1217,7 +1224,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.12.2', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.12.3', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
@@ -1434,7 +1441,7 @@ def _do_json_backup(cfg=None):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.12.2', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.12.3', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
                   'arquivos': arqs, 'settings': settings}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:

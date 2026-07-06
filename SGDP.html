@@ -574,7 +574,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.12.2</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.12.3</span>
     </div>
   </div>
 </div>
@@ -669,7 +669,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.12.2
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.12.3
     </footer>
   </main>
 </div>
@@ -679,7 +679,7 @@ tr:hover td { background: var(--gray-50); }
   <div class="modal">
     <div class="modal-hd">
       <h2 id="modal-doc-titulo">Novo Documento</h2>
-      <button class="btn-close" onclick="fecharModal('modal-doc')">✕</button>
+      <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-doc')">✕</button>
     </div>
     <div class="modal-body" id="modal-doc-body">
       <div class="form-row cols-3">
@@ -839,7 +839,7 @@ tr:hover td { background: var(--gray-50); }
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-outline btn-sm" onclick="imprimirPdf()">🖨 Imprimir / Salvar PDF</button>
         <a id="pdf-download" href="#" class="btn btn-outline btn-sm" download>⬇ Baixar</a>
-        <button class="btn-close" onclick="fecharModal('modal-pdf')">✕</button>
+        <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-pdf')">✕</button>
       </div>
     </div>
     <div class="modal-body">
@@ -853,7 +853,7 @@ tr:hover td { background: var(--gray-50); }
   <div class="modal">
     <div class="modal-hd">
       <h2 id="modal-user-titulo">Novo Usuário</h2>
-      <button class="btn-close" onclick="fecharModal('modal-usuario')">✕</button>
+      <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-usuario')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-row">
@@ -897,7 +897,7 @@ tr:hover td { background: var(--gray-50); }
   <div class="modal">
     <div class="modal-hd">
       <h2>Novo Lembrete</h2>
-      <button class="btn-close" onclick="fecharModal('modal-lembrete')">✕</button>
+      <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-lembrete')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -921,7 +921,7 @@ tr:hover td { background: var(--gray-50); }
   <div class="modal">
     <div class="modal-hd">
       <h2>Enviar por E-mail — <span id="email-doc-label"></span></h2>
-      <button class="btn-close" onclick="fecharModal('modal-email')">✕</button>
+      <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-email')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -949,7 +949,7 @@ tr:hover td { background: var(--gray-50); }
   <div class="modal">
     <div class="modal-hd">
       <h2>Importar Documentos via CSV</h2>
-      <button class="btn-close" onclick="fecharModal('modal-csv')">✕</button>
+      <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-csv')">✕</button>
     </div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">
@@ -971,7 +971,7 @@ tr:hover td { background: var(--gray-50); }
   <div class="modal">
     <div class="modal-hd">
       <h2 id="confirm-titulo">Confirmar ação</h2>
-      <button class="btn-close" onclick="confirmarResp(false)">✕</button>
+      <button class="btn-close" aria-label="Fechar" onclick="confirmarResp(false)">✕</button>
     </div>
     <div class="modal-body" id="confirm-msg"></div>
     <div class="modal-ft">
@@ -997,7 +997,7 @@ tr:hover td { background: var(--gray-50); }
 <div id="notif-panel">
   <div class="notif-header">
     <span>Alertas</span>
-    <button onclick="toggleNotificacoes()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:.85rem">✕</button>
+    <button onclick="toggleNotificacoes()" aria-label="Fechar notificações" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:.85rem">✕</button>
   </div>
   <div id="notif-list"></div>
 </div>
@@ -1510,7 +1510,7 @@ async function renderDocumentos(tipo, page = 1) {
         <div class="td-acoes">
           <button class="btn btn-outline btn-sm" onclick="abrirEditarDoc(${doc.id})">✎ Editar</button>
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalEmail(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Enviar por e-mail">✉</button>
-          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')">✕</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Excluir" aria-label="Excluir documento">✕</button>
         </div>
       </td>
     </tr>
@@ -1790,7 +1790,7 @@ async function renderAgenda() {
       <td>${esc(l.titulo)}</td>
       <td style="${atrasado ? 'color:var(--red);font-weight:600' : ''}">${fmtData(l.data_prazo)}${atrasado ? ' (atrasado)' : ''}</td>
       <td>${l.documento_id ? `<span class="badge-tipo tipo-${l.doc_tipo}">${fmtNum(l.doc_numero, l.doc_ano)}</span>` : '—'}</td>
-      <td><button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirLembrete(${l.id})">✕</button></td>
+      <td><button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirLembrete(${l.id})" title="Excluir" aria-label="Excluir lembrete">✕</button></td>
     </tr>`;
   }).join('') : `<tr class="empty-row"><td colspan="5">Nenhum lembrete cadastrado.</td></tr>`;
   document.getElementById('page-content').innerHTML = `
@@ -2836,6 +2836,15 @@ async function salvarSmtp() {
   toast('Configuração de e-mail salva.', 'success');
   document.getElementById('smtp-pass').value = '';
 }
+
+// Avisa antes de fechar/recarregar com o formulário de documento aberto,
+// para não perder dados digitados. Os demais modais são de baixo custo de perda.
+window.addEventListener('beforeunload', (e) => {
+  if (document.getElementById('modal-doc')?.classList.contains('open')) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 
 // ── Interface ─────────────────────────────────────────────────────────────────
 function applyUiPrefs() {

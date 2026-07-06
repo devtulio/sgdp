@@ -5,6 +5,16 @@
 
 ---
 
+## [1.12.3] — 2026-07-06
+
+### Adicionado
+- **Ferramentas de lint de desenvolvimento** (`package.json`, `eslint.config.js`, `scripts/lint.mjs`) — extrai os `<script>` do SGDP.html e roda ESLint (`no-undef`), no mesmo padrão do SGCD/SGCA; não afeta o runtime, que continua zero-dependência
+- **Aviso ao fechar com formulário aberto** — `beforeunload` alerta antes de fechar/recarregar a página com o modal de documento aberto, evitando perda de dados digitados
+- **`aria-label` nos botões de ícone** — botões de fechar modais (✕), excluir documento/lembrete e fechar notificações agora têm rótulo acessível para leitores de tela
+
+### Corrigido
+- **Cache do navegador após atualização de versão** — o servidor agora envia `Cache-Control: no-cache, must-revalidate` para `.html/.js/.css` (mesmo comportamento do SGCD/SGCA); sem isso o navegador podia continuar servindo uma versão antiga do SGDP.html após update
+
 ## [1.6.0] — 2026-06-29
 
 ### Adicionado

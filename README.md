@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.12.2-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.12.3-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -103,6 +103,13 @@ O sistema em si continua zero-dependência (Python stdlib + HTML puro). Há uma 
 
 ```bash
 python -m unittest discover -s tests -v
+```
+
+Para quem for alterar o código, há também um lint opcional que verifica variáveis indefinidas no JavaScript de `SGDP.html`:
+
+```bash
+npm install   # uma vez, instala apenas o ESLint (ferramenta de dev, não é usada em produção)
+npm run lint
 ```
 
 ---
