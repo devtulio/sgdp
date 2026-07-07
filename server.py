@@ -49,6 +49,7 @@ os.makedirs(BACKUP_DIR,  exist_ok=True)
 _had_session      = False   # True após primeiro login; evita encerramento antes de qualquer usuário logar
 _modo_servidor    = False   # True = modo servidor contínuo (sem encerramento automático)
 _backup_pos_sess  = False   # True = backup pós-sessão já executado; aguarda nova sessão para resetar
+_watchdog_paused  = False   # pausa o watchdog durante diálogos bloqueantes (ex: FolderBrowser)
 
 TIPOS = ('lei', 'decreto', 'portaria', 'parecer', 'oficio')
 
@@ -536,6 +537,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
         elif p == '/api/dialog/folder':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
+            global _watchdog_paused
+            _watchdog_paused = True
             try:
                 ps_cmd = (
                     'Add-Type -AssemblyName System.Windows.Forms;'
@@ -549,6 +552,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {'path': r.stdout.strip() or None})
             except Exception as e:
                 self._json(500, {'error': str(e)})
+            finally:
+                _watchdog_paused = False
 
         elif p == '/api/config':
             cfg = get_config()
@@ -1683,6 +1688,8 @@ def _watchdog():
     # causa encerramento do servidor em no máximo ~20 segundos.
     while True:
         time.sleep(5)
+        if _watchdog_paused:
+            continue
         with get_db() as conn:
             conn.execute('DELETE FROM sessions WHERE expires<?', (time.time(),))
         _check_shutdown()
