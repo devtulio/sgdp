@@ -5,6 +5,16 @@
 
 ---
 
+## [1.13.1] — 2026-07-06
+
+### Corrigido
+- **Encerramento lento do servidor** — `_check_shutdown()` fazia um `PRAGMA wal_checkpoint(TRUNCATE)` manual antes de `os._exit(0)`, passo que não existe no SGCA/SGCD e atrasava o desligamento; removido
+
+### Alterado
+- **Configurações de SMTP alinhadas ao SGCD** — chaves renomeadas (`smtp_from` → `smtp_from_name`, `smtp_tls` → `smtp_require_tls`, `notificacao_email` → `smtp_to`) e adicionadas `smtp_secure` (SSL direto) e `smtp_ignore_ssl`, com migração automática das configurações já salvas
+
+---
+
 ## [1.13.0] — 2026-07-06
 
 ### Adicionado

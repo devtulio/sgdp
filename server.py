@@ -1,4 +1,4 @@
-# SGDP v1.13.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.13.1 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -160,8 +160,9 @@ def init_db():
             ('backup_path',          BACKUP_DIR),
             ('auto_backup_enabled',  '1'),
             ('auto_backup_keep',     str(BACKUP_KEEP)),
-            ('smtp_host', ''), ('smtp_port', '587'), ('smtp_user', ''),
-            ('smtp_pass', ''), ('smtp_from', ''), ('smtp_tls', '1'),
+            ('smtp_host', ''), ('smtp_port', '587'), ('smtp_user', ''), ('smtp_pass', ''),
+            ('smtp_secure', '0'), ('smtp_require_tls', '1'), ('smtp_ignore_ssl', '0'),
+            ('smtp_from_name', ''), ('smtp_to', ''),
         ])
         # Migrações de colunas
         cols = [r[1] for r in conn.execute('PRAGMA table_info(documentos)').fetchall()]
@@ -176,7 +177,20 @@ def init_db():
         if 'email' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN email TEXT DEFAULT ''")
         cols_lem = [r[1] for r in conn.execute('PRAGMA table_info(lembretes)').fetchall()]
         if 'notificado_em' not in cols_lem: conn.execute("ALTER TABLE lembretes ADD COLUMN notificado_em TEXT DEFAULT NULL")
-        conn.execute("INSERT OR IGNORE INTO sys_settings VALUES ('notificacao_email','')")
+        # Migração: alinha as chaves de SMTP com o padrão do SGCD (smtp_from -> smtp_from_name,
+        # smtp_tls -> smtp_require_tls, notificacao_email -> smtp_to)
+        old = {r['key']: r['value'] for r in conn.execute(
+            "SELECT key,value FROM sys_settings WHERE key IN ('smtp_from','smtp_tls','notificacao_email')")}
+        if old:
+            if 'smtp_from' in old:
+                conn.execute("INSERT OR REPLACE INTO sys_settings VALUES ('smtp_from_name',?)", (old['smtp_from'],))
+                conn.execute("DELETE FROM sys_settings WHERE key='smtp_from'")
+            if 'smtp_tls' in old:
+                conn.execute("INSERT OR REPLACE INTO sys_settings VALUES ('smtp_require_tls',?)", (old['smtp_tls'],))
+                conn.execute("DELETE FROM sys_settings WHERE key='smtp_tls'")
+            if 'notificacao_email' in old:
+                conn.execute("INSERT OR REPLACE INTO sys_settings VALUES ('smtp_to',?)", (old['notificacao_email'],))
+                conn.execute("DELETE FROM sys_settings WHERE key='notificacao_email'")
         # Sessões são descartadas a cada início do servidor (evita sessões órfãs)
         conn.execute('DELETE FROM sessions')
         conn.commit()
@@ -264,11 +278,6 @@ def _check_shutdown():
     if cfg['enabled']:
         _do_json_backup(cfg)
         _do_db_backup(cfg)
-    try:
-        with sqlite3.connect(DB_PATH) as c:
-            c.execute('PRAGMA wal_checkpoint(TRUNCATE)')
-    except Exception:
-        pass
     os._exit(0)
 
 # ── Helpers de domínio ────────────────────────────────────────────────────────
@@ -406,7 +415,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             cfg = get_config()
             self._json(200, {k: cfg.get(k, '') for k in
-                             ('smtp_host','smtp_port','smtp_user','smtp_from','smtp_tls','notificacao_email')})
+                             ('smtp_host','smtp_port','smtp_user','smtp_secure','smtp_require_tls',
+                              'smtp_ignore_ssl','smtp_from_name','smtp_to')})
 
         elif re.fullmatch(r'/api/arquivos/\d+', p):
             self._download_arquivo(int(p.split('/')[-1]), qs)
@@ -938,7 +948,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
     def _update_smtp(self, body, s):
         data = json.loads(body) if body else {}
-        allowed = ('smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_tls','notificacao_email')
+        allowed = ('smtp_host','smtp_port','smtp_user','smtp_pass','smtp_secure','smtp_require_tls',
+                   'smtp_ignore_ssl','smtp_from_name','smtp_to')
         with get_db() as conn:
             for k in allowed:
                 if k in data:
@@ -955,19 +966,17 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         corpo        = data.get('body') or ''
         if not destinatario: self._json(400, {'error': 'Destinatário obrigatório'}); return
         cfg = get_config()
-        host, port = cfg.get('smtp_host',''), int(cfg.get('smtp_port') or 587)
-        if not host: self._json(400, {'error': 'SMTP não configurado. Configure em Configurações → Segurança.'}); return
+        if not cfg.get('smtp_host'): self._json(400, {'error': 'SMTP não configurado. Configure em Configurações → Segurança.'}); return
         with get_db() as conn:
             doc = conn.execute(
                 'SELECT d.*, a.nome_original, a.nome_disco FROM documentos d LEFT JOIN arquivos a ON d.arquivo_id=a.id WHERE d.id=?',
                 (did,)).fetchone()
         if not doc: self._json(404, {'error': 'Documento não encontrado'}); return
         try:
-            import smtplib
             from email.message import EmailMessage
             msg = EmailMessage()
             msg['Subject'] = assunto or f"{doc['tipo'].capitalize()} nº {doc['numero']}/{doc['ano']}"
-            msg['From'] = cfg.get('smtp_from') or cfg.get('smtp_user')
+            msg['From'] = f"{cfg.get('smtp_from_name') or 'SGDP'} <{cfg.get('smtp_user')}>"
             msg['To'] = destinatario
             msg.set_content(corpo or doc['ementa'])
             if doc['nome_disco']:
@@ -976,10 +985,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                     with open(fp, 'rb') as f:
                         msg.add_attachment(f.read(), maintype='application', subtype='pdf',
                                            filename=doc['nome_original'] or 'documento.pdf')
-            with smtplib.SMTP(host, port, timeout=15) as smtp:
-                if cfg.get('smtp_tls', '1') == '1': smtp.starttls()
-                if cfg.get('smtp_user'): smtp.login(cfg['smtp_user'], cfg.get('smtp_pass',''))
-                smtp.send_message(msg)
+            _smtp_send(cfg, msg)
             with get_db() as conn:
                 audit(conn, s['user_id'], s['nome'], 'enviar_email', did, f"Para {destinatario}")
                 conn.commit()
@@ -1268,7 +1274,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.13.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.13.1', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
@@ -1485,7 +1491,7 @@ def _do_json_backup(cfg=None):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.13.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.13.1', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
                   'arquivos': arqs, 'settings': settings}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:
@@ -1541,20 +1547,34 @@ def _backup_loop():
             _do_db_backup(cfg)
             _rotate_backups(cfg)
 
-def _send_plain_email(cfg, to, subject, body):
-    import smtplib
-    from email.message import EmailMessage
+def _smtp_send(cfg, msg):
+    """Conecta e envia usando as mesmas opções (SSL/STARTTLS/ignorar SSL) do SGCD."""
+    import smtplib, ssl
     host, port = cfg.get('smtp_host', ''), int(cfg.get('smtp_port') or 587)
-    if not host or not to: return False
+    ctx = ssl.create_default_context()
+    if cfg.get('smtp_ignore_ssl') == '1':
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    if cfg.get('smtp_secure') == '1':
+        with smtplib.SMTP_SSL(host, port, context=ctx, timeout=15) as smtp:
+            if cfg.get('smtp_user'): smtp.login(cfg['smtp_user'], cfg.get('smtp_pass', ''))
+            smtp.send_message(msg)
+    else:
+        with smtplib.SMTP(host, port, timeout=15) as smtp:
+            smtp.ehlo()
+            if cfg.get('smtp_require_tls', '1') == '1': smtp.starttls(context=ctx)
+            if cfg.get('smtp_user'): smtp.login(cfg['smtp_user'], cfg.get('smtp_pass', ''))
+            smtp.send_message(msg)
+
+def _send_plain_email(cfg, to, subject, body):
+    from email.message import EmailMessage
+    if not cfg.get('smtp_host') or not to: return False
     msg = EmailMessage()
     msg['Subject'] = subject
-    msg['From'] = cfg.get('smtp_from') or cfg.get('smtp_user')
+    msg['From'] = f"{cfg.get('smtp_from_name') or 'SGDP'} <{cfg.get('smtp_user')}>"
     msg['To'] = to
     msg.set_content(body)
-    with smtplib.SMTP(host, port, timeout=15) as smtp:
-        if cfg.get('smtp_tls', '1') == '1': smtp.starttls()
-        if cfg.get('smtp_user'): smtp.login(cfg['smtp_user'], cfg.get('smtp_pass', ''))
-        smtp.send_message(msg)
+    _smtp_send(cfg, msg)
     return True
 
 def _lembrete_notify_loop():
@@ -1570,7 +1590,7 @@ def _lembrete_notify_loop():
                        WHERE l.concluido=0 AND l.notificado_em IS NULL AND l.data_prazo<=?''',
                     (hoje,)).fetchall()
                 for r in rows:
-                    destino = (r['criador_email'] or '').strip() or cfg.get('notificacao_email', '').strip()
+                    destino = (r['criador_email'] or '').strip() or cfg.get('smtp_to', '').strip()
                     if destino:
                         try:
                             _send_plain_email(cfg, destino, f'Lembrete SGDP vencendo: {r["titulo"]}',

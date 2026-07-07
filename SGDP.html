@@ -578,7 +578,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.13.0</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.13.1</span>
     </div>
   </div>
 </div>
@@ -673,7 +673,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.13.0
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.13.1
     </footer>
   </main>
 </div>
@@ -2815,18 +2815,26 @@ async function renderConfiguracoes(abaInicial) {
           ${isAdmin ? `
           <div class="cfg-section" style="margin-top:24px">
             <h3>Servidor de E-mail (SMTP)</h3>
-            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Usado para enviar documentos por e-mail direto do sistema.</p>
+            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Usado para enviar documentos por e-mail e para avisos automáticos de prazo.</p>
             <div class="form-row cols-2">
-              <div class="form-group"><label>Servidor SMTP</label><input id="smtp-host" type="text" placeholder="smtp.gmail.com"></div>
-              <div class="form-group"><label>Porta</label><input id="smtp-port" type="number" placeholder="587"></div>
+              <div class="form-group"><label>Servidor SMTP (host)</label><input id="smtp-host" type="text" placeholder="ex: smtp.gmail.com"></div>
+              <div class="form-group"><label>Porta</label><input id="smtp-port" type="number" placeholder="587" style="max-width:120px"></div>
             </div>
-            <div class="form-row cols-2">
-              <div class="form-group"><label>Usuário</label><input id="smtp-user" type="text" placeholder="usuario@dominio.com"></div>
-              <div class="form-group"><label>Senha</label><input id="smtp-pass" type="password" placeholder="••••••••"></div>
+            <div class="form-row" style="gap:16px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer"><input id="smtp-require-tls" type="checkbox" style="width:15px;height:15px"> Usar STARTTLS (porta 587)</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer"><input id="smtp-secure" type="checkbox" style="width:15px;height:15px"> Usar SSL direto (porta 465)</label>
             </div>
-            <div class="form-group"><label>Remetente (From)</label><input id="smtp-from" type="text" placeholder="procuradoria@municipio.gov.br"></div>
-            <div class="form-group"><label>E-mail padrão para avisos de prazo</label><input id="notificacao-email" type="email" placeholder="procuradoria@municipio.gov.br"></div>
-            <p style="font-size:11px;color:var(--gray-400);margin:-6px 0 10px">Usado quando o lembrete não tiver responsável com e-mail cadastrado.</p>
+            <div class="form-row">
+              <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
+                <input id="smtp-ignore-ssl" type="checkbox" style="width:15px;height:15px">
+                Ignorar verificação de certificado SSL (redes com proxy/antivírus)
+              </label>
+            </div>
+            <div class="form-group"><label>Usuário (e-mail de envio)</label><input id="smtp-user" type="email" placeholder="ex: procuradoria@municipio.gov.br"></div>
+            <div class="form-group"><label>Senha</label><input id="smtp-pass" type="password" autocomplete="new-password"></div>
+            <div class="form-group"><label>Nome do remetente</label><input id="smtp-from-name" type="text" placeholder="SGDP — Procuradoria"></div>
+            <div class="form-group"><label>E-mail interno (destinatário padrão)</label><input id="smtp-to" type="email" placeholder="ex: procuradoria@municipio.gov.br"></div>
+            <p style="font-size:11px;color:var(--gray-400);margin:-6px 0 10px">Usado nos avisos de prazo quando o lembrete não tiver responsável com e-mail cadastrado.</p>
             <button class="btn btn-primary btn-sm" onclick="salvarSmtp()">Salvar SMTP</button>
           </div>` : ''}
         </div>
@@ -2889,19 +2897,24 @@ async function _carregarSmtp() {
   if (!d) return;
   document.getElementById('smtp-host').value = d.smtp_host || '';
   document.getElementById('smtp-port').value = d.smtp_port || '587';
+  document.getElementById('smtp-require-tls').checked = d.smtp_require_tls !== '0';
+  document.getElementById('smtp-secure').checked = d.smtp_secure === '1';
+  document.getElementById('smtp-ignore-ssl').checked = d.smtp_ignore_ssl === '1';
   document.getElementById('smtp-user').value = d.smtp_user || '';
-  document.getElementById('smtp-from').value = d.smtp_from || '';
-  const el2 = document.getElementById('notificacao-email');
-  if (el2) el2.value = d.notificacao_email || '';
+  document.getElementById('smtp-from-name').value = d.smtp_from_name || '';
+  document.getElementById('smtp-to').value = d.smtp_to || '';
 }
 
 async function salvarSmtp() {
   const body = {
     smtp_host: document.getElementById('smtp-host').value.trim(),
     smtp_port: document.getElementById('smtp-port').value.trim(),
+    smtp_require_tls: document.getElementById('smtp-require-tls').checked ? '1' : '0',
+    smtp_secure: document.getElementById('smtp-secure').checked ? '1' : '0',
+    smtp_ignore_ssl: document.getElementById('smtp-ignore-ssl').checked ? '1' : '0',
     smtp_user: document.getElementById('smtp-user').value.trim(),
-    smtp_from: document.getElementById('smtp-from').value.trim(),
-    notificacao_email: (document.getElementById('notificacao-email')?.value || '').trim(),
+    smtp_from_name: document.getElementById('smtp-from-name').value.trim(),
+    smtp_to: document.getElementById('smtp-to').value.trim(),
   };
   const senha = document.getElementById('smtp-pass').value;
   if (senha) body.smtp_pass = senha;
