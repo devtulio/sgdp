@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.12.5-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.13.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -34,6 +34,8 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Envio por e-mail** — anexa o PDF assinado e envia via SMTP configurável
 - **Importação em lote via CSV** — cadastro de múltiplos documentos de uma vez
 - **Personalização visual** — largura do conteúdo (compacta/expandida) e cor de destaque (institucional/azul/verde/roxo)
+- **Histórico de revisões** — cada edição de documento guarda os campos anteriores, com autor e data/hora
+- **Notificação de prazo por e-mail** — avisa automaticamente o responsável (ou um e-mail padrão) quando um lembrete vence
 
 ---
 

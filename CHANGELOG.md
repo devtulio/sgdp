@@ -5,6 +5,14 @@
 
 ---
 
+## [1.13.0] — 2026-07-06
+
+### Adicionado
+- **Histórico de revisões de documentos** — cada edição de um documento salva os campos anteriores em `documento_revisoes`; novo endpoint `GET /api/documentos/<id>/revisoes` e botão 🕘 na lista de documentos mostram autor e data/hora de cada alteração
+- **Notificação de prazo por e-mail** — loop em background (`_lembrete_notify_loop`) verifica a cada hora os lembretes vencidos e não notificados, enviando e-mail para o responsável (novo campo `email` em usuários) ou para um e-mail padrão configurável em Configurações → Segurança (`notificacao_email`)
+
+---
+
 ## [1.12.5] — 2026-07-06
 
 ### Corrigido

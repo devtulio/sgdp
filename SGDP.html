@@ -578,7 +578,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.12.5</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.13.0</span>
     </div>
   </div>
 </div>
@@ -673,7 +673,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.12.5
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.13.0
     </footer>
   </main>
 </div>
@@ -877,6 +877,12 @@ tr:hover td { background: var(--gray-50); }
         </div>
       </div>
       <div class="form-row">
+        <div class="form-group">
+          <label>E-mail <span style="color:var(--gray-400);font-weight:400">(recebe avisos de prazo de lembretes)</span></label>
+          <input id="u-email" type="email" placeholder="Ex: joao.silva@procuradoria.gov.br">
+        </div>
+      </div>
+      <div class="form-row">
         <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
           <input id="u-admin" type="checkbox" style="width:auto">
           <label for="u-admin" style="font-weight:600;cursor:pointer">Administrador (acesso total)</label>
@@ -944,6 +950,20 @@ tr:hover td { background: var(--gray-50); }
     <div class="modal-ft">
       <button class="btn btn-outline" onclick="fecharModal('modal-email')">Cancelar</button>
       <button class="btn btn-primary" onclick="enviarEmailDoc()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Histórico de Revisões ────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-historico">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>Histórico de Revisões — <span id="hist-doc-label"></span></h2>
+      <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-historico')">✕</button>
+    </div>
+    <div class="modal-body" id="hist-doc-body"></div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="fecharModal('modal-historico')">Fechar</button>
     </div>
   </div>
 </div>
@@ -1513,6 +1533,7 @@ async function renderDocumentos(tipo, page = 1) {
       <td>
         <div class="td-acoes">
           <button class="btn btn-outline btn-sm" onclick="abrirEditarDoc(${doc.id})">✎ Editar</button>
+          <button class="btn btn-outline btn-sm btn-icon" onclick="abrirHistoricoDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Histórico de revisões">🕘</button>
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalEmail(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Enviar por e-mail">✉</button>
           <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Excluir" aria-label="Excluir documento">✕</button>
         </div>
@@ -1849,6 +1870,39 @@ async function _atualizarBadgeAgenda() {
   el.textContent = n;
 }
 
+// ── Histórico de revisões ────────────────────────────────────────────────────
+const _REVISAO_CAMPOS = {
+  ementa: 'Ementa', partes: 'Partes', observacoes: 'Observações', data: 'Data',
+  assunto: 'Assunto', numero: 'Número', ano: 'Ano',
+  processo_pa: 'Processo/PA', processo_tipo: 'Tipo de processo', processo_ref: 'Referência do processo',
+  ato_tipo: 'Tipo de ato', cargo: 'Cargo',
+};
+
+async function abrirHistoricoDoc(id, label) {
+  document.getElementById('hist-doc-label').textContent = label;
+  const body = document.getElementById('hist-doc-body');
+  body.innerHTML = '<div class="skeleton skeleton-card"></div>';
+  abrirModal('modal-historico');
+  const r = await API.get(`/api/documentos/${id}/revisoes`);
+  const d = await API.json(r);
+  const items = d?.items || [];
+  if (!items.length) {
+    body.innerHTML = '<p style="color:var(--gray-400)">Nenhuma revisão anterior — o documento não foi editado desde a criação.</p>';
+    return;
+  }
+  body.innerHTML = items.map(it => `
+    <div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px 14px;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:6px">
+        <strong>${esc(it.editado_por_nome || 'Usuário removido')}</strong> — antes da edição de ${fmtDataHora(it.editado_em)}
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px">
+        ${Object.entries(_REVISAO_CAMPOS).filter(([k]) => it.dados[k] !== undefined && it.dados[k] !== '' && it.dados[k] !== null)
+          .map(([k, label]) => `<li><strong>${label}:</strong> ${esc(String(it.dados[k]))}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
 // ── E-mail ───────────────────────────────────────────────────────────────────
 function abrirModalEmail(id, label) {
   S.emailDocId = id;
@@ -2046,7 +2100,7 @@ async function renderUsuarios(container) {
         <div class="uc-user">@${esc(u.username)}</div>
       </div>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-outline btn-sm" onclick="abrirEditarUsuario(${u.id},'${esc(u.nome)}','${esc(u.username)}',${u.admin},${u.ativo})">✎ Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="abrirEditarUsuario(${u.id},'${esc(u.nome)}','${esc(u.username)}',${u.admin},${u.ativo},'${esc(u.email || '')}')">✎ Editar</button>
         ${u.id !== S.user.id ? `<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="excluirUsuario(${u.id},'${esc(u.nome)}')">✕</button>` : ''}
       </div>
     </div>
@@ -2063,12 +2117,13 @@ function abrirNovoUsuario() {
   document.getElementById('u-username').disabled = false;
   document.getElementById('u-senha').value = '';
   document.getElementById('u-senha-label').innerHTML = 'Senha <span style="color:var(--red)">*</span>';
+  document.getElementById('u-email').value = '';
   document.getElementById('u-admin').checked = false;
   document.getElementById('u-ativo-row').style.display = 'none';
   abrirModal('modal-usuario');
 }
 
-function abrirEditarUsuario(id, nome, username, admin, ativo) {
+function abrirEditarUsuario(id, nome, username, admin, ativo, email) {
   S.editUid = id;
   document.getElementById('modal-user-titulo').textContent = 'Editar Usuário';
   document.getElementById('u-nome').value = nome;
@@ -2076,6 +2131,7 @@ function abrirEditarUsuario(id, nome, username, admin, ativo) {
   document.getElementById('u-username').disabled = true;
   document.getElementById('u-senha').value = '';
   document.getElementById('u-senha-label').innerHTML = 'Nova senha <span style="color:var(--gray-400);font-weight:400">(deixe em branco para não alterar)</span>';
+  document.getElementById('u-email').value = email || '';
   document.getElementById('u-admin').checked = !!admin;
   document.getElementById('u-ativo').checked = !!ativo;
   document.getElementById('u-ativo-row').style.display = '';
@@ -2085,18 +2141,19 @@ function abrirEditarUsuario(id, nome, username, admin, ativo) {
 async function salvarUsuario() {
   const nome  = document.getElementById('u-nome').value.trim();
   const senha = document.getElementById('u-senha').value;
+  const email = document.getElementById('u-email').value.trim();
   const admin = document.getElementById('u-admin').checked;
   if (!nome) { toast('Nome é obrigatório.', 'error'); return; }
   let r, d;
   if (S.editUid) {
-    const payload = { nome, admin, ativo: document.getElementById('u-ativo').checked };
+    const payload = { nome, admin, email, ativo: document.getElementById('u-ativo').checked };
     if (senha) payload.senha = senha;
     r = await API.put(`/api/usuarios/${S.editUid}`, payload);
   } else {
     const username = document.getElementById('u-username').value.trim();
     if (!username) { toast('Usuário é obrigatório.', 'error'); return; }
     if (!senha)    { toast('Senha é obrigatória.', 'error'); return; }
-    r = await API.post('/api/usuarios', { username, nome, senha, admin });
+    r = await API.post('/api/usuarios', { username, nome, senha, admin, email });
   }
   d = await API.json(r);
   if (!r.ok) { toast(d?.error || 'Erro ao salvar.', 'error'); return; }
@@ -2768,6 +2825,8 @@ async function renderConfiguracoes(abaInicial) {
               <div class="form-group"><label>Senha</label><input id="smtp-pass" type="password" placeholder="••••••••"></div>
             </div>
             <div class="form-group"><label>Remetente (From)</label><input id="smtp-from" type="text" placeholder="procuradoria@municipio.gov.br"></div>
+            <div class="form-group"><label>E-mail padrão para avisos de prazo</label><input id="notificacao-email" type="email" placeholder="procuradoria@municipio.gov.br"></div>
+            <p style="font-size:11px;color:var(--gray-400);margin:-6px 0 10px">Usado quando o lembrete não tiver responsável com e-mail cadastrado.</p>
             <button class="btn btn-primary btn-sm" onclick="salvarSmtp()">Salvar SMTP</button>
           </div>` : ''}
         </div>
@@ -2832,6 +2891,8 @@ async function _carregarSmtp() {
   document.getElementById('smtp-port').value = d.smtp_port || '587';
   document.getElementById('smtp-user').value = d.smtp_user || '';
   document.getElementById('smtp-from').value = d.smtp_from || '';
+  const el2 = document.getElementById('notificacao-email');
+  if (el2) el2.value = d.notificacao_email || '';
 }
 
 async function salvarSmtp() {
@@ -2840,6 +2901,7 @@ async function salvarSmtp() {
     smtp_port: document.getElementById('smtp-port').value.trim(),
     smtp_user: document.getElementById('smtp-user').value.trim(),
     smtp_from: document.getElementById('smtp-from').value.trim(),
+    notificacao_email: (document.getElementById('notificacao-email')?.value || '').trim(),
   };
   const senha = document.getElementById('smtp-pass').value;
   if (senha) body.smtp_pass = senha;
@@ -3362,7 +3424,7 @@ document.addEventListener('click', e => {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['modal-pdf','modal-doc','modal-usuario','modal-confirm','modal-lembrete','modal-email','modal-csv'].forEach(id => {
+    ['modal-pdf','modal-doc','modal-usuario','modal-confirm','modal-lembrete','modal-email','modal-csv','modal-historico'].forEach(id => {
       if (document.getElementById(id).classList.contains('open')) fecharModal(id);
     });
   }

@@ -1,4 +1,4 @@
-# SGDP v1.12.5 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.13.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -138,12 +138,21 @@ def init_db():
                 documento_id INTEGER REFERENCES documentos(id) ON DELETE SET NULL,
                 concluido    INTEGER DEFAULT 0,
                 criado_por   INTEGER REFERENCES usuarios(id),
-                criado_em    TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+                criado_em    TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
+                notificado_em TEXT
+            );
+            CREATE TABLE IF NOT EXISTS documento_revisoes (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                documento_id INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+                dados_json   TEXT NOT NULL,
+                editado_por  INTEGER REFERENCES usuarios(id),
+                editado_em   TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
             );
             CREATE INDEX IF NOT EXISTS idx_docs_tipo ON documentos(tipo);
             CREATE INDEX IF NOT EXISTS idx_docs_ano  ON documentos(ano);
             CREATE INDEX IF NOT EXISTS idx_audit_em  ON auditoria(em);
             CREATE INDEX IF NOT EXISTS idx_lembretes_prazo ON lembretes(data_prazo);
+            CREATE INDEX IF NOT EXISTS idx_revisoes_doc ON documento_revisoes(documento_id);
         ''')
         conn.executemany('INSERT OR IGNORE INTO sys_settings VALUES (?,?)', [
             ('orgao_nome',           'Procuradoria-Geral'),
@@ -163,6 +172,11 @@ def init_db():
         if 'ato_tipo'       not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN ato_tipo       TEXT DEFAULT ''")
         if 'cargo'          not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN cargo          TEXT DEFAULT ''")
         if 'excluido_em'    not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN excluido_em    TEXT DEFAULT NULL")
+        cols_usu = [r[1] for r in conn.execute('PRAGMA table_info(usuarios)').fetchall()]
+        if 'email' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN email TEXT DEFAULT ''")
+        cols_lem = [r[1] for r in conn.execute('PRAGMA table_info(lembretes)').fetchall()]
+        if 'notificado_em' not in cols_lem: conn.execute("ALTER TABLE lembretes ADD COLUMN notificado_em TEXT DEFAULT NULL")
+        conn.execute("INSERT OR IGNORE INTO sys_settings VALUES ('notificacao_email','')")
         # Sessões são descartadas a cada início do servidor (evita sessões órfãs)
         conn.execute('DELETE FROM sessions')
         conn.commit()
@@ -379,6 +393,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._list_docs(qs, s)
         elif re.fullmatch(r'/api/documentos/\d+', p):
             self._get_doc(int(p.split('/')[-1]))
+        elif re.fullmatch(r'/api/documentos/\d+/revisoes', p):
+            self._list_revisoes(int(p.split('/')[3]))
 
         elif p == '/api/lixeira':
             self._list_lixeira(qs, s)
@@ -390,7 +406,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             cfg = get_config()
             self._json(200, {k: cfg.get(k, '') for k in
-                             ('smtp_host','smtp_port','smtp_user','smtp_from','smtp_tls')})
+                             ('smtp_host','smtp_port','smtp_user','smtp_from','smtp_tls','notificacao_email')})
 
         elif re.fullmatch(r'/api/arquivos/\d+', p):
             self._download_arquivo(int(p.split('/')[-1]), qs)
@@ -407,7 +423,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif p == '/api/usuarios':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             with get_db() as conn:
-                rows = conn.execute('SELECT id,username,nome,admin,ativo,criado_em FROM usuarios ORDER BY nome').fetchall()
+                rows = conn.execute('SELECT id,username,nome,email,admin,ativo,criado_em FROM usuarios ORDER BY nome').fetchall()
             self._json(200, [dict(r) for r in rows])
 
         elif p == '/api/diagnostico':
@@ -750,6 +766,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             if 'numero' in data: fields['numero'] = int(data['numero'])
             if 'ano'    in data: fields['ano']    = int(data['ano'])
             try:
+                conn.execute(
+                    'INSERT INTO documento_revisoes (documento_id, dados_json, editado_por) VALUES (?,?,?)',
+                    (did, json.dumps(dict(row)), s['user_id'])
+                )
                 conn.execute(f"UPDATE documentos SET {', '.join(f'{k}=?' for k in fields)} WHERE id=?",
                              list(fields.values()) + [did])
                 if 'numero' in fields:
@@ -760,6 +780,20 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 self._json(409, {'error': 'Número/ano já existe para este tipo'}); return
             updated = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
         self._json(200, dict(updated))
+
+    def _list_revisoes(self, did):
+        with get_db() as conn:
+            rows = conn.execute(
+                '''SELECT r.*, u.nome editado_por_nome FROM documento_revisoes r
+                   LEFT JOIN usuarios u ON r.editado_por=u.id
+                   WHERE r.documento_id=? ORDER BY r.editado_em DESC''', (did,)
+            ).fetchall()
+        items = []
+        for r in rows:
+            item = dict(r)
+            item['dados'] = json.loads(item.pop('dados_json'))
+            items.append(item)
+        self._json(200, {'items': items})
 
     def _delete_doc(self, did, s):
         with get_db() as conn:
@@ -904,7 +938,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
     def _update_smtp(self, body, s):
         data = json.loads(body) if body else {}
-        allowed = ('smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_tls')
+        allowed = ('smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_tls','notificacao_email')
         with get_db() as conn:
             for k in allowed:
                 if k in data:
@@ -1104,8 +1138,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._json(400, {'error': 'Senha mínima: 6 caracteres'}); return
         try:
             with get_db() as conn:
-                conn.execute('INSERT INTO usuarios (username,nome,senha_hash,admin) VALUES (?,?,?,?)',
-                             (username, nome, _hash_password(senha), int(bool(data.get('admin')))))
+                conn.execute('INSERT INTO usuarios (username,nome,senha_hash,admin,email) VALUES (?,?,?,?,?)',
+                             (username, nome, _hash_password(senha), int(bool(data.get('admin'))), (data.get('email') or '').strip()))
                 uid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
                 audit(conn, s['user_id'], s['nome'], 'criar_usuario', detalhes=f"@{username} ({nome})")
                 conn.commit()
@@ -1117,6 +1151,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         data = json.loads(body) if body else {}
         fields = {}
         if 'nome'  in data: fields['nome']  = data['nome'].strip()
+        if 'email' in data: fields['email'] = data['email'].strip()
         if 'admin' in data: fields['admin'] = int(bool(data['admin']))
         if 'ativo' in data: fields['ativo'] = int(bool(data['ativo']))
         if data.get('senha'):
@@ -1233,7 +1268,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.12.5', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.13.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
@@ -1450,7 +1485,7 @@ def _do_json_backup(cfg=None):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.12.5', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.13.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
                   'arquivos': arqs, 'settings': settings}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:
@@ -1505,6 +1540,49 @@ def _backup_loop():
         if cfg['enabled']:
             _do_db_backup(cfg)
             _rotate_backups(cfg)
+
+def _send_plain_email(cfg, to, subject, body):
+    import smtplib
+    from email.message import EmailMessage
+    host, port = cfg.get('smtp_host', ''), int(cfg.get('smtp_port') or 587)
+    if not host or not to: return False
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = cfg.get('smtp_from') or cfg.get('smtp_user')
+    msg['To'] = to
+    msg.set_content(body)
+    with smtplib.SMTP(host, port, timeout=15) as smtp:
+        if cfg.get('smtp_tls', '1') == '1': smtp.starttls()
+        if cfg.get('smtp_user'): smtp.login(cfg['smtp_user'], cfg.get('smtp_pass', ''))
+        smtp.send_message(msg)
+    return True
+
+def _lembrete_notify_loop():
+    # ponytail: checa a cada hora; lembretes vencidos são avisados uma vez (notificado_em marcado)
+    while True:
+        try:
+            cfg = get_config()
+            hoje = time.strftime('%Y-%m-%d')
+            with get_db() as conn:
+                rows = conn.execute(
+                    '''SELECT l.*, u.email criador_email FROM lembretes l
+                       LEFT JOIN usuarios u ON l.criado_por=u.id
+                       WHERE l.concluido=0 AND l.notificado_em IS NULL AND l.data_prazo<=?''',
+                    (hoje,)).fetchall()
+                for r in rows:
+                    destino = (r['criador_email'] or '').strip() or cfg.get('notificacao_email', '').strip()
+                    if destino:
+                        try:
+                            _send_plain_email(cfg, destino, f'Lembrete SGDP vencendo: {r["titulo"]}',
+                                               f'O lembrete "{r["titulo"]}" tem prazo em {r["data_prazo"]}.')
+                        except Exception as e:
+                            _log.error('Falha ao notificar lembrete %s: %s', r['id'], e)
+                    conn.execute('UPDATE lembretes SET notificado_em=? WHERE id=?',
+                                 (time.strftime('%Y-%m-%dT%H:%M:%S'), r['id']))
+                conn.commit()
+        except Exception as e:
+            _log.error('Erro no loop de notificação de lembretes: %s', e)
+        time.sleep(3600)
 
 def _watchdog():
     # Limpa sessões expiradas a cada 5s e verifica encerramento.
@@ -1595,6 +1673,7 @@ if __name__ == '__main__':
     _rotate_backups(_get_backup_cfg())
     threading.Thread(target=_watchdog,     daemon=True).start()
     threading.Thread(target=_backup_loop,  daemon=True).start()
+    threading.Thread(target=_lembrete_notify_loop, daemon=True).start()
 
     socketserver.ThreadingTCPServer.allow_reuse_address = True
     with socketserver.ThreadingTCPServer(('', PORT), SGDPHandler) as srv:
