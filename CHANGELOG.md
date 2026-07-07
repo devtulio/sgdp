@@ -5,6 +5,11 @@
 
 ---
 
+## [1.12.5] — 2026-07-06
+
+### Corrigido
+- **Mapa de rótulos de auditoria incompleto** — 8 ações reais não tinham rótulo cadastrado e apareciam cruas na tabela (ex: "excluir_permanente", "sincronizar_backup"): `restaurar`, `excluir_permanente`, `alterar_brasao`, `alterar_smtp`, `criar_lembrete`, `enviar_email`, `import_csv`, `sincronizar_backup`. Achado ao comparar visualmente a tela de Auditoria com SGCD/SGCA
+
 ## [1.12.4] — 2026-07-06
 
 ### Corrigido
