@@ -1,4 +1,4 @@
-# SGDP v1.13.2 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.14.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -1292,7 +1292,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.13.2', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.14.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
@@ -1509,7 +1509,7 @@ def _do_json_backup(cfg=None):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.13.2', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.14.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
                   'arquivos': arqs, 'settings': settings}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:
@@ -1622,6 +1622,61 @@ def _lembrete_notify_loop():
             _log.error('Erro no loop de notificação de lembretes: %s', e)
         time.sleep(3600)
 
+def _send_daily_summary():
+    """Resumo diário por e-mail de lembretes vencidos/vencendo em breve.
+    Só envia se SMTP estiver configurado no servidor e ainda não tiver enviado hoje."""
+    cfg = get_config()
+    if not (cfg.get('smtp_host') and cfg.get('smtp_user') and cfg.get('smtp_pass') and cfg.get('smtp_to')):
+        return
+    hoje = time.strftime('%Y-%m-%d')
+    if cfg.get('alert_email_last_sent') == hoje:
+        return
+
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT titulo, data_prazo FROM lembretes WHERE concluido=0 ORDER BY data_prazo ASC"
+        ).fetchall()
+
+    agora = time.strftime('%Y-%m-%d')
+    vencidos, vencendo = [], []
+    for r in rows:
+        try:
+            dias = (time.mktime(time.strptime(r['data_prazo'], '%Y-%m-%d')) - time.mktime(time.strptime(agora, '%Y-%m-%d'))) / 86400
+            dias = round(dias)
+        except Exception:
+            continue
+        if dias < 0:
+            vencidos.append((r['titulo'], -dias))
+        elif dias <= 7:
+            vencendo.append((r['titulo'], dias))
+
+    if not vencidos and not vencendo:
+        with get_db() as conn:
+            conn.execute("INSERT OR REPLACE INTO sys_settings (key,value) VALUES ('alert_email_last_sent',?)", (hoje,))
+            conn.commit()
+        return
+
+    linhas = []
+    if vencidos:
+        linhas.append('Vencidos:')
+        for titulo, dias in sorted(vencidos, key=lambda x: -x[1]):
+            linhas.append(f'  - {titulo} — vencido há {dias} dia(s)')
+    if vencendo:
+        linhas.append('Vencendo em breve:')
+        for titulo, dias in sorted(vencendo, key=lambda x: x[1]):
+            txt = 'vence hoje' if dias == 0 else f'vence em {dias} dia(s)'
+            linhas.append(f'  - {titulo} — {txt}')
+    corpo = f'Resumo automático do SGDP — {hoje}\n\n' + '\n'.join(linhas)
+
+    try:
+        _send_plain_email(cfg, cfg['smtp_to'], f'SGDP — Resumo de pendências ({hoje})', corpo)
+        print(f'  [ALERTAS] E-mail de resumo enviado ({len(vencidos)} vencido(s), {len(vencendo)} vencendo)', flush=True)
+    except Exception as e:
+        _log.error('Falha ao enviar e-mail de resumo diário: %s', e)
+    with get_db() as conn:
+        conn.execute("INSERT OR REPLACE INTO sys_settings (key,value) VALUES ('alert_email_last_sent',?)", (hoje,))
+        conn.commit()
+
 def _watchdog():
     # Limpa sessões expiradas a cada 5s e verifica encerramento.
     # Com SESSION_TTL=15s e ping a cada 5s, um browser fechado sem logout
@@ -1631,6 +1686,8 @@ def _watchdog():
         with get_db() as conn:
             conn.execute('DELETE FROM sessions WHERE expires<?', (time.time(),))
         _check_shutdown()
+        try: _send_daily_summary()
+        except Exception as e: _log.error('Erro ao enviar resumo diário: %s', e)
 
 # ── Inicialização ─────────────────────────────────────────────────────────────
 

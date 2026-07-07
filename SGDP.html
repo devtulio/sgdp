@@ -578,7 +578,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.13.2</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.14.0</span>
     </div>
   </div>
 </div>
@@ -673,7 +673,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.13.2
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.14.0
     </footer>
   </main>
 </div>
@@ -2822,8 +2822,9 @@ async function renderConfiguracoes(abaInicial) {
         <div class="table-wrap" style="padding:24px">
           <div class="cfg-section">
             <h3>E-mail (SMTP)</h3>
-            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
-              Usado para enviar documentos por e-mail e para avisos automáticos de prazo (verificados a cada hora). O servidor local (<strong>server.py</strong>) deve estar em execução.
+            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px;line-height:1.5">
+              Usado para enviar documentos por e-mail e para avisos automáticos de prazo. O servidor local (<strong>server.py</strong>) deve estar em execução.<br><br>
+              Assim que configurado, o sistema passa a enviar automaticamente um <strong>resumo diário por e-mail</strong> (lembretes vencidos e vencendo nos próximos 7 dias) para o e-mail interno abaixo — mesmo sem ninguém logado.
             </p>
             <div class="form-row cols-2">
               <div class="form-group"><label>Servidor SMTP (host)</label><input id="smtp-host" type="text" placeholder="ex: smtp.gmail.com"></div>
@@ -2843,7 +2844,7 @@ async function renderConfiguracoes(abaInicial) {
             <div class="form-group"><label>Senha</label><input id="smtp-pass" type="password" autocomplete="new-password"></div>
             <div class="form-group"><label>Nome do remetente</label><input id="smtp-from-name" type="text" placeholder="SGDP — Procuradoria"></div>
             <div class="form-group"><label>E-mail interno (destinatário padrão)</label><input id="smtp-to" type="email" placeholder="ex: procuradoria@municipio.gov.br"></div>
-            <p style="font-size:11px;color:var(--gray-400);margin:-6px 0 10px">Usado nos avisos de prazo quando o lembrete não tiver responsável com e-mail cadastrado.</p>
+            <p style="font-size:11px;color:var(--gray-400);margin:6px 0 14px">Usado nos avisos de prazo quando o lembrete não tiver responsável com e-mail cadastrado.</p>
             <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
               <button class="btn btn-primary btn-sm" onclick="salvarSmtp()">Salvar SMTP</button>
               <button class="btn btn-outline btn-sm" onclick="testarSmtp()">🔌 Testar conexão com servidor</button>

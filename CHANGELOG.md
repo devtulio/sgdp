@@ -5,6 +5,16 @@
 
 ---
 
+## [1.14.0] — 2026-07-06
+
+### Adicionado
+- **Resumo diário por e-mail** (`_send_daily_summary`, chamado a partir do watchdog) — envia uma vez por dia, para `smtp_to`, um resumo de lembretes vencidos e vencendo nos próximos 7 dias; controlado por `alert_email_last_sent` para não duplicar, igual ao SGCD
+
+### Corrigido
+- **Espaçamento apertado na aba Comunicação** — texto de ajuda abaixo de "E-mail interno" tinha `margin-top` negativo, colando no campo acima
+
+---
+
 ## [1.13.2] — 2026-07-06
 
 ### Alterado
