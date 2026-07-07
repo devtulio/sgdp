@@ -5,6 +5,11 @@
 
 ---
 
+## [1.14.1] — 2026-07-06
+
+### Corrigido
+- **Servidor podia encerrar com o diálogo de pasta de backup aberto** — `/api/dialog/folder` abre um seletor de pasta nativo do Windows (pode ficar aberto até 2 minutos); durante esse tempo a aba do navegador fica em segundo plano, e o navegador pode atrasar o ping de sessão além do tempo de expiração, fazendo o watchdog encerrar o servidor com o diálogo ainda na tela. SGCD e SGCA já tinham a proteção (`_watchdog_paused`); replicada aqui. Achado ao auditar o comportamento de encerramento dos 3 sistemas
+
 ## [1.14.0] — 2026-07-06
 
 ### Adicionado
