@@ -578,7 +578,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.13.1</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.13.2</span>
     </div>
   </div>
 </div>
@@ -673,7 +673,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.13.1
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.13.2
     </footer>
   </main>
 </div>
@@ -2683,6 +2683,7 @@ async function renderConfiguracoes(abaInicial) {
         <button class="cfg-tab${primeiraAba==='interface'?' active':''}" onclick="switchCfgTab('interface',this)">Interface</button>
         ${isAdmin ? `<button class="cfg-tab${primeiraAba==='org'?' active':''}" onclick="switchCfgTab('org',this)">Organização</button>` : ''}
         ${isAdmin ? `<button class="cfg-tab${primeiraAba==='usuarios'?' active':''}" onclick="switchCfgTab('usuarios',this)">Usuários</button>` : ''}
+        ${isAdmin ? `<button class="cfg-tab${primeiraAba==='comunicacao'?' active':''}" onclick="switchCfgTab('comunicacao',this)">Comunicação</button>` : ''}
         <button class="cfg-tab${primeiraAba==='seg'?' active':''}" onclick="switchCfgTab('seg',this)">Segurança</button>
         ${isAdmin ? `<button class="cfg-tab${primeiraAba==='backup'?' active':''}" onclick="switchCfgTab('backup',this)">Backup</button>` : ''}
         ${isAdmin ? `<button class="cfg-tab${primeiraAba==='diag'?' active':''}" onclick="switchCfgTab('diag',this);runDiagnostico()">Diagnóstico</button>` : ''}
@@ -2812,10 +2813,18 @@ async function renderConfiguracoes(abaInicial) {
             <button class="btn btn-primary btn-sm" onclick="alterarSenha()">Salvar nova senha</button>
             <p id="senha-status"></p>
           </div>
-          ${isAdmin ? `
-          <div class="cfg-section" style="margin-top:24px">
-            <h3>Servidor de E-mail (SMTP)</h3>
-            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Usado para enviar documentos por e-mail e para avisos automáticos de prazo.</p>
+        </div>
+      </div>
+
+      <!-- Comunicação (admin) -->
+      ${isAdmin ? `
+      <div class="cfg-panel${primeiraAba==='comunicacao'?' active':''}" id="cfg-comunicacao">
+        <div class="table-wrap" style="padding:24px">
+          <div class="cfg-section">
+            <h3>E-mail (SMTP)</h3>
+            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
+              Usado para enviar documentos por e-mail e para avisos automáticos de prazo (verificados a cada hora). O servidor local (<strong>server.py</strong>) deve estar em execução.
+            </p>
             <div class="form-row cols-2">
               <div class="form-group"><label>Servidor SMTP (host)</label><input id="smtp-host" type="text" placeholder="ex: smtp.gmail.com"></div>
               <div class="form-group"><label>Porta</label><input id="smtp-port" type="number" placeholder="587" style="max-width:120px"></div>
@@ -2827,7 +2836,7 @@ async function renderConfiguracoes(abaInicial) {
             <div class="form-row">
               <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
                 <input id="smtp-ignore-ssl" type="checkbox" style="width:15px;height:15px">
-                Ignorar verificação de certificado SSL (redes com proxy/antivírus)
+                Ignorar verificação de certificado SSL <span style="color:var(--orange,#b45309)">(apenas para servidores internos / autoassinados)</span>
               </label>
             </div>
             <div class="form-group"><label>Usuário (e-mail de envio)</label><input id="smtp-user" type="email" placeholder="ex: procuradoria@municipio.gov.br"></div>
@@ -2835,10 +2844,14 @@ async function renderConfiguracoes(abaInicial) {
             <div class="form-group"><label>Nome do remetente</label><input id="smtp-from-name" type="text" placeholder="SGDP — Procuradoria"></div>
             <div class="form-group"><label>E-mail interno (destinatário padrão)</label><input id="smtp-to" type="email" placeholder="ex: procuradoria@municipio.gov.br"></div>
             <p style="font-size:11px;color:var(--gray-400);margin:-6px 0 10px">Usado nos avisos de prazo quando o lembrete não tiver responsável com e-mail cadastrado.</p>
-            <button class="btn btn-primary btn-sm" onclick="salvarSmtp()">Salvar SMTP</button>
-          </div>` : ''}
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+              <button class="btn btn-primary btn-sm" onclick="salvarSmtp()">Salvar SMTP</button>
+              <button class="btn btn-outline btn-sm" onclick="testarSmtp()">🔌 Testar conexão com servidor</button>
+              <span id="smtp-test-result" style="font-size:12px"></span>
+            </div>
+          </div>
         </div>
-      </div>
+      </div>` : ''}
 
       <!-- Backup (admin) -->
       ${isAdmin ? `<div class="cfg-panel${primeiraAba==='backup'?' active':''}" id="cfg-backup" style="padding:16px 0"><div class="loading">Carregando…</div></div>` : ''}
@@ -2886,7 +2899,7 @@ async function switchCfgTab(id, btn) {
   if (id === 'usuarios') await renderUsuarios(panel);
   if (id === 'backup')   await renderBackup(panel);
   if (id === 'diag')     await runDiagnostico();
-  if (id === 'seg' && S.user.admin) await _carregarSmtp();
+  if (id === 'comunicacao' && S.user.admin) await _carregarSmtp();
 }
 
 async function _carregarSmtp() {
@@ -2922,6 +2935,21 @@ async function salvarSmtp() {
   if (!r.ok) { toast('Erro ao salvar SMTP.', 'error'); return; }
   toast('Configuração de e-mail salva.', 'success');
   document.getElementById('smtp-pass').value = '';
+}
+
+async function testarSmtp() {
+  const el = document.getElementById('smtp-test-result');
+  el.style.color = '';
+  el.textContent = '⏳ Enviando e-mail de teste...';
+  const r = await API.post('/api/config/smtp/test', {});
+  const d = await API.json(r);
+  if (!r.ok) {
+    el.textContent = '❌ ' + (d?.error || 'Falha ao enviar e-mail de teste.');
+    el.style.color = 'var(--red)';
+    return;
+  }
+  el.textContent = '✔ E-mail de teste enviado com sucesso.';
+  el.style.color = 'var(--green, #16a34a)';
 }
 
 // Avisa antes de fechar/recarregar com o formulário de documento aberto,

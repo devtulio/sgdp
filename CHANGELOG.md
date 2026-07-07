@@ -5,6 +5,14 @@
 
 ---
 
+## [1.13.2] — 2026-07-06
+
+### Alterado
+- **Aba "Comunicação"** — a configuração de SMTP foi movida da aba Segurança para uma aba própria "Comunicação", no mesmo padrão do SGCD
+- **Teste de SMTP** — novo endpoint `POST /api/config/smtp/test` e botão "Testar conexão com servidor" que envia um e-mail de teste usando a configuração salva
+
+---
+
 ## [1.13.1] — 2026-07-06
 
 ### Corrigido

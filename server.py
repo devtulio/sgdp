@@ -1,4 +1,4 @@
-# SGDP v1.13.1 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.13.2 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -595,6 +595,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             self._create_usuario(self._body(), s)
 
+        elif p == '/api/config/smtp/test':
+            if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
+            self._test_smtp(s)
+
         elif p == '/api/backup/restore':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             self._import_backup(s)
@@ -959,6 +963,20 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.commit()
         self._json(200, {'ok': True})
 
+    def _test_smtp(self, s):
+        cfg = get_config()
+        if not cfg.get('smtp_host') or not cfg.get('smtp_user'):
+            self._json(400, {'error': 'Preencha host e usuário antes de testar.'}); return
+        destino = cfg.get('smtp_to') or cfg.get('smtp_user')
+        try:
+            ok = _send_plain_email(cfg, destino, 'SGDP — Teste de configuração SMTP',
+                                    'Este é um e-mail de teste da configuração SMTP do SGDP.')
+            if not ok: raise Exception('Destinatário ou host ausente')
+            self._json(200, {'ok': True})
+        except Exception as e:
+            _log.error('Falha no teste de SMTP: %s', e)
+            self._json(500, {'error': str(e)})
+
     def _enviar_email(self, did, body, s):
         data = json.loads(body) if body else {}
         destinatario = (data.get('to') or '').strip()
@@ -1274,7 +1292,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.13.1', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.13.2', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
@@ -1491,7 +1509,7 @@ def _do_json_backup(cfg=None):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.13.1', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.13.2', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
                   'arquivos': arqs, 'settings': settings}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:
