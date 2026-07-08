@@ -591,7 +591,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.16.0</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.17.0</span>
     </div>
     <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
@@ -687,7 +687,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.16.0
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.17.0
     </footer>
   </main>
 </div>
@@ -1389,6 +1389,445 @@ function _periodoParaDatas(periodo) {
   return [fmt(ini), fmt(hoje)];
 }
 
+// ── Documentos oficiais (papel timbrado) ───────────────────────────────────────
+// Mesmo padrão visual do SGCD: Times New Roman, brasão + órgão no cabeçalho,
+// bloco de assinatura, rodapé. Aberto em nova aba, impresso via navegador
+// (sem lib de PDF). Reaproveitado por todos os relatórios/certidões abaixo.
+const SGDP_DOC_CSS = `
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #000; background: #fff; padding: 2cm 2.5cm; }
+  .header { text-align: center; margin-bottom: 20pt; border-bottom: 2px solid #000; padding-bottom: 12pt; }
+  .header img { height: 90pt; width: auto; margin-bottom: 6pt; }
+  .header h1 { font-size: 13pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .header h2 { font-size: 11pt; font-weight: 400; margin-top: 2pt; }
+  .doc-title { text-align: center; margin: 18pt 0 14pt; }
+  .doc-title h3 { font-size: 13pt; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #000; display: inline-block; padding-bottom: 4pt; }
+  .doc-title .sub { font-size: 10pt; color: #444; margin-top: 4pt; }
+  .meta { font-size: 9pt; color: #555; margin-bottom: 10pt; text-align: center; }
+  .field-table { width: 100%; border-collapse: collapse; margin: 14pt 0; }
+  .field-table td { padding: 5pt 8pt; border: 1px solid #333; font-size: 10.5pt; vertical-align: top; text-align: justify; }
+  .field-table td.lbl { font-weight: 700; text-transform: uppercase; font-size: 9pt; letter-spacing: .4px; width: 32%; background: #f5f5f5; text-align: center; vertical-align: middle; }
+  table.rel { width: 100%; border-collapse: collapse; margin-top: 8pt; font-size: 9.5pt; }
+  table.rel th { background: #1a3a6b; color: #fff; padding: 5pt 7pt; text-align: left; font-weight: 700; }
+  table.rel td { padding: 4pt 7pt; vertical-align: middle; font-size: 9pt; border-bottom: 1px solid #e0e0e0; }
+  table.rel tr.group-header td { background: #e8eaf0; font-weight: 700; font-size: 9.5pt; border-top: 1px solid #aaa; }
+  table.rel tr:hover td { background: #fafafa; }
+  .obs-box { background: #f9f9f9; border-left: 3px solid #555; padding: 10pt 14pt; margin: 14pt 0; font-size: 10.5pt; line-height: 1.7; }
+  .city-date { text-align: right; margin-top: 30pt; margin-bottom: 6pt; font-size: 11pt; }
+  .signature-block { margin-top: 40pt; }
+  .signature-line { border-top: 1px solid #000; width: 280pt; margin: 0 auto; text-align: center; padding-top: 4pt; font-size: 10pt; }
+  .footer { margin-top: 30pt; border-top: 1px solid #ccc; padding-top: 6pt; text-align: center; font-size: 8pt; color: #666; }
+  .btn-print { display: block; margin: 0 auto 20pt; padding: 8pt 24pt; background: #1a3a6b; color: #fff; border: none; border-radius: 4px; font-size: 11pt; cursor: pointer; letter-spacing: .5px; }
+  .btn-print:hover { background: #102855; }
+  @media print { body { padding: 0; } .no-print { display: none !important; } }
+  @page { @bottom-right { content: "Folha " counter(page); font-size: 8pt; color: #888; } }
+`;
+
+// Gerador de QR code autocontido (sem lib externa), portado do SGCD.
+const _QR = (function () {
+  'use strict';
+  const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+  (function () {
+    for (let i = 0, x = 1; i < 255; i++) {
+      EXP[i] = EXP[i + 255] = x; LOG[x] = i;
+      x = x < 128 ? x << 1 : (x << 1) ^ 0x11d;
+    }
+  })();
+  const gm = (a, b) => a && b ? EXP[LOG[a] + LOG[b]] : 0;
+
+  function rsPoly(n) {
+    let g = [1];
+    for (let i = 0; i < n; i++) {
+      const h = new Uint8Array(g.length + 1);
+      for (let j = 0; j < g.length; j++) { h[j] ^= g[j]; h[j+1] ^= gm(g[j], EXP[i]); }
+      g = h;
+    }
+    return g;
+  }
+  function rsRem(data, gen) {
+    const r = new Uint8Array(gen.length - 1);
+    for (const b of data) {
+      const c = b ^ r[0];
+      r.copyWithin(0, 1); r[r.length - 1] = 0;
+      if (c) for (let j = 0; j < r.length; j++) r[j] ^= gm(gen[j + 1], c);
+    }
+    return r;
+  }
+
+  const TB = [0,
+    [10,1,16,0,0],[16,1,28,0,0],[26,1,44,0,0],[18,2,32,0,0],
+    [24,2,43,0,0],[16,4,27,0,0],[18,4,31,0,0],[22,2,38,2,39],
+    [22,3,36,2,37],[26,4,43,1,44],
+  ];
+  const AP = [0,[],[6,18],[6,22],[6,26],[6,30],[6,34],
+    [6,22,38],[6,24,42],[6,26,46],[6,28,50]];
+
+  const MF = [
+    (r,c)=>(r+c)%2===0,(r,c)=>r%2===0,(r,c)=>c%3===0,(r,c)=>(r+c)%3===0,
+    (r,c)=>(Math.floor(r/2)+Math.floor(c/3))%2===0,(r,c)=>r*c%2+r*c%3===0,
+    (r,c)=>(r*c%2+r*c%3)%2===0,(r,c)=>((r+c)%2+r*c%3)%2===0,
+  ];
+
+  function grid(n) { return Array.from({length:n},()=>new Int8Array(n).fill(-1)); }
+
+  function finder(g, r0, c0) {
+    for (let r=-1;r<=7;r++) for (let c=-1;c<=7;c++) {
+      const rr=r0+r,cc=c0+c;
+      if (rr<0||cc<0||rr>=g.length||cc>=g.length) continue;
+      if (r>=0&&r<=6&&c>=0&&c<=6)
+        g[rr][cc]=(r===0||r===6||c===0||c===6||(r>=2&&r<=4&&c>=2&&c<=4))?1:0;
+      else g[rr][cc]=0;
+    }
+  }
+  function align(g,r,c) {
+    for (let dr=-2;dr<=2;dr++) for (let dc=-2;dc<=2;dc++)
+      g[r+dr][c+dc]=(Math.abs(dr)===2||Math.abs(dc)===2||(dr===0&&dc===0))?1:0;
+  }
+  function reserveFmt(g) {
+    const n=g.length;
+    for (let i=0;i<=8;i++) {
+      if (g[8][i]<0) g[8][i]=0; if (g[i][8]<0) g[i][8]=0;
+      if (i<8&&g[8][n-1-i]<0) g[8][n-1-i]=0;
+      if (i<8&&g[n-1-i][8]<0) g[n-1-i][8]=0;
+    }
+    g[n-8][8]=1;
+  }
+  function writeFmt(g,mask) {
+    const n=g.length;
+    let d=(0b00<<3)|mask, rem=d<<10;
+    for (let i=14;i>=10;i--) if ((rem>>i)&1) rem^=(0x537<<(i-10));
+    const f=((d<<10)|(rem&0x3FF))^0b101010000010010;
+    const s1=[[8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]];
+    const s2=[[n-1,8],[n-2,8],[n-3,8],[n-4,8],[n-5,8],[n-6,8],[n-7,8],[8,n-8],[8,n-7],[8,n-6],[8,n-5],[8,n-4],[8,n-3],[8,n-2],[8,n-1]];
+    for (let i=0;i<15;i++) { const b=(f>>i)&1; g[s1[i][0]][s1[i][1]]=b; g[s2[i][0]][s2[i][1]]=b; }
+  }
+  function placeData(g,bytes) {
+    const n=g.length; let bi=0,up=true;
+    for (let col=n-1;col>=1;col-=2) {
+      if (col===6) col--;
+      for (let dy=0;dy<n;dy++) {
+        const row=up?n-1-dy:dy;
+        for (const c of [col,col-1]) {
+          if (g[row][c]>=0) continue;
+          const byi=bi>>3,bii=7-(bi&7);
+          g[row][c]=bi<bytes.length*8?(bytes[byi]>>bii)&1:0;
+          bi++;
+        }
+      }
+      up=!up;
+    }
+  }
+  function pen(g) {
+    const n=g.length; let p=0;
+    for (let r=0;r<n;r++) for (let t=0;t<2;t++) {
+      let run=1,prev=t?g[0][r]:g[r][0];
+      for (let i=1;i<n;i++) {
+        const v=t?g[i][r]:g[r][i];
+        if (v===prev){if(++run===5)p+=3;else if(run>5)p++;}else{run=1;prev=v;}
+      }
+    }
+    for (let r=0;r<n-1;r++) for (let c=0;c<n-1;c++)
+      if (g[r][c]===g[r+1][c]&&g[r][c]===g[r][c+1]&&g[r][c]===g[r+1][c+1]) p+=3;
+    let dk=0; for (let r=0;r<n;r++) for (let c=0;c<n;c++) dk+=g[r][c];
+    const pct=dk*100/(n*n);
+    p+=Math.min(Math.abs(Math.floor(pct/5)*5-50),Math.abs(Math.ceil(pct/5)*5-50))/5*10;
+    return p;
+  }
+
+  function encode(text) {
+    const bytes=new TextEncoder().encode(text);
+    const len=bytes.length;
+    let ver=1;
+    while (ver<=10) {
+      const [,g1b,g1dc,g2b,g2dc]=TB[ver];
+      const ccb=ver<=9?8:16;
+      if ((g1b*g1dc+g2b*g2dc)*8>=4+ccb+len*8) break;
+      ver++;
+    }
+    if (ver>10) throw new Error('too long');
+    const [ec,g1b,g1dc,g2b,g2dc]=TB[ver];
+    const totalDC=g1b*g1dc+g2b*g2dc;
+    const n=ver*4+17;
+    const bits=[];
+    const push=(v,l)=>{for(let i=l-1;i>=0;i--)bits.push((v>>i)&1);};
+    push(0b0100,4); push(bytes.length,ver<=9?8:16);
+    for (const b of bytes) push(b,8);
+    const cap=totalDC*8;
+    for (let i=0;i<4&&bits.length<cap;i++) bits.push(0);
+    while (bits.length%8) bits.push(0);
+    const pads=[0xEC,0x11]; let pi=0;
+    while (bits.length<cap) push(pads[pi++%2],8);
+    const cw=[];
+    for (let i=0;i<bits.length;i+=8){let b=0;for(let j=0;j<8;j++)b=(b<<1)|bits[i+j];cw.push(b);}
+    const blks=[],ecbs=[]; let pos=0;
+    for (let i=0;i<g1b+g2b;i++) {
+      const dc=i<g1b?g1dc:g2dc;
+      const blk=cw.slice(pos,pos+dc); pos+=dc;
+      blks.push(blk); ecbs.push([...rsRem(blk,rsPoly(ec))]);
+    }
+    const fin=[]; const mdc=Math.max(g1dc,g2dc||0);
+    for (let i=0;i<mdc;i++) for (const b of blks) if (i<b.length) fin.push(b[i]);
+    for (let i=0;i<ec;i++) for (const b of ecbs) fin.push(b[i]);
+    const g=grid(n);
+    finder(g,0,0); finder(g,0,n-7); finder(g,n-7,0);
+    for (let i=8;i<n-8;i++) g[6][i]=g[i][6]=i%2===0?1:0;
+    if (ver>=2) {
+      const ap=AP[ver];
+      for (const r of ap) for (const c of ap) if (g[r][c]<0) align(g,r,c);
+    }
+    reserveFmt(g);
+    const fg=g.map(r=>Int8Array.from(r));
+    placeData(g,fin);
+    let bm=0,bp=Infinity,bg=null;
+    for (let m=0;m<8;m++) {
+      const h=g.map(r=>Int8Array.from(r));
+      const fn=MF[m];
+      for (let r=0;r<n;r++) for (let c=0;c<n;c++) if (fg[r][c]<0&&fn(r,c)) h[r][c]^=1;
+      writeFmt(h,m);
+      const pp=pen(h);
+      if (pp<bp){bp=pp;bm=m;bg=h;}
+    }
+    return bg;
+  }
+
+  function toSVG(g, px) {
+    const n=g.length, q=px*4, sz=n*px+q*2;
+    const r=[];
+    for (let row=0;row<n;row++) for (let col=0;col<n;col++)
+      if (g[row][col]===1) r.push(`<rect x="${q+col*px}" y="${q+row*px}" width="${px}" height="${px}"/>`);
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" shape-rendering="crispEdges"><rect width="${sz}" height="${sz}" fill="#fff"/><g fill="#000">${r.join('')}</g></svg>`;
+  }
+
+  return {
+    svg(text, px=3) {
+      try { return toSVG(encode(text), px); }
+      catch(e) { console.warn('QR:', e.message); return null; }
+    }
+  };
+})();
+
+// Rodapé simples (sem QR) para relatórios não-assinados — um QR de "autenticidade"
+// aqui seria enganoso, já que não há nenhum registro verificável por trás dele.
+function _footerOficial() {
+  const dtFmt = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' às ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  return `<div class="footer">Documento gerado pelo <strong>SGDP</strong> — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; ${dtFmt} &nbsp;·&nbsp; por ${esc(S.user?.nome || '—')}</div>`;
+}
+
+// Rodapé com QR real, só usado quando existe um código de verificação
+// de fato registrado no servidor (assinatura ICP-Brasil) — ver /verificar/<cod>.
+function _footerVerificavel(cod) {
+  const dtFmt = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' às ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const qrText = `${location.origin}/verificar/${cod}`;
+  const svg = _QR.svg(qrText, 3);
+  const svgB64 = svg ? 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))) : null;
+  return `
+<div style="margin-top:28pt;border-top:1px solid #ccc;padding-top:8pt;display:flex;align-items:center;gap:16pt">
+  ${svgB64 ? `<img src="${svgB64}" width="64" height="64" alt="QR" style="flex-shrink:0;border:1px solid #eee">` : ''}
+  <div style="font-size:7.5pt;color:#666;line-height:1.6">
+    Documento gerado pelo <strong>SGDP</strong> — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; ${dtFmt}<br>
+    Assinado digitalmente (ICP-Brasil) &nbsp;·&nbsp; Código de verificação: <strong>${esc(cod)}</strong> &nbsp;·&nbsp; Verifique em <em>${esc(qrText)}</em>
+  </div>
+</div>`;
+}
+
+function _gerarDocumentoOficial(win, html, docNome) {
+  if (!win) { toast('Popup bloqueado pelo navegador. Permita popups para este site e tente novamente.', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+async function _cabecalhoOficial(tituloDoc, subtitulo) {
+  const r = await API.get('/api/config');
+  const cfg = await API.json(r) || {};
+  return {
+    cfg,
+    html: `
+<div class="header">
+  ${S_brasaoDataUrl ? `<img src="${S_brasaoDataUrl}" alt="Brasão">` : ''}
+  <h1>${esc(cfg.orgao_nome || 'Procuradoria-Geral')}</h1>
+  <h2>${esc(cfg.municipio || '')}</h2>
+</div>
+<div class="doc-title">
+  <h3>${esc(tituloDoc)}</h3>
+  ${subtitulo ? `<div class="sub">${esc(subtitulo)}</div>` : ''}
+</div>`,
+  };
+}
+
+function _blocoAssinaturaOficial(cfg) {
+  if (!cfg.aut_nome) return '';
+  const hoje = new Date().toLocaleDateString('pt-BR', { day:'numeric', month:'long', year:'numeric' });
+  return `
+<div class="city-date">${esc(cfg.municipio || '')}, ${hoje}</div>
+<div class="signature-block">
+  <div class="signature-line">
+    <div><strong>${esc(cfg.aut_nome)}</strong></div>
+    ${cfg.aut_cargo ? `<div style="font-size:9pt;margin-top:2pt">${esc(cfg.aut_cargo)}</div>` : ''}
+  </div>
+</div>`;
+}
+
+// ── Relatório: Pendências e Prazos ──────────────────────────────────────────
+async function gerarRelatorioPendencias() {
+  const [{ html: cab, cfg }, rLemb, rSemPdf] = await Promise.all([
+    _cabecalhoOficial('Relatório de Pendências e Prazos'),
+    API.get('/api/lembretes?pendentes=1'),
+    API.get('/api/documentos?sem_pdf=1&per=500'),
+  ]);
+  const lembretes = (await API.json(rLemb))?.items || [];
+  const semPdf = (await API.json(rSemPdf))?.items || [];
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const vencidos  = lembretes.filter(l => l.data_prazo < hoje).sort((a,b) => a.data_prazo.localeCompare(b.data_prazo));
+  const vencendo  = lembretes.filter(l => l.data_prazo >= hoje).sort((a,b) => a.data_prazo.localeCompare(b.data_prazo));
+
+  const linhaLembrete = l => `<tr>
+    <td>${esc(l.titulo)}</td>
+    <td>${fmtData(l.data_prazo)}</td>
+    <td>${l.doc_tipo ? `${TIPOS_LABELS[l.doc_tipo]} ${fmtNum(l.doc_numero, l.doc_ano)}` : '—'}</td>
+  </tr>`;
+
+  const tabelaLembretes = (titulo, itens) => !itens.length ? '' : `
+    <tr class="group-header"><td colspan="3">${titulo} (${itens.length})</td></tr>
+    ${itens.map(linhaLembrete).join('')}`;
+
+  const linhaSemPdf = d => `<tr><td>${TIPOS_LABELS[d.tipo]}</td><td>${fmtNum(d.numero, d.ano)}</td><td>${fmtData(d.data)}</td><td>${esc(d.ementa)}</td></tr>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Relatório de Pendências e Prazos — SGDP</title>
+<style>${SGDP_DOC_CSS}</style></head>
+<body>
+<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+${cab}
+<div class="meta">Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+
+<h4 style="font-size:11pt;margin-bottom:6pt">Lembretes (${lembretes.length})</h4>
+${lembretes.length ? `<table class="rel">
+  <thead><tr><th>Título</th><th style="width:90pt">Prazo</th><th style="width:120pt">Documento</th></tr></thead>
+  <tbody>${tabelaLembretes('Vencidos', vencidos)}${tabelaLembretes('A vencer', vencendo)}</tbody>
+</table>` : '<p style="font-size:10pt;color:#666">Nenhum lembrete pendente.</p>'}
+
+<h4 style="font-size:11pt;margin:18pt 0 6pt">Documentos sem PDF anexado (${semPdf.length})</h4>
+${semPdf.length ? `<table class="rel">
+  <thead><tr><th style="width:70pt">Tipo</th><th style="width:80pt">Número</th><th style="width:70pt">Data</th><th>Ementa</th></tr></thead>
+  <tbody>${semPdf.map(linhaSemPdf).join('')}</tbody>
+</table>` : '<p style="font-size:10pt;color:#666">Todos os documentos têm PDF anexado.</p>'}
+
+${_blocoAssinaturaOficial(cfg)}
+${_footerOficial()}
+</body></html>`;
+
+  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, 'Relatório de Pendências e Prazos');
+}
+
+// ── Relatório: Produtividade por Usuário ────────────────────────────────────
+async function gerarRelatorioProdutividade(de, ate) {
+  const [{ html: cab, cfg }, r] = await Promise.all([
+    _cabecalhoOficial('Relatório de Produtividade por Usuário'),
+    API.get(`/api/relatorio/produtividade?de=${de}&ate=${ate}`),
+  ]);
+  const items = (await API.json(r))?.items || [];
+
+  const linha = u => {
+    const total = u.criar + u.editar + u.upload + u.assinar_icp;
+    return `<tr>
+      <td>${esc(u.usuario_nome)}</td>
+      <td style="text-align:center">${u.criar}</td>
+      <td style="text-align:center">${u.editar}</td>
+      <td style="text-align:center">${u.upload}</td>
+      <td style="text-align:center">${u.assinar_icp}</td>
+      <td style="text-align:center;font-weight:700">${total}</td>
+    </tr>`;
+  };
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Relatório de Produtividade — SGDP</title>
+<style>${SGDP_DOC_CSS}</style></head>
+<body>
+<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+${cab}
+<div class="meta">Período: ${fmtData(de)} a ${fmtData(ate)}</div>
+${items.length ? `<table class="rel">
+  <thead><tr><th>Usuário</th><th style="width:70pt;text-align:center">Criados</th><th style="width:70pt;text-align:center">Editados</th><th style="width:70pt;text-align:center">Uploads</th><th style="width:70pt;text-align:center">Assinados</th><th style="width:60pt;text-align:center">Total</th></tr></thead>
+  <tbody>${items.map(linha).join('')}</tbody>
+</table>` : '<p style="font-size:10pt;color:#666">Nenhuma atividade registrada no período.</p>'}
+${_blocoAssinaturaOficial(cfg)}
+${_footerOficial()}
+</body></html>`;
+
+  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, 'Relatório de Produtividade');
+}
+
+// ── Certidão de Documento Individual ────────────────────────────────────────
+async function gerarCertidaoDocumento(docId) {
+  const r = await API.get(`/api/documentos/${docId}`);
+  const doc = await API.json(r);
+  if (!doc || !r.ok) { toast('Erro ao carregar documento.', 'error'); return; }
+
+  const [{ html: cab, cfg }, rRev, rVinc] = await Promise.all([
+    _cabecalhoOficial('Certidão de Documento', `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}`),
+    API.get(`/api/documentos/${docId}/revisoes`),
+    API.get(`/api/documentos/${docId}/vinculos`),
+  ]);
+  const revisoes = (await API.json(rRev))?.items || [];
+  const vinculos = (await API.json(rVinc))?.items || [];
+
+  const camposFicha = [
+    ['Tipo', TIPOS_LABELS[doc.tipo]],
+    ['Número/Ano', fmtNum(doc.numero, doc.ano)],
+    ['Data', fmtData(doc.data)],
+    ['Assunto', doc.assunto],
+    ['Ementa', doc.ementa],
+    ['Partes/Envolvidos', doc.partes || '—'],
+    ['Observações', doc.observacoes || '—'],
+    ['Etiquetas', (doc.tags || []).join(', ') || '—'],
+    ['Criado por', `${doc.criado_por_nome || '—'} em ${fmtDataHora(doc.criado_em)}`],
+    ['Última atualização', `${doc.atualizado_por_nome || '—'} em ${fmtDataHora(doc.atualizado_em)}`],
+  ];
+
+  const linhasVinculos = vinculos.length
+    ? `<ul style="margin:8pt 0 0 18pt;font-size:10pt">${vinculos.map(v =>
+        `<li><strong>${esc(v.label)}:</strong> ${TIPOS_LABELS[v.doc_tipo]} ${fmtNum(v.doc_numero, v.doc_ano)} — ${esc(v.doc_ementa)}</li>`).join('')}</ul>`
+    : '<p style="font-size:10pt;color:#666">Nenhum vínculo registrado.</p>';
+
+  const linhasRevisoes = revisoes.length
+    ? `<p style="font-size:10pt;margin-top:4pt">Este documento foi editado ${revisoes.length} vez(es) desde a criação. Histórico completo disponível no sistema.</p>`
+    : '<p style="font-size:10pt;color:#666">Nenhuma revisão — documento inalterado desde a criação.</p>';
+
+  const statusAssinatura = doc.assinado_em
+    ? `<p style="font-size:10.5pt"><strong>Assinado digitalmente</strong> (ICP-Brasil) em ${fmtDataHora(doc.assinado_em)} por ${esc(doc.assinado_por_nome || '—')}.<br>Certificado: ${esc(doc.assinatura_cert || '—')}</p>`
+    : `<p style="font-size:10.5pt;color:#666">Este documento não possui assinatura digital ICP-Brasil registrada.</p>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Certidão — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</title>
+<style>${SGDP_DOC_CSS}</style></head>
+<body>
+<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+${cab}
+
+<table class="field-table">
+  ${camposFicha.map(([lbl, val]) => `<tr><td class="lbl">${esc(lbl)}</td><td>${esc(String(val))}</td></tr>`).join('')}
+</table>
+
+<h4 style="font-size:11pt;margin:16pt 0 4pt">Vínculos com outros documentos</h4>
+${linhasVinculos}
+
+<h4 style="font-size:11pt;margin:16pt 0 4pt">Histórico de revisões</h4>
+${linhasRevisoes}
+
+<h4 style="font-size:11pt;margin:16pt 0 4pt">Assinatura digital</h4>
+${statusAssinatura}
+
+${_blocoAssinaturaOficial(cfg)}
+${doc.cod_verificacao ? _footerVerificavel(doc.cod_verificacao) : _footerOficial()}
+</body></html>`;
+
+  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, `Certidão — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}`);
+}
+
 async function exportarRelatorioCsv(de, ate) {
   const r = await API.get(`/api/relatorio/export.csv?de=${de}&ate=${ate}`);
   if (!r || !r.ok) { toast('Erro ao exportar CSV.', 'error'); return; }
@@ -1516,6 +1955,15 @@ async function renderRelatorio(periodo, de, ate) {
         <div class="no-print" style="display:flex;gap:8px">
           <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:none" onclick="exportarRelatorioCsv('${deDt}','${ateDt}')">⬇ Exportar CSV</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:none" onclick="window.print()">⎙ Imprimir / Salvar PDF</button>
+        </div>
+      </div>
+
+      <!-- Outros relatórios (documento oficial, papel timbrado) -->
+      <div class="no-print" style="background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 20px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);margin-bottom:10px">Outros relatórios</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="gerarRelatorioPendencias()">📋 Pendências e Prazos</button>
+          <button class="btn btn-outline btn-sm" onclick="gerarRelatorioProdutividade('${deDt}','${ateDt}')">👥 Produtividade por Usuário</button>
         </div>
       </div>
 
@@ -1659,6 +2107,7 @@ async function renderDocumentos(tipo, page = 1) {
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirHistoricoDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Histórico de revisões">🕘</button>
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirVinculosDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Vínculos com outros documentos">🔗</button>
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalAssinar(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Assinar digitalmente (ICP-Brasil)">🔏</button>
+          <button class="btn btn-outline btn-sm btn-icon" onclick="gerarCertidaoDocumento(${doc.id})" title="Gerar certidão deste documento">📜</button>
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalEmail(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Enviar por e-mail">✉</button>
           <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Excluir" aria-label="Excluir documento">✕</button>
         </div>

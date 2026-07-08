@@ -1,4 +1,4 @@
-# SGDP v1.16.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.17.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -641,6 +641,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._relatorio(qs)
         elif p == '/api/relatorio/export.csv':
             self._relatorio_export_csv(qs)
+        elif p == '/api/relatorio/produtividade':
+            self._relatorio_produtividade(qs)
 
         elif p == '/api/usuarios':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
@@ -973,11 +975,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
     def _get_doc(self, did):
         with get_db() as conn:
             row = conn.execute(
-                '''SELECT d.*, u1.nome criado_por_nome, u2.nome atualizado_por_nome,
+                '''SELECT d.*, u1.nome criado_por_nome, u2.nome atualizado_por_nome, u3.nome assinado_por_nome,
                           a.nome_original arquivo_nome, a.tamanho arquivo_tamanho
                    FROM documentos d
                    LEFT JOIN usuarios u1 ON d.criado_por=u1.id
                    LEFT JOIN usuarios u2 ON d.atualizado_por=u2.id
+                   LEFT JOIN usuarios u3 ON d.assinado_por=u3.id
                    LEFT JOIN arquivos a ON d.arquivo_id=a.id
                    WHERE d.id=?''', (did,)
             ).fetchone()
@@ -1220,6 +1223,23 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-Length', str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
+
+    def _relatorio_produtividade(self, qs):
+        def qp(k, d=None): v = qs.get(k); return v[0] if v else d
+        de  = qp('de',  '1900-01-01')
+        ate = qp('ate', '2999-12-31') + 'T23:59:59'
+        with get_db() as conn:
+            rows = conn.execute(
+                '''SELECT usuario_nome, acao, COUNT(*) n FROM auditoria
+                   WHERE em BETWEEN ? AND ? AND acao IN ('criar','editar','upload','assinar_icp')
+                   AND usuario_nome IS NOT NULL GROUP BY usuario_nome, acao''',
+                (de, ate)).fetchall()
+        por_usuario = {}
+        for r in rows:
+            u = por_usuario.setdefault(r['usuario_nome'], {'criar': 0, 'editar': 0, 'upload': 0, 'assinar_icp': 0})
+            u[r['acao']] = r['n']
+        items = [{'usuario_nome': nome, **contagens} for nome, contagens in sorted(por_usuario.items())]
+        self._json(200, {'items': items})
 
     # ── Agenda / Lembretes ────────────────────────────────────────────────────
 
@@ -1766,7 +1786,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.16.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.17.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs,
                   'auditoria': auditoria}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
@@ -2008,7 +2028,7 @@ def _do_json_backup(cfg=None):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.16.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.17.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
                   'arquivos': arqs, 'settings': settings, 'auditoria': auditoria}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:

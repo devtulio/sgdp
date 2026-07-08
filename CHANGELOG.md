@@ -5,6 +5,17 @@
 
 ---
 
+## [1.17.0] — 2026-07-08
+
+### Adicionado
+- **Padrão documental oficial** (`SGDP_DOC_CSS`, `_gerarDocumentoOficial`, `_cabecalhoOficial`, `_blocoAssinaturaOficial`) — mesmo visual do SGCD (Times New Roman, margens 2cm/2.5cm, brasão + órgão no cabeçalho, bloco de assinatura), reutilizável por qualquer documento/relatório gerado em nova aba
+- **Gerador de QR code portado do SGCD** (`_QR`, autocontido, sem dependência externa) — usado em `_footerVerificavel(cod)` para embutir um QR real apontando para `/verificar/<cod>` nas Certidões de documentos assinados; `_footerOficial()` (sem QR) para os demais relatórios, evitando um código de "autenticidade" que não corresponderia a nenhum registro real no servidor
+- **Relatório de Pendências e Prazos** (`gerarRelatorioPendencias`) — lembretes vencidos/a vencer e documentos sem PDF anexado
+- **Relatório de Produtividade por Usuário** (`gerarRelatorioProdutividade`, `GET /api/relatorio/produtividade`) — contagem de criar/editar/upload/assinar por usuário no período, agregado da tabela `auditoria`
+- **Certidão de Documento** (`gerarCertidaoDocumento`, ícone 📜 na listagem) — ficha completa de um documento: campos, etiquetas, vínculos, histórico de revisões e status de assinatura, com QR de verificação real quando assinado digitalmente
+
+---
+
 ## [1.16.0] — 2026-07-08
 
 ### Adicionado
