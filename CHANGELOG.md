@@ -5,6 +5,23 @@
 
 ---
 
+## [1.15.0] — 2026-07-08
+
+### Adicionado
+- **Busca full-text (FTS5)** — tabela virtual `documentos_fts` (content-linked, sincronizada por triggers de insert/update/delete) cobrindo ementa/partes/observações; fallback automático para `LIKE` se FTS5 não estiver disponível
+- **Etiquetas (tags) livres** — tabelas `tags` e `documento_tags`, endpoints `GET /api/tags` e filtro `?tag=`, autocomplete via `<datalist>` e pílulas clicáveis na listagem
+- **Vínculos entre documentos** — tabela `documento_vinculos` (revoga/altera/complementa/referencia), endpoints `GET/POST /api/documentos/<id>/vinculos` e `DELETE /api/vinculos/<id>`, exibidos nos dois sentidos com rótulos diferentes
+- **Exportação do relatório** — `GET /api/relatorio/export.csv` (stdlib `csv`, BOM UTF-8) e impressão/PDF limpo do relatório via `@media print`
+- **Assinatura digital ICP-Brasil** — `POST /api/documentos/<id>/assinar`, portado do SGCD (`_assinar_pdf_icp` via pyHanko, dependência opcional em `requirements.txt`); novas colunas `assinado_por`, `assinado_em`, `assinatura_cert` em `documentos`
+
+### Corrigido
+- **Assunto do Parecer duplicava o campo Modalidade** — removidos 8 itens da lista de Assunto (Dispensa de Licitação, Inexigibilidade de Licitação, Pregão Eletrônico, Concorrência Eletrônica, Contrato Administrativo, Aditivo Contratual, Registro de Preços, Tomada de Preços) que já existem como opções no campo Modalidade/Processo-filho
+- **Modalidade mostrava só a sigla** — opções agora exibem "DL - Dispensa de Licitação" etc. por extenso
+- **Modal do Parecer espremia o campo de referência** — modal alargado (580px → 720px) e o campo Modalidade+Referência passou a ocupar a linha inteira
+- **Botão de busca global (Ctrl+K) colado na sidebar** — adicionada margem superior
+
+---
+
 ## [1.14.3] — 2026-07-07
 
 ### Corrigido

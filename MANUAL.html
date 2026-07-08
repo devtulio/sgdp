@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.14.3</title>
+<title>Manual Operacional — SGDP v1.15.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.14.3 — Manual Operacional";
+        content: "SGDP v1.15.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -112,7 +112,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.14.3</div>
+    <div class="cover-version">Versão 1.15.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -624,6 +624,23 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.15.0 — 08/07/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Busca full-text (FTS5)</strong> — pesquisa por palavras em ementa, partes e observações (não só substring), com índice mantido automaticamente por triggers; cai para busca com <code>LIKE</code> se o SQLite não tiver FTS5 compilado</li>
+    <li><strong>Etiquetas (tags) livres</strong> — categorização adicional por documento, com autocomplete das etiquetas já usadas e filtro por etiqueta na listagem</li>
+    <li><strong>Vínculos entre documentos</strong> — relação tipada (revoga, altera, complementa, referencia) entre dois documentos, exibida nos dois sentidos (ex.: "Revoga" de um lado, "Revogado por" do outro)</li>
+    <li><strong>Exportação do relatório</strong> — CSV com os dados brutos do período (<code>GET /api/relatorio/export.csv</code>) e impressão/PDF limpo do relatório (sidebar e filtros somem via <code>@media print</code>)</li>
+    <li><strong>Assinatura digital ICP-Brasil</strong> — assina o PDF anexado ao documento com certificado A1 (<code>.pfx</code>), nível qualificado, via pyHanko (dependência opcional, ver <code>requirements.txt</code>); grava autor, data e identificação do certificado no documento</li>
+  </ul>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Assunto do Parecer sobrepondo o campo Modalidade</strong> — a lista de Assunto tinha 8 itens (Dispensa de Licitação, Pregão Eletrônico, Registro de Preços etc.) que duplicavam exatamente as opções do campo Modalidade/Processo-filho; removidos da lista de Assunto, mantendo só "Licitações e Contratos" (geral) e "Fiscalização de Contrato" (sem equivalente em Modalidade). Documentos antigos com esses assuntos continuam funcionando normalmente ao editar</li>
+    <li><strong>Modalidade mostrava só a sigla</strong> — o campo tinha apenas "DL", "IL", "PE" etc., exigindo consulta a uma legenda separada; agora cada opção mostra "DL - Dispensa de Licitação" por extenso</li>
+    <li><strong>Modal do Parecer espremia o campo de referência</strong> — com o texto completo da Modalidade, o campo de referência (ex: "05/2026") ficava com ~25px de largura, quase invisível; modal alargado (580px → 720px) e o campo Modalidade+Referência passou a ocupar a linha inteira em vez de dividir espaço com o PA</li>
+    <li><strong>Botão de busca global colado na sidebar</strong> — sem margem superior, ficava grudado na linha divisória acima</li>
+  </ul>
 
   <h3>v1.14.3 — 07/07/2026</h3>
   <p><strong>Corrigido</strong></p>

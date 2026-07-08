@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.14.3-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.15.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -37,6 +37,11 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Histórico de revisões** — cada edição de documento guarda os campos anteriores, com autor e data/hora
 - **Notificação de prazo por e-mail** — avisa automaticamente o responsável (ou um e-mail padrão) quando um lembrete vence
 - **Resumo diário por e-mail** — envia diariamente um resumo de lembretes vencidos e vencendo em breve, mesmo sem ninguém logado
+- **Busca full-text (FTS5)** — pesquisa em ementa, partes e observações por palavras (não só substring), com índice sincronizado automaticamente
+- **Etiquetas (tags) livres** — categorização adicional além do Assunto fixo, com autocomplete e filtro por etiqueta
+- **Vínculos entre documentos** — relação tipada (revoga, altera, complementa, referencia) navegável nos dois sentidos
+- **Exportação do relatório** — CSV com os dados brutos do período, e impressão/PDF limpo (sem menu/sidebar)
+- **Assinatura digital ICP-Brasil** — assina o PDF anexado com certificado A1 (`.pfx`), nível qualificado (dependência opcional)
 
 ---
 
@@ -45,6 +50,7 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Python 3.8+** (apenas biblioteca padrão — sem dependências externas)
 - **Google Chrome** ou **Microsoft Edge** (recomendado)
 - Windows 10/11
+- Opcional: `pip install -r requirements.txt` — só necessário para o módulo de assinatura com certificado ICP-Brasil (`pyhanko`)
 
 > **Servidor sem Python instalado (ex.: Windows Server bloqueado por política de TI):**
 > o `Iniciar SGDP.bat` detecta automaticamente a ausência do Python e extrai uma versão portátil (embarcável, sem instalador) incluída no próprio projeto (`python-3.12.9-embed-amd64.zip`) para `C:\Python312-embed\` — não exige instalação nem privilégio de administrador.
@@ -93,6 +99,7 @@ SGDP/
 ├── sgdp.ico                # Ícone personalizado do sistema
 ├── sgdp.db                 # Banco de dados SQLite (criado automaticamente)
 ├── uploads/                # PDFs armazenados (criado automaticamente)
+├── requirements.txt        # Dependência opcional (pyhanko — só p/ assinatura ICP-Brasil)
 ├── README.md
 ├── CHANGELOG.md
 └── MANUAL.html

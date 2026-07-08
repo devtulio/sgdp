@@ -1,4 +1,4 @@
-# SGDP v1.14.3 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.15.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -49,9 +49,19 @@ os.makedirs(BACKUP_DIR,  exist_ok=True)
 _had_session      = False   # True após primeiro login; evita encerramento antes de qualquer usuário logar
 _modo_servidor    = False   # True = modo servidor contínuo (sem encerramento automático)
 _backup_pos_sess  = False   # True = backup pós-sessão já executado; aguarda nova sessão para resetar
+FTS_AVAILABLE     = False   # True se o SQLite tem FTS5 compilado (setado em init_db)
 _watchdog_paused  = False   # pausa o watchdog durante diálogos bloqueantes (ex: FolderBrowser)
 
 TIPOS = ('lei', 'decreto', 'portaria', 'parecer', 'oficio')
+TIPOS_LABELS_CSV = {'lei': 'Lei', 'decreto': 'Decreto', 'portaria': 'Portaria', 'parecer': 'Parecer', 'oficio': 'Ofício'}
+
+# tipo de vínculo -> (label no sentido origem->destino, label no sentido inverso)
+TIPOS_VINCULO = {
+    'revoga':      ('Revoga',        'Revogado por'),
+    'altera':      ('Altera',        'Alterado por'),
+    'complementa': ('Complementa',   'Complementado por'),
+    'referencia':  ('Referencia',    'Referenciado por'),
+}
 
 # ── Banco de dados ────────────────────────────────────────────────────────────
 
@@ -149,12 +159,62 @@ def init_db():
                 editado_por  INTEGER REFERENCES usuarios(id),
                 editado_em   TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
             );
+            CREATE TABLE IF NOT EXISTS tags (
+                id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL UNIQUE COLLATE NOCASE
+            );
+            CREATE TABLE IF NOT EXISTS documento_tags (
+                documento_id INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+                tag_id       INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+                PRIMARY KEY (documento_id, tag_id)
+            );
+            CREATE TABLE IF NOT EXISTS documento_vinculos (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                origem_id  INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+                destino_id INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+                tipo       TEXT NOT NULL CHECK(tipo IN ('revoga','altera','complementa','referencia')),
+                criado_por INTEGER REFERENCES usuarios(id),
+                criado_em  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
+                UNIQUE(origem_id, destino_id, tipo)
+            );
             CREATE INDEX IF NOT EXISTS idx_docs_tipo ON documentos(tipo);
             CREATE INDEX IF NOT EXISTS idx_docs_ano  ON documentos(ano);
             CREATE INDEX IF NOT EXISTS idx_audit_em  ON auditoria(em);
             CREATE INDEX IF NOT EXISTS idx_lembretes_prazo ON lembretes(data_prazo);
             CREATE INDEX IF NOT EXISTS idx_revisoes_doc ON documento_revisoes(documento_id);
+            CREATE INDEX IF NOT EXISTS idx_doc_tags_tag ON documento_tags(tag_id);
+            CREATE INDEX IF NOT EXISTS idx_vinculos_origem  ON documento_vinculos(origem_id);
+            CREATE INDEX IF NOT EXISTS idx_vinculos_destino ON documento_vinculos(destino_id);
         ''')
+        global FTS_AVAILABLE
+        try:
+            conn.executescript('''
+                CREATE VIRTUAL TABLE IF NOT EXISTS documentos_fts USING fts5(
+                    ementa, partes, observacoes, content='documentos', content_rowid='id'
+                );
+                CREATE TRIGGER IF NOT EXISTS documentos_fts_ai AFTER INSERT ON documentos BEGIN
+                    INSERT INTO documentos_fts(rowid, ementa, partes, observacoes)
+                    VALUES (new.id, new.ementa, new.partes, new.observacoes);
+                END;
+                CREATE TRIGGER IF NOT EXISTS documentos_fts_ad AFTER DELETE ON documentos BEGIN
+                    INSERT INTO documentos_fts(documentos_fts, rowid, ementa, partes, observacoes)
+                    VALUES ('delete', old.id, old.ementa, old.partes, old.observacoes);
+                END;
+                CREATE TRIGGER IF NOT EXISTS documentos_fts_au AFTER UPDATE ON documentos BEGIN
+                    INSERT INTO documentos_fts(documentos_fts, rowid, ementa, partes, observacoes)
+                    VALUES ('delete', old.id, old.ementa, old.partes, old.observacoes);
+                    INSERT INTO documentos_fts(rowid, ementa, partes, observacoes)
+                    VALUES (new.id, new.ementa, new.partes, new.observacoes);
+                END;
+            ''')
+            if conn.execute('SELECT COUNT(*) FROM documentos_fts').fetchone()[0] == 0:
+                conn.execute('''INSERT INTO documentos_fts(rowid, ementa, partes, observacoes)
+                                 SELECT id, ementa, partes, observacoes FROM documentos''')
+            FTS_AVAILABLE = True
+        except sqlite3.OperationalError as e:
+            # ponytail: builds do SQLite sem FTS5 (raro) caem para busca com LIKE
+            _log.error('FTS5 indisponível, busca usará LIKE: %s', e)
+            FTS_AVAILABLE = False
         conn.executemany('INSERT OR IGNORE INTO sys_settings VALUES (?,?)', [
             ('orgao_nome',           'Procuradoria-Geral'),
             ('municipio',            ''),
@@ -174,6 +234,9 @@ def init_db():
         if 'ato_tipo'       not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN ato_tipo       TEXT DEFAULT ''")
         if 'cargo'          not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN cargo          TEXT DEFAULT ''")
         if 'excluido_em'    not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN excluido_em    TEXT DEFAULT NULL")
+        if 'assinado_por'   not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assinado_por   INTEGER REFERENCES usuarios(id)")
+        if 'assinado_em'    not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assinado_em    TEXT DEFAULT NULL")
+        if 'assinatura_cert' not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assinatura_cert TEXT DEFAULT ''")
         cols_usu = [r[1] for r in conn.execute('PRAGMA table_info(usuarios)').fetchall()]
         if 'email' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN email TEXT DEFAULT ''")
         cols_lem = [r[1] for r in conn.execute('PRAGMA table_info(lembretes)').fetchall()]
@@ -202,6 +265,57 @@ def init_db():
             )
             conn.commit()
             print('Usuário padrão criado: admin / sgdp2024 — troque a senha nas Configurações.')
+
+def _fts_match_query(text):
+    """Converte texto livre em uma query FTS5 (AND de prefixos por palavra)."""
+    tokens = re.findall(r'\w+', text, re.UNICODE)
+    if not tokens: return None
+    return ' '.join(f'"{t}"*' for t in tokens)
+
+def _parse_multipart_all(body, boundary):
+    """Extrai todos os campos de um multipart/form-data em um dict:
+    {field_name: {'text': str, 'data': bytes, 'filename': str}} (portado do SGCD)."""
+    parts = {}
+    for part in body.split(b'--' + boundary):
+        if b'Content-Disposition' not in part: continue
+        sep = part.find(b'\r\n\r\n')
+        if sep < 0: continue
+        header  = part[:sep].decode('utf-8', errors='replace')
+        content = part[sep+4:]
+        if content.endswith(b'\r\n'): content = content[:-2]
+        m_name = re.search(r'name="([^"]*)"', header)
+        if not m_name: continue
+        name = m_name.group(1)
+        m_file = re.search(r'filename="([^"]*)"', header)
+        if m_file:
+            parts[name] = {'data': content, 'filename': m_file.group(1), 'text': None}
+        else:
+            parts[name] = {'data': content, 'filename': None, 'text': content.decode('utf-8', errors='replace').strip()}
+    return parts
+
+def _assinar_pdf_icp(pdf_bytes, cert_bytes, senha):
+    """Assina um PDF com certificado ICP-Brasil A1 (.pfx), nível qualificado.
+    Import tardio de pyHanko: o servidor sobe normalmente mesmo sem a lib
+    instalada — só este módulo fica indisponível, com erro claro. Portado do SGCD.
+    Retorna (pdf_assinado_bytes, subject_do_certificado)."""
+    import tempfile, io
+    from pyhanko.sign import signers
+    from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
+
+    with tempfile.NamedTemporaryFile(suffix='.pfx', delete=False) as tf:
+        tf.write(cert_bytes)
+        pfx_path = tf.name
+    try:
+        signer = signers.SimpleSigner.load_pkcs12(pfx_path, passphrase=senha.encode('utf-8'))
+        if signer is None:
+            raise ValueError('Senha do certificado incorreta ou arquivo .pfx inválido/corrompido')
+        cert_subject = str(signer.signing_cert.subject.human_friendly)
+        writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes))
+        out = io.BytesIO()
+        signers.sign_pdf(writer, signers.PdfSignatureMetadata(field_name='Signature1'), signer=signer, output=out)
+        return out.getvalue(), cert_subject
+    finally:
+        os.remove(pfx_path)
 
 # ── Segurança ─────────────────────────────────────────────────────────────────
 
@@ -321,6 +435,29 @@ def audit(conn, uid, nome, acao, doc_id=None, detalhes=None):
         (uid, nome, acao, doc_id, detalhes)
     )
 
+def _sync_tags(conn, did, tag_names):
+    """Substitui as tags do documento pela lista informada (cria as que não existem)."""
+    nomes = sorted({t.strip() for t in (tag_names or []) if t.strip()})
+    conn.execute('DELETE FROM documento_tags WHERE documento_id=?', (did,))
+    for nome in nomes:
+        conn.execute('INSERT OR IGNORE INTO tags (nome) VALUES (?)', (nome,))
+        tag_id = conn.execute('SELECT id FROM tags WHERE nome=? COLLATE NOCASE', (nome,)).fetchone()['id']
+        conn.execute('INSERT OR IGNORE INTO documento_tags (documento_id,tag_id) VALUES (?,?)', (did, tag_id))
+
+def _tags_map(conn, doc_ids):
+    """Retorna {documento_id: [nomes de tag]} para os ids informados."""
+    if not doc_ids: return {}
+    qs = ','.join('?' * len(doc_ids))
+    rows = conn.execute(
+        f'''SELECT dt.documento_id, t.nome FROM documento_tags dt
+            JOIN tags t ON dt.tag_id=t.id WHERE dt.documento_id IN ({qs})
+            ORDER BY t.nome''', doc_ids
+    ).fetchall()
+    out = {}
+    for r in rows:
+        out.setdefault(r['documento_id'], []).append(r['nome'])
+    return out
+
 # ── HTTP Handler ──────────────────────────────────────────────────────────────
 
 class SGDPHandler(http.server.SimpleHTTPRequestHandler):
@@ -426,6 +563,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._get_doc(int(p.split('/')[-1]))
         elif re.fullmatch(r'/api/documentos/\d+/revisoes', p):
             self._list_revisoes(int(p.split('/')[3]))
+        elif re.fullmatch(r'/api/documentos/\d+/vinculos', p):
+            self._list_vinculos(int(p.split('/')[3]))
 
         elif p == '/api/lixeira':
             self._list_lixeira(qs, s)
@@ -446,11 +585,16 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif p == '/api/contadores':
             self._get_contadores(qs)
 
+        elif p == '/api/tags':
+            self._list_tags()
+
         elif p == '/api/dashboard':
             self._dashboard()
 
         elif p == '/api/relatorio':
             self._relatorio(qs)
+        elif p == '/api/relatorio/export.csv':
+            self._relatorio_export_csv(qs)
 
         elif p == '/api/usuarios':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
@@ -605,8 +749,14 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif re.fullmatch(r'/api/documentos/\d+/arquivo', p):
             self._upload_arquivo(int(p.split('/')[3]), s)
 
+        elif re.fullmatch(r'/api/documentos/\d+/assinar', p):
+            self._assinar_doc(int(p.split('/')[3]), s)
+
         elif re.fullmatch(r'/api/documentos/\d+/email', p):
             self._enviar_email(int(p.split('/')[3]), self._body(), s)
+
+        elif re.fullmatch(r'/api/documentos/\d+/vinculos', p):
+            self._create_vinculo(int(p.split('/')[3]), self._body(), s)
 
         elif re.fullmatch(r'/api/lixeira/\d+/restaurar', p):
             self._restaurar_doc(int(p.split('/')[3]), s)
@@ -687,6 +837,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._purgar_doc_endpoint(int(p.split('/')[-1]), s)
         elif re.fullmatch(r'/api/lembretes/\d+', p):
             self._delete_lembrete(int(p.split('/')[-1]), s)
+        elif re.fullmatch(r'/api/vinculos/\d+', p):
+            self._delete_vinculo(int(p.split('/')[-1]), s)
         else:
             self._json(404, {'error': 'Rota não encontrada'})
 
@@ -731,10 +883,20 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         where, params = ['d.excluido_em IS NULL'], []
         if tipo:   where.append('d.tipo=?');   params.append(tipo)
         if search:
-            where.append('(d.ementa LIKE ? OR d.partes LIKE ? OR CAST(d.numero AS TEXT) LIKE ?)')
-            params += [f'%{search}%'] * 3
+            fts_q = _fts_match_query(search) if FTS_AVAILABLE else None
+            if fts_q:
+                where.append('''(d.id IN (SELECT rowid FROM documentos_fts WHERE documentos_fts MATCH ?)
+                                  OR d.partes LIKE ? OR CAST(d.numero AS TEXT) LIKE ?)''')
+                params += [fts_q, f'%{search}%', f'%{search}%']
+            else:
+                where.append('(d.ementa LIKE ? OR d.partes LIKE ? OR CAST(d.numero AS TEXT) LIKE ?)')
+                params += [f'%{search}%'] * 3
         if ano:    where.append('d.ano=?');    params.append(int(ano))
         if qp('sem_pdf'): where.append('d.arquivo_id IS NULL')
+        tag = qp('tag')
+        if tag:
+            where.append('d.id IN (SELECT dt.documento_id FROM documento_tags dt JOIN tags t ON dt.tag_id=t.id WHERE t.nome=? COLLATE NOCASE)')
+            params.append(tag)
         w = 'WHERE ' + ' AND '.join(where)
 
         with get_db() as conn:
@@ -749,7 +911,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                     {w} ORDER BY d.ano DESC, d.numero DESC LIMIT ? OFFSET ?''',
                 params + [per, (page-1)*per]
             ).fetchall()
-        self._json(200, {'total': total, 'page': page, 'per': per, 'items': [dict(r) for r in rows]})
+            tags_map = _tags_map(conn, [r['id'] for r in rows])
+        items = []
+        for r in rows:
+            item = dict(r)
+            item['tags'] = tags_map.get(r['id'], [])
+            items.append(item)
+        self._json(200, {'total': total, 'page': page, 'per': per, 'items': items})
 
     def _get_doc(self, did):
         with get_db() as conn:
@@ -762,8 +930,15 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                    LEFT JOIN arquivos a ON d.arquivo_id=a.id
                    WHERE d.id=?''', (did,)
             ).fetchone()
-        if not row: self._json(404, {'error': 'Não encontrado'}); return
-        self._json(200, dict(row))
+            if not row: self._json(404, {'error': 'Não encontrado'}); return
+            tags = _tags_map(conn, [did]).get(did, [])
+        item = dict(row); item['tags'] = tags
+        self._json(200, item)
+
+    def _list_tags(self):
+        with get_db() as conn:
+            rows = conn.execute('SELECT nome FROM tags ORDER BY nome').fetchall()
+        self._json(200, {'items': [r['nome'] for r in rows]})
 
     def _create_doc(self, body, s):
         data = json.loads(body) if body else {}
@@ -792,12 +967,15 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 # sobrescreveria um last_insert_rowid() consultado depois dele
                 did = cur.lastrowid
                 bump_contador(conn, tipo, ano, numero)
+                if 'tags' in data: _sync_tags(conn, did, data['tags'])
                 audit(conn, s['user_id'], s['nome'], 'criar', did, f"{tipo} nº {numero}/{ano}")
                 conn.commit()
             except sqlite3.IntegrityError:
                 self._json(409, {'error': f'Já existe {tipo} nº {numero}/{ano}'}); return
             row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
-        self._json(201, dict(row))
+            tags = _tags_map(conn, [did]).get(did, [])
+        item = dict(row); item['tags'] = tags
+        self._json(201, item)
 
     def _update_doc(self, did, body, s):
         data = json.loads(body) if body else {}
@@ -818,12 +996,15 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                              list(fields.values()) + [did])
                 if 'numero' in fields:
                     bump_contador(conn, row['tipo'], fields.get('ano', row['ano']), fields['numero'])
+                if 'tags' in data: _sync_tags(conn, did, data['tags'])
                 audit(conn, s['user_id'], s['nome'], 'editar', did)
                 conn.commit()
             except sqlite3.IntegrityError:
                 self._json(409, {'error': 'Número/ano já existe para este tipo'}); return
             updated = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
-        self._json(200, dict(updated))
+            tags = _tags_map(conn, [did]).get(did, [])
+        item = dict(updated); item['tags'] = tags
+        self._json(200, item)
 
     def _list_revisoes(self, did):
         with get_db() as conn:
@@ -838,6 +1019,50 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             item['dados'] = json.loads(item.pop('dados_json'))
             items.append(item)
         self._json(200, {'items': items})
+
+    def _list_vinculos(self, did):
+        with get_db() as conn:
+            diretos = conn.execute(
+                '''SELECT v.id, v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
+                   FROM documento_vinculos v JOIN documentos d ON v.destino_id=d.id
+                   WHERE v.origem_id=?''', (did,)).fetchall()
+            inversos = conn.execute(
+                '''SELECT v.id, v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
+                   FROM documento_vinculos v JOIN documentos d ON v.origem_id=d.id
+                   WHERE v.destino_id=?''', (did,)).fetchall()
+        items = [
+            {**dict(r), 'label': TIPOS_VINCULO[r['tipo']][0], 'direcao': 'direto'} for r in diretos
+        ] + [
+            {**dict(r), 'label': TIPOS_VINCULO[r['tipo']][1], 'direcao': 'inverso'} for r in inversos
+        ]
+        self._json(200, {'items': items})
+
+    def _create_vinculo(self, did, body, s):
+        data = json.loads(body) if body else {}
+        tipo = data.get('tipo')
+        destino_id = data.get('destino_id')
+        if tipo not in TIPOS_VINCULO: self._json(400, {'error': 'Tipo de vínculo inválido'}); return
+        if not destino_id or int(destino_id) == did: self._json(400, {'error': 'Documento de destino inválido'}); return
+        with get_db() as conn:
+            destino = conn.execute('SELECT id FROM documentos WHERE id=?', (destino_id,)).fetchone()
+            if not destino: self._json(404, {'error': 'Documento de destino não encontrado'}); return
+            try:
+                conn.execute('INSERT INTO documento_vinculos (origem_id,destino_id,tipo,criado_por) VALUES (?,?,?,?)',
+                             (did, destino_id, tipo, s['user_id']))
+                audit(conn, s['user_id'], s['nome'], 'criar_vinculo', did, f'{tipo} -> #{destino_id}')
+                conn.commit()
+            except sqlite3.IntegrityError:
+                self._json(409, {'error': 'Esse vínculo já existe'}); return
+        self._list_vinculos(did)
+
+    def _delete_vinculo(self, vid, s):
+        with get_db() as conn:
+            row = conn.execute('SELECT * FROM documento_vinculos WHERE id=?', (vid,)).fetchone()
+            if not row: self._json(404, {'error': 'Não encontrado'}); return
+            conn.execute('DELETE FROM documento_vinculos WHERE id=?', (vid,))
+            audit(conn, s['user_id'], s['nome'], 'excluir_vinculo', row['origem_id'])
+            conn.commit()
+        self._json(200, {'ok': True})
 
     def _delete_doc(self, did, s):
         with get_db() as conn:
@@ -915,6 +1140,31 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 'SELECT id,tipo,numero,ano,data,ementa,assunto FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL ORDER BY data DESC, id DESC LIMIT 200',
                 (de, ate)).fetchall()]
         self._json(200, {'total': total, 'por_tipo': por_tipo, 'por_assunto': por_assunto, 'por_mes': por_mes, 'documentos': docs})
+
+    def _relatorio_export_csv(self, qs):
+        import csv, io
+        def qp(k, d=None): v = qs.get(k); return v[0] if v else d
+        de  = qp('de',  '1900-01-01')
+        ate = qp('ate', '2999-12-31')
+        with get_db() as conn:
+            docs = conn.execute(
+                '''SELECT tipo,numero,ano,data,ementa,partes,observacoes,assunto FROM documentos
+                   WHERE data BETWEEN ? AND ? AND excluido_em IS NULL ORDER BY data DESC, id DESC''',
+                (de, ate)).fetchall()
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(['Tipo', 'Número', 'Ano', 'Data', 'Ementa', 'Partes', 'Observações', 'Assunto'])
+        for d in docs:
+            w.writerow([TIPOS_LABELS_CSV.get(d['tipo'], d['tipo']), d['numero'], d['ano'], d['data'],
+                        d['ementa'], d['partes'], d['observacoes'], d['assunto']])
+        payload = ('﻿' + buf.getvalue()).encode('utf-8')  # BOM: acentos corretos ao abrir no Excel
+        self.send_response(200)
+        self._cors()
+        self.send_header('Content-Type', 'text/csv; charset=utf-8')
+        self.send_header('Content-Disposition', f'attachment; filename="relatorio_sgdp_{de}_a_{ate}.csv"')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
     # ── Agenda / Lembretes ────────────────────────────────────────────────────
 
@@ -1109,6 +1359,73 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             audit(conn, s['user_id'], s['nome'], 'upload', did, filename)
             conn.commit()
         self._json(200, {'ok': True, 'arquivo_id': aid, 'nome_original': filename, 'tamanho': len(filedata)})
+
+    def _assinar_doc(self, did, s):
+        """Assina digitalmente o PDF do documento com certificado ICP-Brasil (.pfx A1).
+        Se um novo PDF for enviado no campo 'pdf', assina e anexa esse; senão assina
+        o PDF já anexado ao documento."""
+        ct = self.headers.get('Content-Type', '')
+        if 'multipart/form-data' not in ct:
+            self._json(400, {'error': 'Envie como multipart/form-data'}); return
+        length = int(self.headers.get('Content-Length', 0))
+        if length > MAX_UPLOAD_SIZE:
+            self._json(413, {'error': 'Arquivo muito grande (máx. 50 MB)'}); return
+        boundary = next((p.strip()[9:].strip('"') for p in ct.split(';') if p.strip().startswith('boundary=')), None)
+        if not boundary: self._json(400, {'error': 'Boundary não encontrado'}); return
+        parts = _parse_multipart_all(self.rfile.read(length), boundary.encode())
+
+        cert_bytes = parts.get('cert', {}).get('data')
+        senha = parts.get('senha', {}).get('text', '')
+        pdf_novo = parts.get('pdf', {}).get('data')
+        if not cert_bytes or not senha:
+            self._json(400, {'error': 'Certificado (.pfx) e senha são obrigatórios'}); return
+
+        with get_db() as conn:
+            doc = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+            if not doc: self._json(404, {'error': 'Documento não encontrado'}); return
+            nome_original = 'documento.pdf'
+            if pdf_novo:
+                pdf_bytes = pdf_novo
+            elif doc['arquivo_id']:
+                arq = conn.execute('SELECT * FROM arquivos WHERE id=?', (doc['arquivo_id'],)).fetchone()
+                if not arq: self._json(404, {'error': 'PDF anexado não encontrado no disco'}); return
+                fp = os.path.join(UPLOADS_DIR, arq['nome_disco'])
+                if not os.path.isfile(fp): self._json(404, {'error': 'PDF anexado não encontrado no disco'}); return
+                with open(fp, 'rb') as f: pdf_bytes = f.read()
+                nome_original = arq['nome_original']
+            else:
+                self._json(400, {'error': 'Este documento não tem PDF anexado. Envie um PDF para assinar.'}); return
+
+        try:
+            pdf_assinado, cert_subject = _assinar_pdf_icp(pdf_bytes, cert_bytes, senha)
+        except ImportError:
+            self._json(400, {'error': 'Módulo de assinatura ICP-Brasil indisponível — instale com "pip install -r requirements.txt"'}); return
+        except Exception as e:
+            self._json(400, {'error': f'Falha ao assinar com o certificado: {e}'}); return
+        finally:
+            cert_bytes = None; senha = None  # descarta referências assim que possível
+
+        with get_db() as conn:
+            doc = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+            if doc['arquivo_id']:
+                old = conn.execute('SELECT * FROM arquivos WHERE id=?', (doc['arquivo_id'],)).fetchone()
+                if old:
+                    p = os.path.join(UPLOADS_DIR, old['nome_disco'])
+                    if os.path.isfile(p): os.remove(p)
+                    conn.execute('DELETE FROM arquivos WHERE id=?', (old['id'],))
+            nome_disco = f"{secrets.token_hex(16)}.pdf"
+            with open(os.path.join(UPLOADS_DIR, nome_disco), 'wb') as f:
+                f.write(pdf_assinado)
+            conn.execute('INSERT INTO arquivos (nome_original,nome_disco,tamanho,enviado_por) VALUES (?,?,?,?)',
+                         (nome_original, nome_disco, len(pdf_assinado), s['user_id']))
+            aid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+            conn.execute('''UPDATE documentos SET arquivo_id=?,atualizado_por=?,atualizado_em=?,
+                             assinado_por=?,assinado_em=?,assinatura_cert=? WHERE id=?''',
+                         (aid, s['user_id'], time.strftime('%Y-%m-%dT%H:%M:%S'),
+                          s['user_id'], time.strftime('%Y-%m-%dT%H:%M:%S'), cert_subject, did))
+            audit(conn, s['user_id'], s['nome'], 'assinar_icp', did, cert_subject)
+            conn.commit()
+        self._json(200, {'ok': True, 'arquivo_id': aid, 'cert_subject': cert_subject})
 
     def _remove_arquivo(self, did, s):
         with get_db() as conn:
@@ -1322,7 +1639,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.14.3', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.15.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
@@ -1539,7 +1856,7 @@ def _do_json_backup(cfg=None):
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.14.3', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.15.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
                   'arquivos': arqs, 'settings': settings}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:
