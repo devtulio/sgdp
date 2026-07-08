@@ -457,10 +457,12 @@ tr:hover td { background: var(--gray-50); }
 #modal-pdf .modal-body { padding: 0; display: flex; }
 
 /* ── Impressão (relatório) ───────────────────────────────────────────────── */
+.print-only { display: none; }
 @media print {
   #sidebar, .no-print, .modal-overlay { display: none !important; }
   #app, .page-content { width: 100% !important; margin: 0 !important; padding: 0 !important; }
   body { background: #fff !important; }
+  .print-only { display: block !important; }
   @page { margin: 14mm; }
 }
 
@@ -589,8 +591,9 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.15.0</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.16.0</span>
     </div>
+    <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
 </div>
 
@@ -684,7 +687,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.15.0
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.16.0
     </footer>
   </main>
 </div>
@@ -1188,6 +1191,15 @@ async function init() {
         if (d.municipio) document.getElementById('login-orgao-muni').textContent = d.municipio;
       }).catch(() => {});
     }
+    fetch('/api/public/last-backup').then(r => r.ok ? r.json() : {}).then(d => {
+      const el = document.getElementById('login-last-backup');
+      if (!el) return;
+      if (!d.ts) { el.textContent = 'Nenhum backup automático registrado ainda'; return; }
+      const dias = Math.floor((Date.now() - new Date(d.ts).getTime()) / 86400000);
+      const quando = dias <= 0 ? 'hoje' : dias === 1 ? 'ontem' : `há ${dias} dias`;
+      el.textContent = `Último backup automático: ${quando}`;
+      if (dias >= 3) el.style.color = 'var(--red, #dc2626)';
+    }).catch(() => {});
     const lastUser = localStorage.getItem('sgdp-last-user');
     if (lastUser) {
       document.getElementById('l-user').value = lastUser;
@@ -1403,8 +1415,9 @@ async function renderRelatorio(periodo, de, ate) {
   if (periodo === 'custom') { localStorage.setItem('sgdp-rel-de', deDt); localStorage.setItem('sgdp-rel-ate', ateDt); }
 
   pc.innerHTML = '<div class="loading">Carregando relatório…</div>';
-  const r = await API.get(`/api/relatorio?de=${deDt}&ate=${ateDt}`);
+  const [r, rCfg] = await Promise.all([API.get(`/api/relatorio?de=${deDt}&ate=${ateDt}`), API.get('/api/config')]);
   const d = await API.json(r);
+  const cfgOrg = await API.json(rCfg) || {};
   if (!d) return;
 
   // ── Gráfico de barras (evolução mensal) ──
@@ -1473,8 +1486,19 @@ async function renderRelatorio(periodo, de, ate) {
   const periodoLabel = periodo === 'custom' ? `${deDt} a ${ateDt}`
     : periodos.find(([v])=>v===periodo)?.[1] || '';
 
+  const letterheadLines = [
+    [cfgOrg.orgao_nome, cfgOrg.municipio].filter(Boolean).join(' — '),
+    cfgOrg.aut_nome ? `${esc(cfgOrg.aut_nome)}${cfgOrg.aut_cargo ? ' — ' + esc(cfgOrg.aut_cargo) : ''}` : '',
+  ].filter(Boolean);
+
   pc.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:20px;padding:4px 0">
+
+      <!-- Cabeçalho (só na impressão) -->
+      <div class="print-only" style="text-align:center;border-bottom:2px solid #333;padding-bottom:10px;margin-bottom:6px">
+        <div style="font-size:16px;font-weight:800">Relatório Gerencial de Documentos</div>
+        ${letterheadLines.map(l => `<div style="font-size:12px;color:#444">${l}</div>`).join('')}
+      </div>
 
       <!-- Filtros -->
       <div class="no-print" style="background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 20px">
@@ -1624,7 +1648,9 @@ async function renderDocumentos(tipo, page = 1) {
         ? `<span style="display:flex;gap:4px;align-items:center">
             <button class="btn btn-outline btn-sm btn-icon" onclick="verPdf(${doc.arquivo_id},'${esc(doc.arquivo_nome || 'Documento')}')" title="Visualizar PDF">👁</button>
             <a href="/api/arquivos/${doc.arquivo_id}" download class="btn btn-outline btn-sm btn-icon" title="Baixar PDF">⬇</a>
-            ${doc.assinado_em ? `<span title="Assinado digitalmente em ${fmtDataHora(doc.assinado_em)}${doc.assinatura_cert ? ' — ' + esc(doc.assinatura_cert) : ''}" style="font-size:14px">🔏</span>` : ''}
+            ${doc.assinado_em ? (doc.cod_verificacao
+              ? `<a href="/verificar/${doc.cod_verificacao}" target="_blank" rel="noopener" title="Assinado digitalmente em ${fmtDataHora(doc.assinado_em)}${doc.assinatura_cert ? ' — ' + esc(doc.assinatura_cert) : ''}. Clique para verificar (cód. ${doc.cod_verificacao})" style="font-size:14px;text-decoration:none">🔏</a>`
+              : `<span title="Assinado digitalmente em ${fmtDataHora(doc.assinado_em)}${doc.assinatura_cert ? ' — ' + esc(doc.assinatura_cert) : ''}" style="font-size:14px">🔏</span>`) : ''}
            </span>`
         : '<span style="color:var(--gray-300);font-size:12px">Sem PDF</span>'}</td>
       <td>
@@ -2122,7 +2148,13 @@ async function assinarDocumento() {
   const d = await API.json(r);
   if (!r || !r.ok) { status.textContent = d?.error || 'Erro ao assinar.'; status.style.color = 'var(--red)'; return; }
   toast('Documento assinado digitalmente.', 'success');
-  fecharModal('modal-assinar');
+  const verifUrl = `${location.origin}/verificar/${d.cod_verificacao}`;
+  status.style.color = 'var(--green, #16a34a)';
+  status.innerHTML = `✔ Assinado com sucesso.<br>
+    Código de verificação: <strong style="font-family:monospace;letter-spacing:1px">${esc(d.cod_verificacao)}</strong><br>
+    <a href="${esc(verifUrl)}" target="_blank" rel="noopener">${esc(verifUrl)}</a>`;
+  document.getElementById('f-assinar-cert').value = '';
+  document.getElementById('f-assinar-senha').value = '';
   await renderDocumentos(S.pag.tipo, S.pag.page);
 }
 
@@ -2697,7 +2729,7 @@ async function sincronizarBackup(file) {
   const d = await API.json(r);
   if (!r.ok) { toast(d?.error || 'Erro ao ler o backup.', 'error'); return; }
 
-  if (d.novos === 0 && d.conflitos.length === 0) {
+  if (d.novos === 0 && d.conflitos.length === 0 && !d.novos_auditoria) {
     toast('Nenhuma novidade — este backup não contém dados diferentes dos seus.', 'info');
     return;
   }
@@ -2705,6 +2737,7 @@ async function sincronizarBackup(file) {
   const resumo = [
     d.novos && `${d.novos} documento(s) novo(s)`,
     d.conflitos.length && `${d.conflitos.length} registro(s) alterado(s) nos dois lados`,
+    d.novos_auditoria && `${d.novos_auditoria} evento(s) de auditoria`,
   ].filter(Boolean).join(', ');
   const ok = await confirmar(
     `Backup exportado em ${d.exported_at ? new Date(d.exported_at).toLocaleString('pt-BR') : '—'}.<br><br>` +
@@ -2725,7 +2758,7 @@ async function sincronizarBackup(file) {
   const r2 = await API.post('/api/backup/sync-apply', { backup, aceitar });
   const d2 = await API.json(r2);
   if (!r2.ok) { toast(d2?.error || 'Erro ao sincronizar.', 'error'); return; }
-  toast(`Sincronizado: ${d2.novos} novo(s), ${d2.conflitos_aplicados} conflito(s) aplicado(s).`, 'success');
+  toast(`Sincronizado: ${d2.novos} novo(s), ${d2.conflitos_aplicados} conflito(s) aplicado(s), ${d2.auditoria_importada || 0} evento(s) de auditoria.`, 'success');
   await navegar('dashboard');
 }
 
@@ -3006,6 +3039,25 @@ async function renderConfiguracoes(abaInicial) {
                 <label>Município / UF</label>
                 <input id="cfg-municipio" type="text" value="${esc(cfg?.municipio||'')}" placeholder="Ex: Orindiúva/SP">
               </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="salvarOrganizacao()">Salvar</button>
+          </div>
+          <div class="cfg-section" style="margin-top:24px">
+            <h3>Autoridade Responsável</h3>
+            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Usado no cabeçalho do Relatório Gerencial quando impresso/exportado.</p>
+            <div class="form-row cols-2">
+              <div class="form-group">
+                <label>Nome</label>
+                <input id="cfg-aut-nome" type="text" value="${esc(cfg?.aut_nome||'')}" placeholder="Ex: Dr. João da Silva">
+              </div>
+              <div class="form-group">
+                <label>Cargo</label>
+                <input id="cfg-aut-cargo" type="text" value="${esc(cfg?.aut_cargo||'')}" placeholder="Ex: Procurador-Geral">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Diário Oficial (link)</label>
+              <input id="cfg-diario-url" type="url" value="${esc(cfg?.diario_url||'')}" placeholder="Ex: https://diariooficial.municipio.sp.gov.br">
             </div>
             <button class="btn btn-primary btn-sm" onclick="salvarOrganizacao()">Salvar</button>
           </div>
@@ -3306,6 +3358,9 @@ async function salvarOrganizacao() {
   const r = await API.put('/api/config', {
     orgao_nome: document.getElementById('cfg-orgao-nome').value.trim(),
     municipio:  document.getElementById('cfg-municipio').value.trim(),
+    aut_nome:   document.getElementById('cfg-aut-nome')?.value.trim() ?? '',
+    aut_cargo:  document.getElementById('cfg-aut-cargo')?.value.trim() ?? '',
+    diario_url: document.getElementById('cfg-diario-url')?.value.trim() ?? '',
   });
   if (!r?.ok) { toast('Erro ao salvar.', 'error'); return; }
   // Atualiza sidebar e config local

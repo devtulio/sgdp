@@ -1,4 +1,4 @@
-# SGDP v1.15.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.16.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -12,6 +12,7 @@ import threading
 import time
 import subprocess
 import re
+import html as html_mod
 import logging
 import mimetypes
 from urllib.parse import urlparse, parse_qs
@@ -177,6 +178,18 @@ def init_db():
                 criado_em  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
                 UNIQUE(origem_id, destino_id, tipo)
             );
+            CREATE TABLE IF NOT EXISTS signatures (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                cod            TEXT NOT NULL UNIQUE,
+                documento_id   INTEGER REFERENCES documentos(id) ON DELETE SET NULL,
+                doc_tipo       TEXT, doc_numero INTEGER, doc_ano INTEGER, doc_ementa TEXT,
+                signer_user_id INTEGER REFERENCES usuarios(id),
+                signer_name    TEXT,
+                method         TEXT DEFAULT 'icp-brasil',
+                cert_subject   TEXT,
+                hash_sha256    TEXT,
+                signed_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
             CREATE INDEX IF NOT EXISTS idx_docs_tipo ON documentos(tipo);
             CREATE INDEX IF NOT EXISTS idx_docs_ano  ON documentos(ano);
             CREATE INDEX IF NOT EXISTS idx_audit_em  ON auditoria(em);
@@ -185,6 +198,7 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_doc_tags_tag ON documento_tags(tag_id);
             CREATE INDEX IF NOT EXISTS idx_vinculos_origem  ON documento_vinculos(origem_id);
             CREATE INDEX IF NOT EXISTS idx_vinculos_destino ON documento_vinculos(destino_id);
+            CREATE INDEX IF NOT EXISTS idx_signatures_doc ON signatures(documento_id);
         ''')
         global FTS_AVAILABLE
         try:
@@ -218,6 +232,7 @@ def init_db():
         conn.executemany('INSERT OR IGNORE INTO sys_settings VALUES (?,?)', [
             ('orgao_nome',           'Procuradoria-Geral'),
             ('municipio',            ''),
+            ('aut_nome', ''), ('aut_cargo', ''), ('diario_url', ''),
             ('backup_path',          BACKUP_DIR),
             ('auto_backup_enabled',  '1'),
             ('auto_backup_keep',     str(BACKUP_KEEP)),
@@ -458,6 +473,26 @@ def _tags_map(conn, doc_ids):
         out.setdefault(r['documento_id'], []).append(r['nome'])
     return out
 
+def _sig_cod_map(conn, doc_ids):
+    """Retorna {documento_id: cod} do registro de assinatura mais recente de cada id."""
+    if not doc_ids: return {}
+    qs = ','.join('?' * len(doc_ids))
+    rows = conn.execute(
+        f'''SELECT documento_id, cod FROM signatures WHERE id IN (
+                SELECT MAX(id) FROM signatures WHERE documento_id IN ({qs}) GROUP BY documento_id
+            )''', doc_ids
+    ).fetchall()
+    return {r['documento_id']: r['cod'] for r in rows}
+
+def _gerar_cod_assinatura(conn):
+    """Código curto de verificação (ex: A1B2-C3D4), único na tabela signatures."""
+    for _ in range(10):
+        raw = secrets.token_hex(4).upper()
+        cod = raw[:4] + '-' + raw[4:]
+        if not conn.execute('SELECT 1 FROM signatures WHERE cod=?', (cod,)).fetchone():
+            return cod
+    raise RuntimeError('Não foi possível gerar código de verificação único')
+
 # ── HTTP Handler ──────────────────────────────────────────────────────────────
 
 class SGDPHandler(http.server.SimpleHTTPRequestHandler):
@@ -494,11 +529,22 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 with get_db() as conn:
                     rows = conn.execute(
-                        "SELECT key,value FROM sys_settings WHERE key IN ('orgao','municipio','cnpj_orgao')"
+                        "SELECT key,value FROM sys_settings WHERE key IN ('orgao_nome','municipio')"
                     ).fetchall()
-                self._json(200, {r['key']: r['value'] for r in rows})
+                info = {r['key']: r['value'] for r in rows}
+                if 'orgao_nome' in info: info['orgao'] = info.pop('orgao_nome')
+                self._json(200, info)
             except Exception:
                 self._json(200, {})
+        elif p == '/api/public/last-backup':
+            try:
+                with get_db() as conn:
+                    row = conn.execute("SELECT value FROM sys_settings WHERE key='auto_backup_last'").fetchone()
+                self._json(200, {'ts': row['value'] if row else None})
+            except Exception:
+                self._json(200, {'ts': None})
+        elif p.startswith('/verificar/'):
+            self._serve_verificar(p[len('/verificar/'):].strip('/').upper())
         elif p.startswith('/api/'):
             s = self._auth()
             if s: self._route_get(p, qs, s)
@@ -725,7 +771,9 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._json(200, {'orgao_nome': cfg.get('orgao_nome',''), 'municipio': cfg.get('municipio',''),
                              'auto_backup_enabled': cfg.get('auto_backup_enabled','1'),
                              'auto_backup_keep': cfg.get('auto_backup_keep', str(BACKUP_KEEP)),
-                             'backup_path': cfg.get('backup_path', BACKUP_DIR)})
+                             'backup_path': cfg.get('backup_path', BACKUP_DIR),
+                             'aut_nome': cfg.get('aut_nome',''), 'aut_cargo': cfg.get('aut_cargo',''),
+                             'diario_url': cfg.get('diario_url','')})
 
         elif p in ('/api/settings/brasao', '/api/settings/brasao/'):
             cfg = get_config()
@@ -911,11 +959,14 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                     {w} ORDER BY d.ano DESC, d.numero DESC LIMIT ? OFFSET ?''',
                 params + [per, (page-1)*per]
             ).fetchall()
-            tags_map = _tags_map(conn, [r['id'] for r in rows])
+            ids = [r['id'] for r in rows]
+            tags_map = _tags_map(conn, ids)
+            cod_map = _sig_cod_map(conn, ids)
         items = []
         for r in rows:
             item = dict(r)
             item['tags'] = tags_map.get(r['id'], [])
+            item['cod_verificacao'] = cod_map.get(r['id'])
             items.append(item)
         self._json(200, {'total': total, 'page': page, 'per': per, 'items': items})
 
@@ -932,7 +983,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             ).fetchone()
             if not row: self._json(404, {'error': 'Não encontrado'}); return
             tags = _tags_map(conn, [did]).get(did, [])
+            sig = conn.execute(
+                'SELECT cod FROM signatures WHERE documento_id=? ORDER BY id DESC LIMIT 1', (did,)
+            ).fetchone()
         item = dict(row); item['tags'] = tags
+        item['cod_verificacao'] = sig['cod'] if sig else None
         self._json(200, item)
 
     def _list_tags(self):
@@ -1419,13 +1474,24 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.execute('INSERT INTO arquivos (nome_original,nome_disco,tamanho,enviado_por) VALUES (?,?,?,?)',
                          (nome_original, nome_disco, len(pdf_assinado), s['user_id']))
             aid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+            agora = time.strftime('%Y-%m-%dT%H:%M:%S')
             conn.execute('''UPDATE documentos SET arquivo_id=?,atualizado_por=?,atualizado_em=?,
                              assinado_por=?,assinado_em=?,assinatura_cert=? WHERE id=?''',
-                         (aid, s['user_id'], time.strftime('%Y-%m-%dT%H:%M:%S'),
-                          s['user_id'], time.strftime('%Y-%m-%dT%H:%M:%S'), cert_subject, did))
-            audit(conn, s['user_id'], s['nome'], 'assinar_icp', did, cert_subject)
+                         (aid, s['user_id'], agora, s['user_id'], agora, cert_subject, did))
+            # Registro imutável e independente do arquivo — sobrevive mesmo se o PDF for
+            # trocado/apagado depois, permitindo verificação pública por código.
+            cod = _gerar_cod_assinatura(conn)
+            hash_sha256 = hashlib.sha256(pdf_assinado).hexdigest()
+            conn.execute(
+                '''INSERT INTO signatures (cod,documento_id,doc_tipo,doc_numero,doc_ano,doc_ementa,
+                   signer_user_id,signer_name,method,cert_subject,hash_sha256,signed_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
+                (cod, did, doc['tipo'], doc['numero'], doc['ano'], doc['ementa'],
+                 s['user_id'], s['nome'], 'icp-brasil', cert_subject, hash_sha256, agora)
+            )
+            audit(conn, s['user_id'], s['nome'], 'assinar_icp', did, f'{cert_subject} — cód. {cod}')
             conn.commit()
-        self._json(200, {'ok': True, 'arquivo_id': aid, 'cert_subject': cert_subject})
+        self._json(200, {'ok': True, 'arquivo_id': aid, 'cert_subject': cert_subject, 'cod_verificacao': cod})
 
     def _remove_arquivo(self, did, s):
         with get_db() as conn:
@@ -1441,6 +1507,65 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             audit(conn, s['user_id'], s['nome'], 'remover_arquivo', did)
             conn.commit()
         self._json(200, {'ok': True})
+
+    def _serve_verificar(self, cod):
+        with get_db() as conn:
+            row = conn.execute('SELECT * FROM signatures WHERE cod=?', (cod,)).fetchone()
+        TIPOS_LABEL = {'lei': 'Lei', 'decreto': 'Decreto', 'portaria': 'Portaria', 'parecer': 'Parecer', 'oficio': 'Ofício'}
+        if row:
+            doc_label = f"{TIPOS_LABEL.get(row['doc_tipo'], row['doc_tipo'] or '')} nº {row['doc_numero']}/{row['doc_ano']}"
+            status_html = f'''<h2>✓ Assinatura Encontrada</h2>
+    <div class="field"><strong>Documento:</strong> {html_mod.escape(doc_label)}</div>
+    <div class="field"><strong>Ementa:</strong> {html_mod.escape(row['doc_ementa'] or '—')}</div>
+    <div class="field"><strong>Assinado por:</strong> {html_mod.escape(row['signer_name'] or '—')}</div>
+    <div class="field"><strong>Certificado:</strong> {html_mod.escape(row['cert_subject'] or '—')}</div>
+    <div class="field"><strong>Data:</strong> {html_mod.escape(row['signed_at'] or '—')}</div>'''
+            status_class = 'ok'
+            extra_note = '<p style="font-size:12px;color:#6b7280;margin-top:10px">Para validar a cadeia de certificação, confira também o <a href="https://verificador.iti.gov.br/" target="_blank" rel="noopener">verificador oficial do ITI</a>.</p>'
+        else:
+            status_html = '<h2>✗ Não encontrado</h2><p style="font-size:13px;margin-top:6px">O código não corresponde a nenhuma assinatura registrada nesta instalação.</p>'
+            status_class = 'err'
+            extra_note = ''
+
+        html = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verificação de Autenticidade — SGDP</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{font-family:system-ui,sans-serif;background:#f3f4f6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}
+  .card{{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.10);max-width:520px;width:100%;padding:32px 36px}}
+  .logo{{font-size:13px;font-weight:700;letter-spacing:.5px;color:#6b7280;text-transform:uppercase;margin-bottom:20px}}
+  h1{{font-size:18px;font-weight:700;margin-bottom:6px}}
+  .cod{{font-family:monospace;font-size:15px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 14px;display:inline-block;margin-bottom:20px;letter-spacing:2px}}
+  #status{{border-radius:8px;padding:16px 20px;margin-bottom:20px}}
+  #status.ok{{background:#f0fdf4;border:1px solid #86efac}}
+  #status.err{{background:#fef2f2;border:1px solid #fca5a5}}
+  #status h2{{font-size:15px;font-weight:700;margin-bottom:4px}}
+  #status.ok h2{{color:#166534}} #status.err h2{{color:#b91c1c}}
+  .field{{margin-bottom:8px;font-size:13px}} .field strong{{color:#374151}}
+  .footer{{font-size:11px;color:#9ca3af;margin-top:20px;text-align:center}}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
+    <h1>Verificação de Autenticidade</h1>
+    <div class="cod">{html_mod.escape(cod)}</div>
+    <div id="status" class="{status_class}">{status_html}</div>
+    {extra_note}
+    <div class="footer">Consulta realizada em {time.strftime('%d/%m/%Y %H:%M')} nesta instalação do SGDP.</div>
+  </div>
+</body>
+</html>"""
+        payload = html.encode('utf-8')
+        self.send_response(200 if row else 404)
+        self._cors()
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
     def _download_arquivo(self, aid, qs):
         with get_db() as conn:
@@ -1573,7 +1698,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
     def _update_config(self, body, s):
         data = json.loads(body) if body else {}
-        allowed = ('orgao_nome', 'municipio', 'backup_path', 'auto_backup_enabled', 'auto_backup_keep')
+        allowed = ('orgao_nome', 'municipio', 'backup_path', 'auto_backup_enabled', 'auto_backup_keep',
+                   'aut_nome', 'aut_cargo', 'diario_url')
         with get_db() as conn:
             for k in allowed:
                 if k in data:
@@ -1633,14 +1759,16 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             users = [dict(r) for r in conn.execute(
                 'SELECT id,username,nome,senha_hash,admin,ativo,criado_em FROM usuarios').fetchall()]
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
+            auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
             arqs  = []
             for arq in conn.execute('SELECT * FROM arquivos').fetchall():
                 p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.15.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
-                  'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs}
+        backup = {'sgdp_version': '1.16.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+                  'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs,
+                  'auditoria': auditoria}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
         self._cors()
@@ -1717,12 +1845,26 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 conflitos.append({'chave': f"{chave[0]}|{chave[1]}|{chave[2]}", 'local': local, 'backup': doc})
         return novos, conflitos
 
+    def _diff_audit(self, backup):
+        """Eventos de auditoria do backup ainda não presentes localmente. Dedup por
+        (usuario_nome,acao,detalhes,em) — não por id, que colide entre instalações."""
+        with get_db() as conn:
+            locais = {(r['usuario_nome'], r['acao'], r['detalhes'], r['em'])
+                      for r in conn.execute('SELECT usuario_nome,acao,detalhes,em FROM auditoria').fetchall()}
+        novos = []
+        for a in backup.get('auditoria', []):
+            chave = (a.get('usuario_nome'), a.get('acao'), a.get('detalhes'), a.get('em'))
+            if chave not in locais:
+                novos.append(a)
+        return novos
+
     def _sync_preview(self):
         backup = self._read_backup_body()
         if backup is None: return
         novos, conflitos = self._diff_sync(backup)
+        novos_audit = self._diff_audit(backup)
         self._json(200, {
-            'novos': len(novos), 'conflitos': conflitos,
+            'novos': len(novos), 'conflitos': conflitos, 'novos_auditoria': len(novos_audit),
             'exported_at': backup.get('exported_at'),
         })
 
@@ -1780,10 +1922,19 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 )
                 if doc.get('arquivo_id'): _anexar_arquivo(conn, local['id'], doc['arquivo_id'])
                 n_conflitos += 1
+            # Importa o histórico de auditoria da instância de origem, preservando autor/data
+            # originais. documento_id e usuario_id NÃO são remapeados (ids locais colidem entre
+            # instalações) — ficam NULL para não atribuir o evento à pessoa/documento errado.
+            novos_audit = self._diff_audit(backup)
+            for a in novos_audit:
+                conn.execute(
+                    'INSERT INTO auditoria (usuario_id,usuario_nome,acao,documento_id,detalhes,em) VALUES (NULL,?,?,NULL,?,?)',
+                    (a.get('usuario_nome'), a.get('acao'), a.get('detalhes'), a.get('em'))
+                )
             audit(conn, s['user_id'], s['nome'], 'sincronizar_backup',
-                  detalhes=f"{n_novos} novos, {n_conflitos} conflitos resolvidos")
+                  detalhes=f"{n_novos} novos, {n_conflitos} conflitos resolvidos, {len(novos_audit)} eventos de auditoria importados")
             conn.commit()
-        self._json(200, {'novos': n_novos, 'conflitos_aplicados': n_conflitos})
+        self._json(200, {'novos': n_novos, 'conflitos_aplicados': n_conflitos, 'auditoria_importada': len(novos_audit)})
 
     # ── Utilitários HTTP ──────────────────────────────────────────────────────
 
@@ -1850,15 +2001,16 @@ def _do_json_backup(cfg=None):
                 'SELECT id,username,nome,senha_hash,admin,ativo,criado_em FROM usuarios').fetchall()]
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
             settings = {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()}
+            auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
             arqs = []
             for arq in conn.execute('SELECT * FROM arquivos').fetchall():
                 p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
                 if os.path.isfile(p):
                     with open(p, 'rb') as f:
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.15.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        backup = {'sgdp_version': '1.16.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts,
-                  'arquivos': arqs, 'settings': settings}
+                  'arquivos': arqs, 'settings': settings, 'auditoria': auditoria}
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:
             json.dump(backup, f, ensure_ascii=False, default=str)
         print(f'Backup JSON: {name}')
@@ -1869,7 +2021,7 @@ def _do_json_backup(cfg=None):
 def _do_db_backup(cfg=None):
     if cfg is None: cfg = _get_backup_cfg()
     bdir = cfg['path']; os.makedirs(bdir, exist_ok=True)
-    name = time.strftime('SIS_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.db')
+    name = time.strftime('DB_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.db')
     try:
         with sqlite3.connect(DB_PATH) as src, sqlite3.connect(os.path.join(bdir, name)) as bk:
             src.backup(bk)

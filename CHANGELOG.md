@@ -5,6 +5,20 @@
 
 ---
 
+## [1.16.0] — 2026-07-08
+
+### Adicionado
+- **Registro público de verificação de assinatura** — tabela `signatures` (imutável, independente do arquivo), `_gerar_cod_assinatura()` gera código curto único (ex: `65C9-CA87`) a cada assinatura ICP-Brasil; rota pública `/verificar/<cod>` (`_serve_verificar`, sem autenticação) renderiza página HTML com documento, signatário, certificado e data
+- **`/api/public/last-backup`** — portado do SGCD/SGCA; exibido na tela de login (`login-last-backup`)
+- **Autoridade Responsável** (`aut_nome`, `aut_cargo`, `diario_url` em `sys_settings`) — nova seção em Configurações → Organização, usada no cabeçalho de impressão do Relatório Gerencial
+- **Sincronização de auditoria entre instâncias** — `_do_json_backup`/`_export_backup` agora incluem a tabela `auditoria`; `_diff_audit`/`_sync_apply` importam eventos novos (dedup por usuario_nome+acao+detalhes+em) preservando autor e data originais, com `documento_id`/`usuario_id` NULL para não atribuir a um registro local errado
+
+### Corrigido
+- **Backups automáticos do banco (`.db`) nunca eram rotacionados nem listados para restauração** — desde 29/06/2026 (commit `e6e6c28`), `_do_db_backup` gerava o nome com o prefixo `SIS_SGDP_BACKUP_` (igual ao JSON) em vez de `DB_SGDP_BACKUP_`, que é o que `_rotate_backups` e o endpoint `/api/backups/db` esperam. Resultado: backups `.db` acumulavam para sempre (33 arquivos órfãos encontrados em teste local) e a aba Configurações → Backup nunca mostrava nenhum snapshot. Revertido para `DB_SGDP_BACKUP_*`
+- **`/api/public/org-info` sempre retornava `{}`** — consultava a chave `orgao`, mas o SGDP grava `orgao_nome`; corrigido o SELECT e mapeamento de chave
+
+---
+
 ## [1.15.0] — 2026-07-08
 
 ### Adicionado

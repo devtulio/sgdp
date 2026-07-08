@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.15.0</title>
+<title>Manual Operacional — SGDP v1.16.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.15.0 — Manual Operacional";
+        content: "SGDP v1.16.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -112,7 +112,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.15.0</div>
+    <div class="cover-version">Versão 1.16.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -624,6 +624,20 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.16.0 — 08/07/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Registro público de verificação de assinatura</strong> — cada assinatura ICP-Brasil gera um código curto (ex: <code>65C9-CA87</code>), gravado numa tabela própria e imutável, independente do arquivo. Página pública <code>/verificar/&lt;código&gt;</code> (sem login) mostra documento, signatário, certificado e data; o ícone 🔏 na listagem virou link direto para essa página</li>
+    <li><strong>Último backup na tela de login</strong> — mostra há quanto tempo foi o último backup automático, em vermelho se ≥3 dias sem backup</li>
+    <li><strong>Autoridade Responsável nas Configurações</strong> — nome, cargo e link do Diário Oficial, usados no cabeçalho do Relatório Gerencial quando impresso</li>
+    <li><strong>Sincronização de auditoria entre instâncias</strong> — o backup JSON agora inclui a trilha de auditoria; ao sincronizar com outra instalação, eventos novos são importados preservando autor e data originais (sem sobrescrever nem duplicar)</li>
+  </ul>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Backups automáticos do banco nunca eram rotacionados</strong> — desde 29/06/2026, o nome do arquivo de backup do banco (<code>.db</code>) foi por engano unificado com o prefixo do backup JSON, e a rotina de limpeza (<code>auto_backup_keep</code>) procura por um prefixo diferente; na prática, backups <code>.db</code> nunca eram apagados (acumulando indefinidamente) e a aba Configurações → Backup nunca listava nenhum snapshot para restaurar. Corrigido revertendo o nome do arquivo</li>
+    <li><strong><code>/api/public/org-info</code> sempre retornava vazio</strong> — consultava a chave <code>orgao</code> no banco, mas o SGDP grava como <code>orgao_nome</code>; usado para exibir o nome do órgão na tela de login em acessos novos pela rede</li>
+  </ul>
 
   <h3>v1.15.0 — 08/07/2026</h3>
   <p><strong>Adicionado</strong></p>
