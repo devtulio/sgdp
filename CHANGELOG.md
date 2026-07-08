@@ -5,6 +5,11 @@
 
 ---
 
+## [1.14.3] — 2026-07-07
+
+### Corrigido
+- **Manual Operacional** — bloco `@media print` estava incompleto (só ocultava o botão de imprimir); adicionadas as quebras de página e o cabeçalho/rodapé de impressão (`@page`) que o SGCD/SGCA já tinham. Removidos números de página fixos (`.toc-num`) do sumário — ficavam desatualizados conforme o manual cresce; SGCA já não usa esse padrão
+
 ## [1.14.2] — 2026-07-06
 
 ### Adicionado
