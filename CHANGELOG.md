@@ -5,6 +5,22 @@
 
 ---
 
+## [1.18.0] — 2026-07-08
+
+### Adicionado
+- **Relatório de Cadeia Normativa** (`_cadeia_normativa`, `GET /api/documentos/<id>/cadeia`, `gerarRelatorioCadeiaNormativa`) — percorre `documento_vinculos` em largura (BFS, com proteção contra ciclos e deduplicação de arestas) a partir de um documento e monta a árvore de revogações/alterações/complementos/referências; acessível pelo botão "📜 Gerar Cadeia Normativa" no modal de Vínculos
+- **Certidão Negativa de Pendências** (`gerarCertidaoNegativaPendencias`) — variante da Certidão de Documento que verifica lembretes pendentes vinculados e presença do PDF assinado; emite "Negativa" quando não há pendências ou "Certidão de Pendências" listando o que falta. `_blocoCertidao` foi extraído para reaproveitar o mesmo bloco de campos/vínculos/assinatura nas duas variantes
+- **Relatório de Backup e Integridade** (`_relatorio_integridade`, `GET /api/relatorio/integridade`, restrito a administradores) — snapshot do estado do sistema: contagem e tamanho dos backups `.db`/`.json`, tamanho do banco e da pasta de uploads, contagens por tabela (documentos, arquivos, usuários, tags, vínculos, assinaturas, lembretes pendentes, itens na lixeira) e os últimos 15 eventos de backup/restauração na auditoria; botão em Configurações → Backup
+- **Comparativo entre períodos no Relatório Gerencial** — botão "🔁 Comparar com período anterior" (preferência salva em `localStorage`) recalcula o mesmo intervalo de dias imediatamente anterior e mostra a variação (▲/▼, diferença absoluta e percentual) ao lado do total do período
+- **Relatório de Etiquetas** (`_relatorio_etiquetas`, `GET /api/relatorio/etiquetas`, `gerarRelatorioEtiquetas`) — lista cada etiqueta com o total de documentos e a relação de quais, mais a contagem de documentos sem nenhuma etiqueta
+- **Certidões em lote** (`gerarCertidoesEmLote`, botão "📜 Certidões em lote" na listagem) — gera as Certidões de todos os documentos que batem com o filtro/tipo atual (busca, ano, etiqueta) num único documento com quebra de página entre cada uma; pede confirmação acima de 100 documentos (`CERTIDAO_LOTE_LIMITE`)
+
+### Corrigido
+- **Barra de abas de Configurações mais larga que o conteúdo no modo Compacto** — as 7 abas administrativas (`display:flex`, sem quebra) não cabiam dentro de `.cfg-wrap` (`max-width:700px`), estourando visualmente a largura do card abaixo. Aumentado `max-width` para `900px` em vez de permitir quebra de linha nas abas, mantendo-as numa linha só
+- **Tema escuro com vários pontos de baixo contraste** — auditoria completa do CSS: variável `--white`, usada em 6 cards do Relatório Gerencial, nunca havia sido definida (cards renderizavam com fundo transparente); botões de paginação, busca global, painel de notificações, cards de usuário (Configurações → Usuários) e skeletons de carregamento tinham fundo branco fixo com texto que herda a escala `--gray-*` (invertida no escuro), ficando ilegível. Adicionados `--white` (clara/escura) e os overrides de fundo faltantes. A tela de login também escurecia parcialmente (labels e rodapé usam a escala `--gray-*`, e a regra genérica de `input`/`select`/`textarea` do tema escuro tinha `!important`); isolada com `body.tema-escuro #tela-login` redefinindo a escala de cinza de volta aos valores claros, já que o login não deve mudar com o tema escolhido
+
+---
+
 ## [1.17.0] — 2026-07-08
 
 ### Adicionado

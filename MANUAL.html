@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.17.0</title>
+<title>Manual Operacional — SGDP v1.18.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.17.0 — Manual Operacional";
+        content: "SGDP v1.18.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -522,6 +522,24 @@
     <li><strong>Lista de documentos no período</strong>, com tipo, número, data, assunto e ementa</li>
   </ul>
   <p>Clique em <strong>🖨 Imprimir</strong> para gerar uma versão impressa ou PDF do relatório exibido.</p>
+  <p>
+    O botão <strong>🔁 Comparar com período anterior</strong> mostra a variação (▲/▼, diferença e
+    percentual) do total de documentos em relação ao intervalo de mesma duração imediatamente anterior.
+  </p>
+  <p>
+    Além do relatório gerencial, o sistema gera documentos individuais em papel timbrado (mesmo padrão
+    do órgão, impressos ou exportados em PDF pelo navegador):
+  </p>
+  <ul>
+    <li><strong>Pendências e Prazos</strong> — lembretes vencidos/a vencer e documentos sem PDF anexado</li>
+    <li><strong>Produtividade por Usuário</strong> — ações (criar/editar/upload/assinar) por procurador no período</li>
+    <li><strong>Certidão de Documento</strong> (ícone 📜 na listagem) — ficha completa: campos, etiquetas, vínculos, histórico de revisões e status de assinatura</li>
+    <li><strong>Certidão Negativa de Pendências</strong> — atesta, a partir da Certidão, a ausência de lembretes pendentes e de PDF faltante para aquele documento (ou lista o que falta, se houver)</li>
+    <li><strong>Certidões em lote</strong> — gera as Certidões de todos os documentos do filtro/tipo atual num único PDF</li>
+    <li><strong>Cadeia Normativa</strong> (no modal de Vínculos de um documento) — árvore de revogações, alterações, complementos e referências entre documentos</li>
+    <li><strong>Relatório de Etiquetas</strong> — documentos agrupados por etiqueta, mais os que não têm nenhuma</li>
+    <li><strong>Backup e Integridade</strong> (apenas administradores, em Configurações → Backup) — estado dos backups, tamanhos e contagens do sistema</li>
+  </ul>
 </div>
 
 <!-- ── SEÇÃO 8 — AGENDA ─────────────────────────────────────────────────────────── -->
@@ -624,6 +642,17 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.18.0 — 08/07/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Seis novos relatórios</strong> — <strong>Cadeia Normativa</strong> (árvore de revogações/alterações/complementos/referências de um documento, no modal de Vínculos), <strong>Certidão Negativa de Pendências</strong> (variante da Certidão que atesta ausência de lembretes pendentes e de PDF faltante), <strong>Backup e Integridade</strong> (snapshot administrativo do estado do sistema — backups, tamanhos, contagens por tabela e últimos eventos), <strong>Comparativo entre períodos</strong> no Relatório Gerencial (variação ▲/▼ contra o período anterior equivalente), <strong>Relatório de Etiquetas</strong> (documentos agrupados por etiqueta) e <strong>Certidões em lote</strong> (gera as certidões de todos os documentos do filtro atual num único PDF, com confirmação acima de 100 documentos)</li>
+  </ul>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Barra de abas de Configurações mais larga que o conteúdo no modo Compacto</strong> — aumentada a largura máxima do painel em vez de quebrar as abas em duas linhas</li>
+    <li><strong>Tema escuro com pontos de baixo contraste</strong> — cards do Relatório Gerencial com fundo transparente (variável de cor não definida), paginação/busca global/painel de notificações/cards de usuário/skeletons com fundo branco fixo ilegível, e tela de login parcialmente escurecida (agora sempre no tema claro, independente da preferência escolhida)</li>
+  </ul>
 
   <h3>v1.17.0 — 08/07/2026</h3>
   <p><strong>Adicionado</strong></p>

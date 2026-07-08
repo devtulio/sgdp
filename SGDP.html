@@ -24,6 +24,7 @@ html.font-grande  { font-size: 18px; }
   --green:  #16a34a; --green-bg:  #f0fdf4;
   --red:    #dc2626; --red-bg:    #fef2f2;
   --yellow: #d97706; --yellow-bg: #fffbeb;
+  --white:  #fff;
   --radius: 8px;
   --shadow: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
   --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
@@ -65,7 +66,7 @@ html.tema-roxo {
 
 /* ── Largura do conteúdo ─────────────────────────────────────────────────── */
 #main.layout-compacto .page-content { max-width: 1100px; margin: 0 auto; width: 100%; }
-.cfg-wrap { max-width: 700px; margin: 0 auto; }
+.cfg-wrap { max-width: 900px; margin: 0 auto; }
 #main:not(.layout-compacto) .cfg-wrap { max-width: none; }
 
 /* ── Tema escuro ─────────────────────────────────────────────────────────── */
@@ -74,6 +75,7 @@ body.tema-escuro {
   --gray-300: #3a4255; --gray-400: #6b7a99; --gray-500: #8896b0;
   --gray-600: #a8b4c8; --gray-700: #c8d0de; --gray-800: #dde3ec;
   --gray-900: #f0f4f9;
+  --white:     #1e2436;
   --shadow:    0 1px 4px rgba(0,0,0,.4);
   --shadow-md: 0 4px 12px rgba(0,0,0,.5);
 }
@@ -86,11 +88,28 @@ body.tema-escuro .btn-outline { background: #1e2436; color: var(--gray-700); bor
 body.tema-escuro input, body.tema-escuro select, body.tema-escuro textarea {
   background: #252d40 !important; color: var(--gray-800) !important; border-color: var(--gray-300) !important;
 }
-body.tema-escuro .dash-card   { background: #1e2436; }
+body.tema-escuro .dash-card,
+body.tema-escuro .pag-btn,
+body.tema-escuro .gsearch-box,
+body.tema-escuro #notif-panel,
+body.tema-escuro .user-card,
+body.tema-escuro .skeleton-stat,
+body.tema-escuro .skeleton-card { background: #1e2436; }
 body.tema-escuro .upload-zone { background: #1e2436; border-color: var(--gray-300); }
 body.tema-escuro .modal > div { background: #1e2436; }
 body.tema-escuro .cfg-tabs    { border-color: var(--gray-200); }
 body.tema-escuro fieldset     { border-color: var(--gray-200) !important; }
+
+/* Tela de login sempre no tema claro, independente do tema escolhido */
+body.tema-escuro #tela-login {
+  --gray-50:  #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+  --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+  --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937;
+  --gray-900: #111827; --white: #fff;
+}
+body.tema-escuro #tela-login input {
+  background: var(--gray-50) !important; color: var(--gray-800) !important; border-color: var(--gray-300) !important;
+}
 
 /* ── Login ──────────────────────────────────────────────────────────────── */
 #tela-login {
@@ -591,7 +610,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.17.0</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.18.0</span>
     </div>
     <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
@@ -687,7 +706,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.17.0
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.18.0
     </footer>
   </main>
 </div>
@@ -1014,6 +1033,7 @@ tr:hover td { background: var(--gray-50); }
       </div>
     </div>
     <div class="modal-ft">
+      <button class="btn btn-outline" onclick="gerarRelatorioCadeiaNormativa(S.vincDocId)">📜 Gerar Cadeia Normativa</button>
       <button class="btn btn-outline" onclick="fecharModal('modal-vinculos')">Fechar</button>
     </div>
   </div>
@@ -1636,9 +1656,8 @@ function _gerarDocumentoOficial(win, html, docNome) {
   win.document.close();
 }
 
-async function _cabecalhoOficial(tituloDoc, subtitulo) {
-  const r = await API.get('/api/config');
-  const cfg = await API.json(r) || {};
+async function _cabecalhoOficial(tituloDoc, subtitulo, cfgPreCarregado) {
+  const cfg = cfgPreCarregado || (await API.json(await API.get('/api/config'))) || {};
   return {
     cfg,
     html: `
@@ -1761,15 +1780,14 @@ ${_footerOficial()}
 }
 
 // ── Certidão de Documento Individual ────────────────────────────────────────
-async function gerarCertidaoDocumento(docId) {
-  const r = await API.get(`/api/documentos/${docId}`);
-  const doc = await API.json(r);
-  if (!doc || !r.ok) { toast('Erro ao carregar documento.', 'error'); return; }
-
-  const [{ html: cab, cfg }, rRev, rVinc] = await Promise.all([
-    _cabecalhoOficial('Certidão de Documento', `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}`),
-    API.get(`/api/documentos/${docId}/revisoes`),
-    API.get(`/api/documentos/${docId}/vinculos`),
+// Monta o conteúdo (cabeçalho + campos + vínculos + revisões + assinatura) de
+// uma certidão para UM documento. Reaproveitado tanto na certidão avulsa quanto
+// na exportação em lote — só muda como o resultado é embrulhado no final.
+async function _blocoCertidao(doc, cfg) {
+  const [{ html: cab }, rRev, rVinc] = await Promise.all([
+    _cabecalhoOficial('Certidão de Documento', `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}`, cfg),
+    API.get(`/api/documentos/${doc.id}/revisoes`),
+    API.get(`/api/documentos/${doc.id}/vinculos`),
   ]);
   const revisoes = (await API.json(rRev))?.items || [];
   const vinculos = (await API.json(rVinc))?.items || [];
@@ -1800,12 +1818,7 @@ async function gerarCertidaoDocumento(docId) {
     ? `<p style="font-size:10.5pt"><strong>Assinado digitalmente</strong> (ICP-Brasil) em ${fmtDataHora(doc.assinado_em)} por ${esc(doc.assinado_por_nome || '—')}.<br>Certificado: ${esc(doc.assinatura_cert || '—')}</p>`
     : `<p style="font-size:10.5pt;color:#666">Este documento não possui assinatura digital ICP-Brasil registrada.</p>`;
 
-  const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="UTF-8"><title>Certidão — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</title>
-<style>${SGDP_DOC_CSS}</style></head>
-<body>
-<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+  return `
 ${cab}
 
 <table class="field-table">
@@ -1822,10 +1835,243 @@ ${linhasRevisoes}
 ${statusAssinatura}
 
 ${_blocoAssinaturaOficial(cfg)}
-${doc.cod_verificacao ? _footerVerificavel(doc.cod_verificacao) : _footerOficial()}
+${doc.cod_verificacao ? _footerVerificavel(doc.cod_verificacao) : _footerOficial()}`;
+}
+
+async function gerarCertidaoDocumento(docId) {
+  const r = await API.get(`/api/documentos/${docId}`);
+  const doc = await API.json(r);
+  if (!doc || !r.ok) { toast('Erro ao carregar documento.', 'error'); return; }
+
+  const rCfg = await API.get('/api/config');
+  const cfg = (await API.json(rCfg)) || {};
+  const corpo = await _blocoCertidao(doc, cfg);
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Certidão — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</title>
+<style>${SGDP_DOC_CSS}</style></head>
+<body>
+<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+<button class="btn-print no-print" style="background:#444" onclick="window.opener && window.opener.gerarCertidaoNegativaPendencias(${doc.id})">⚖️ Gerar Certidão de Pendências</button>
+${corpo}
 </body></html>`;
 
   _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, `Certidão — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}`);
+}
+
+// ── Certidões em lote ────────────────────────────────────────────────────────
+// Gera a certidão de todos os documentos que batem com o filtro atualmente
+// aplicado na listagem (tipo + busca + ano + etiqueta), concatenadas num único
+// documento com quebra de página entre cada uma.
+const CERTIDAO_LOTE_LIMITE = 100;
+async function gerarCertidoesEmLote() {
+  const qs = new URLSearchParams({ tipo: S.pag.tipo, page: 1, per: CERTIDAO_LOTE_LIMITE });
+  if (S.filtros.q)   qs.set('q',   S.filtros.q);
+  if (S.filtros.ano) qs.set('ano', S.filtros.ano);
+  if (S.filtros.tag) qs.set('tag', S.filtros.tag);
+  const r = await API.get('/api/documentos?' + qs);
+  const d = await API.json(r);
+  if (!d || !d.items.length) { toast('Nenhum documento encontrado com o filtro atual.', 'info'); return; }
+  if (d.total > CERTIDAO_LOTE_LIMITE) {
+    const ok = await confirmar(`O filtro atual encontrou ${d.total} documentos — apenas os primeiros ${CERTIDAO_LOTE_LIMITE} serão incluídos. Continuar?`, 'Gerar mesmo assim');
+    if (!ok) return;
+  }
+
+  const rCfg = await API.get('/api/config');
+  const cfg = (await API.json(rCfg)) || {};
+
+  toast(`Gerando ${d.items.length} certidão(ões)…`, 'info');
+  const blocos = [];
+  for (const doc of d.items) {
+    blocos.push(await _blocoCertidao(doc, cfg));
+  }
+  const corpo = blocos.map((b, i) => i === 0 ? b : `<div style="page-break-before:always"></div>${b}`).join('\n');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Certidões em Lote — SGDP</title>
+<style>${SGDP_DOC_CSS}</style></head>
+<body>
+<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+${corpo}
+</body></html>`;
+
+  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, `Certidões em lote (${d.items.length})`);
+}
+
+// ── Relatório: Cadeia Normativa ─────────────────────────────────────────────
+async function gerarRelatorioCadeiaNormativa(docId) {
+  const r = await API.get(`/api/documentos/${docId}/cadeia`);
+  const d = await API.json(r);
+  if (!d || !r.ok) { toast(d?.error || 'Erro ao carregar cadeia normativa.', 'error'); return; }
+  const raiz = d.raiz, arestas = d.arestas;
+  const docsMap = Object.fromEntries((d.docs || []).map(doc => [doc.id, doc]));
+
+  const { html: cab, cfg } = await _cabecalhoOficial('Cadeia Normativa', `${TIPOS_LABELS[raiz.tipo]} ${fmtNum(raiz.numero, raiz.ano)}`);
+
+  const nomeDoc = doc => `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)} — ${esc(doc.ementa)}`;
+  const linhas = arestas.map(a => {
+    const de = docsMap[a.de], para = docsMap[a.para];
+    return `<tr>
+      <td>${a.de === raiz.id ? `<strong>${esc(nomeDoc(de))}</strong>` : nomeDoc(de)}</td>
+      <td style="text-align:center;font-weight:700;color:#1a3a6b">${esc(a.label)}</td>
+      <td>${a.para === raiz.id ? `<strong>${esc(nomeDoc(para))}</strong>` : nomeDoc(para)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Cadeia Normativa — ${TIPOS_LABELS[raiz.tipo]} ${fmtNum(raiz.numero, raiz.ano)}</title>
+<style>${SGDP_DOC_CSS}</style></head>
+<body>
+<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+${cab}
+<div class="meta">Documento de referência: ${esc(nomeDoc(raiz))}</div>
+${arestas.length ? `<table class="rel">
+  <thead><tr><th>Documento</th><th style="width:110pt;text-align:center">Relação</th><th>Documento</th></tr></thead>
+  <tbody>${linhas}</tbody>
+</table>` : '<p style="font-size:10pt;color:#666">Este documento não possui vínculos com outros documentos.</p>'}
+${_blocoAssinaturaOficial(cfg)}
+${_footerOficial()}
+</body></html>`;
+
+  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, 'Cadeia Normativa');
+}
+
+// ── Certidão Negativa de Pendências ─────────────────────────────────────────
+async function gerarCertidaoNegativaPendencias(docId) {
+  const [rDoc, rLemb] = await Promise.all([
+    API.get(`/api/documentos/${docId}`),
+    API.get(`/api/lembretes?documento_id=${docId}&pendentes=1`),
+  ]);
+  const doc = await API.json(rDoc);
+  if (!doc || !rDoc.ok) { toast('Erro ao carregar documento.', 'error'); return; }
+  const pendencias = (await API.json(rLemb))?.items || [];
+  const semPdf = !doc.arquivo_id;
+  const negativa = pendencias.length === 0 && !semPdf;
+
+  const { html: cab, cfg } = await _cabecalhoOficial(
+    negativa ? 'Certidão Negativa de Pendências' : 'Certidão de Pendências',
+    `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}`
+  );
+
+  const corpo = negativa
+    ? `<p style="line-height:1.8;text-align:justify;margin:16pt 0">Certifico, para os devidos fins, que o documento <strong>${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</strong> — "${esc(doc.ementa)}" — <strong>não possui pendências registradas</strong> no Sistema de Gestão de Documentos da Procuradoria (SGDP) na data de emissão desta certidão, possuindo PDF assinado anexado e nenhum lembrete pendente vinculado.</p>`
+    : `<p style="line-height:1.8;text-align:justify;margin:16pt 0">Certifico que o documento <strong>${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</strong> — "${esc(doc.ementa)}" — possui as seguintes pendências registradas no Sistema de Gestão de Documentos da Procuradoria (SGDP) na data de emissão desta certidão:</p>
+       <ul style="margin:0 0 16pt 20pt;font-size:10.5pt;line-height:1.8">
+         ${semPdf ? '<li>Documento sem PDF assinado anexado.</li>' : ''}
+         ${pendencias.map(l => `<li>Lembrete "${esc(l.titulo)}" com prazo em ${fmtData(l.data_prazo)}.</li>`).join('')}
+       </ul>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>${negativa ? 'Certidão Negativa' : 'Certidão'} de Pendências — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</title>
+<style>${SGDP_DOC_CSS}</style></head>
+<body>
+<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+${cab}
+${corpo}
+${_blocoAssinaturaOficial(cfg)}
+${_footerOficial()}
+</body></html>`;
+
+  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, 'Certidão de Pendências');
+}
+
+// ── Relatório: Backup e Integridade ─────────────────────────────────────────
+async function gerarRelatorioIntegridade() {
+  const [{ html: cab, cfg }, r] = await Promise.all([
+    _cabecalhoOficial('Relatório de Backup e Integridade'),
+    API.get('/api/relatorio/integridade'),
+  ]);
+  if (!r.ok) { toast('Erro ao gerar relatório (acesso restrito a administradores).', 'error'); return; }
+  const d = await API.json(r);
+
+  const c = d.contagens;
+  const linhasContagem = [
+    ['Documentos ativos', c.documentos], ['Documentos na lixeira', c.na_lixeira],
+    ['PDFs anexados', c.arquivos], ['Usuários ativos', c.usuarios],
+    ['Etiquetas', c.tags], ['Vínculos entre documentos', c.vinculos],
+    ['Assinaturas digitais registradas', c.assinaturas], ['Lembretes pendentes', c.lembretes_pendentes],
+  ].map(([lbl, n]) => `<tr><td>${esc(lbl)}</td><td style="text-align:right;font-weight:700">${n}</td></tr>`).join('');
+
+  const dias = d.last_backup ? Math.floor((Date.now() - new Date(d.last_backup).getTime()) / 86400000) : null;
+  const statusBackup = !d.auto_backup_enabled
+    ? '<span style="color:#dc2626;font-weight:700">Backup automático desativado</span>'
+    : dias === null ? '<span style="color:#dc2626;font-weight:700">Nenhum backup registrado</span>'
+    : dias >= 3 ? `<span style="color:#dc2626;font-weight:700">Último backup há ${dias} dia(s)</span>`
+    : `<span style="color:#16a34a">Último backup: ${fmtDataHora(d.last_backup)}</span>`;
+
+  const linhasEventos = (d.eventos_recentes || []).map(e =>
+    `<tr><td>${fmtDataHora(e.em)}</td><td>${esc(e.usuario_nome || '—')}</td><td>${esc(_AUDIT_LABELS[e.acao]?.label || e.acao)}</td><td>${esc(e.detalhes || '—')}</td></tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Relatório de Backup e Integridade — SGDP</title>
+<style>${SGDP_DOC_CSS}</style></head>
+<body>
+<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+${cab}
+
+<h4 style="font-size:11pt;margin-bottom:6pt">Status do backup automático</h4>
+<p style="font-size:10.5pt;margin-bottom:4pt">${statusBackup}</p>
+<table class="field-table">
+  <tr><td class="lbl">Pasta de backup</td><td style="font-size:9pt">${esc(d.backup_path)}</td></tr>
+  <tr><td class="lbl">Backups mantidos (config.)</td><td>${d.auto_backup_keep}</td></tr>
+  <tr><td class="lbl">Backups .db no disco</td><td>${d.backups_db_count} arquivo(s) — ${fmtSize(d.backups_db_size_bytes)}</td></tr>
+  <tr><td class="lbl">Backups .json no disco</td><td>${d.backups_json_count} arquivo(s)</td></tr>
+  <tr><td class="lbl">Tamanho do banco de dados</td><td>${fmtSize(d.db_size_bytes)}</td></tr>
+  <tr><td class="lbl">Tamanho da pasta de PDFs</td><td>${fmtSize(d.uploads_size_bytes)} (${d.uploads_count} arquivo(s))</td></tr>
+</table>
+
+<h4 style="font-size:11pt;margin:16pt 0 6pt">Contagens gerais</h4>
+<table class="rel">
+  <tbody>${linhasContagem}</tbody>
+</table>
+
+<h4 style="font-size:11pt;margin:16pt 0 6pt">Eventos recentes de backup/restauração</h4>
+${d.eventos_recentes?.length ? `<table class="rel">
+  <thead><tr><th style="width:110pt">Data/hora</th><th style="width:100pt">Usuário</th><th style="width:110pt">Ação</th><th>Detalhes</th></tr></thead>
+  <tbody>${linhasEventos}</tbody>
+</table>` : '<p style="font-size:10pt;color:#666">Nenhum evento de backup/restauração registrado.</p>'}
+
+${_footerOficial()}
+</body></html>`;
+
+  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, 'Relatório de Backup e Integridade');
+}
+
+// ── Relatório: Etiquetas ─────────────────────────────────────────────────────
+async function gerarRelatorioEtiquetas() {
+  const [{ html: cab, cfg }, r] = await Promise.all([
+    _cabecalhoOficial('Relatório de Etiquetas'),
+    API.get('/api/relatorio/etiquetas'),
+  ]);
+  const d = await API.json(r);
+  const items = d?.items || [];
+
+  const blocoTag = t => `
+    <h4 style="font-size:11pt;margin:16pt 0 4pt">${esc(t.nome)} <span style="font-weight:400;color:#666;font-size:9.5pt">(${t.total} documento${t.total!==1?'s':''})</span></h4>
+    <table class="rel">
+      <thead><tr><th style="width:70pt">Tipo</th><th style="width:80pt">Número</th><th>Ementa</th></tr></thead>
+      <tbody>${t.documentos.map(doc => `<tr><td>${TIPOS_LABELS[doc.tipo]}</td><td>${fmtNum(doc.numero, doc.ano)}</td><td>${esc(doc.ementa)}</td></tr>`).join('')}</tbody>
+    </table>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Relatório de Etiquetas — SGDP</title>
+<style>${SGDP_DOC_CSS}</style></head>
+<body>
+<button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+${cab}
+<div class="meta">${items.length} etiqueta${items.length!==1?'s':''} em uso &nbsp;·&nbsp; ${d?.sem_etiqueta || 0} documento(s) sem etiqueta</div>
+${items.length ? items.map(blocoTag).join('') : '<p style="font-size:10pt;color:#666">Nenhuma etiqueta cadastrada.</p>'}
+${_footerOficial()}
+</body></html>`;
+
+  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, 'Relatório de Etiquetas');
 }
 
 async function exportarRelatorioCsv(de, ate) {
@@ -1854,9 +2100,23 @@ async function renderRelatorio(periodo, de, ate) {
   if (periodo === 'custom') { localStorage.setItem('sgdp-rel-de', deDt); localStorage.setItem('sgdp-rel-ate', ateDt); }
 
   pc.innerHTML = '<div class="loading">Carregando relatório…</div>';
-  const [r, rCfg] = await Promise.all([API.get(`/api/relatorio?de=${deDt}&ate=${ateDt}`), API.get('/api/config')]);
+  const comparar = localStorage.getItem('sgdp-rel-comparar') === '1' && periodo !== 'tudo';
+  let prevDe, prevAte;
+  if (comparar) {
+    const dias = Math.max(1, Math.round((new Date(ateDt) - new Date(deDt)) / 86400000) + 1);
+    const prevAteD = new Date(deDt); prevAteD.setDate(prevAteD.getDate() - 1);
+    const prevDeD = new Date(prevAteD); prevDeD.setDate(prevDeD.getDate() - dias + 1);
+    const fmt = dt => dt.toISOString().slice(0, 10);
+    prevDe = fmt(prevDeD); prevAte = fmt(prevAteD);
+  }
+  const [r, rCfg, rPrev] = await Promise.all([
+    API.get(`/api/relatorio?de=${deDt}&ate=${ateDt}`),
+    API.get('/api/config'),
+    comparar ? API.get(`/api/relatorio?de=${prevDe}&ate=${prevAte}`) : Promise.resolve(null),
+  ]);
   const d = await API.json(r);
   const cfgOrg = await API.json(rCfg) || {};
+  const dPrev = rPrev ? await API.json(rPrev) : null;
   if (!d) return;
 
   // ── Gráfico de barras (evolução mensal) ──
@@ -1947,12 +2207,19 @@ async function renderRelatorio(periodo, de, ate) {
       </div>
 
       <!-- Totalizador -->
-      <div style="background:var(--brand);color:#fff;border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div style="background:var(--brand);color:#fff;border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
           <div style="font-size:12px;opacity:.7;text-transform:uppercase;letter-spacing:.5px">Total de documentos — ${periodoLabel}</div>
           <div style="font-size:36px;font-weight:800;line-height:1.1">${d.total}</div>
+          ${dPrev ? (() => {
+            const diff = d.total - dPrev.total;
+            const pct = dPrev.total ? Math.round(diff / dPrev.total * 100) : (d.total ? 100 : 0);
+            const seta = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
+            return `<div style="font-size:12px;opacity:.85;margin-top:4px">${seta} ${diff >= 0 ? '+' : ''}${diff} (${pct >= 0 ? '+' : ''}${pct}%) vs período anterior (${dPrev.total}, ${fmtData(prevDe)} a ${fmtData(prevAte)})</div>`;
+          })() : ''}
         </div>
-        <div class="no-print" style="display:flex;gap:8px">
+        <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,${comparar?'.35':'.2'});color:#fff;border:none" onclick="localStorage.setItem('sgdp-rel-comparar', '${comparar?'0':'1'}');renderRelatorio('${periodo}','${deDt}','${ateDt}')">🔁 Comparar com período anterior</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:none" onclick="exportarRelatorioCsv('${deDt}','${ateDt}')">⬇ Exportar CSV</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:none" onclick="window.print()">⎙ Imprimir / Salvar PDF</button>
         </div>
@@ -1964,6 +2231,7 @@ async function renderRelatorio(periodo, de, ate) {
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           <button class="btn btn-outline btn-sm" onclick="gerarRelatorioPendencias()">📋 Pendências e Prazos</button>
           <button class="btn btn-outline btn-sm" onclick="gerarRelatorioProdutividade('${deDt}','${ateDt}')">👥 Produtividade por Usuário</button>
+          <button class="btn btn-outline btn-sm" onclick="gerarRelatorioEtiquetas()">🏷 Etiquetas</button>
         </div>
       </div>
 
@@ -2144,6 +2412,7 @@ async function renderDocumentos(tipo, page = 1) {
           oninput="S.filtros.q=this.value" onkeydown="if(event.key==='Enter')renderDocumentos('${tipo}',1)">
         <select class="select-sm" onchange="S.filtros.ano=this.value;renderDocumentos('${tipo}',1)">${anoOpts}</select>
         <button class="btn btn-outline btn-sm" onclick="renderDocumentos('${tipo}',1)">Filtrar</button>
+        <button class="btn btn-outline btn-sm" onclick="gerarCertidoesEmLote()" title="Gera a certidão de todos os documentos que batem com o filtro atual">📜 Certidões em lote</button>
         ${S.filtros.tag ? `<span class="tag-pill" style="background:var(--brand);color:#fff">
           🏷 ${esc(S.filtros.tag)} <span style="cursor:pointer" onclick="S.filtros.tag='';renderDocumentos('${tipo}',1)">✕</span>
         </span>` : ''}
@@ -3035,6 +3304,7 @@ async function renderBackup(container) {
           </button>
         </div>
         <p style="font-size:11px;color:var(--gray-400);margin-bottom:12px;line-height:1.5">Backups automáticos e manuais do banco são salvos nesta pasta.</p>
+        <button class="btn btn-outline btn-sm" onclick="gerarRelatorioIntegridade()" style="margin-bottom:12px">📊 Relatório de Backup e Integridade</button>
 
         <hr style="border:none;border-top:1px solid var(--gray-100);margin:4px 0 12px">
 

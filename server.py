@@ -1,4 +1,4 @@
-# SGDP v1.17.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.18.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -611,6 +611,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._list_revisoes(int(p.split('/')[3]))
         elif re.fullmatch(r'/api/documentos/\d+/vinculos', p):
             self._list_vinculos(int(p.split('/')[3]))
+        elif re.fullmatch(r'/api/documentos/\d+/cadeia', p):
+            self._cadeia_normativa(int(p.split('/')[3]))
 
         elif p == '/api/lixeira':
             self._list_lixeira(qs, s)
@@ -643,6 +645,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._relatorio_export_csv(qs)
         elif p == '/api/relatorio/produtividade':
             self._relatorio_produtividade(qs)
+        elif p == '/api/relatorio/integridade':
+            if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
+            self._relatorio_integridade()
+        elif p == '/api/relatorio/etiquetas':
+            self._relatorio_etiquetas()
 
         elif p == '/api/usuarios':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
@@ -1095,6 +1102,51 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         ]
         self._json(200, {'items': items})
 
+    def _cadeia_normativa(self, did, max_prof=6):
+        """Percorre a cadeia de vínculos (nos dois sentidos) a partir de um documento,
+        em largura, até max_prof níveis — protegido contra ciclos por visitados."""
+        with get_db() as conn:
+            raiz = conn.execute(
+                'SELECT id,tipo,numero,ano,ementa FROM documentos WHERE id=?', (did,)).fetchone()
+            if not raiz: self._json(404, {'error': 'Documento não encontrado'}); return
+            docs_info = {did: dict(raiz)}
+            arestas = []
+            arestas_vistas = set()
+            visitados = {did}
+            fila = [(did, 0)]
+            while fila:
+                atual_id, prof = fila.pop(0)
+                if prof >= max_prof: continue
+                diretos = conn.execute(
+                    '''SELECT v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
+                       FROM documento_vinculos v JOIN documentos d ON v.destino_id=d.id
+                       WHERE v.origem_id=?''', (atual_id,)).fetchall()
+                inversos = conn.execute(
+                    '''SELECT v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
+                       FROM documento_vinculos v JOIN documentos d ON v.origem_id=d.id
+                       WHERE v.destino_id=?''', (atual_id,)).fetchall()
+                for r in diretos:
+                    chave = (atual_id, r['doc_id'], r['tipo'])
+                    docs_info[r['doc_id']] = {'id': r['doc_id'], 'tipo': r['doc_tipo'], 'numero': r['doc_numero'],
+                                               'ano': r['doc_ano'], 'ementa': r['doc_ementa']}
+                    if chave not in arestas_vistas:
+                        arestas_vistas.add(chave)
+                        arestas.append({'de': atual_id, 'para': r['doc_id'], 'tipo': r['tipo'],
+                                         'label': TIPOS_VINCULO[r['tipo']][0]})
+                    if r['doc_id'] not in visitados:
+                        visitados.add(r['doc_id']); fila.append((r['doc_id'], prof + 1))
+                for r in inversos:
+                    chave = (r['doc_id'], atual_id, r['tipo'])
+                    docs_info[r['doc_id']] = {'id': r['doc_id'], 'tipo': r['doc_tipo'], 'numero': r['doc_numero'],
+                                               'ano': r['doc_ano'], 'ementa': r['doc_ementa']}
+                    if chave not in arestas_vistas:
+                        arestas_vistas.add(chave)
+                        arestas.append({'de': r['doc_id'], 'para': atual_id, 'tipo': r['tipo'],
+                                         'label': TIPOS_VINCULO[r['tipo']][0]})
+                    if r['doc_id'] not in visitados:
+                        visitados.add(r['doc_id']); fila.append((r['doc_id'], prof + 1))
+        self._json(200, {'raiz': dict(raiz), 'arestas': arestas, 'docs': list(docs_info.values())})
+
     def _create_vinculo(self, did, body, s):
         data = json.loads(body) if body else {}
         tipo = data.get('tipo')
@@ -1241,16 +1293,86 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         items = [{'usuario_nome': nome, **contagens} for nome, contagens in sorted(por_usuario.items())]
         self._json(200, {'items': items})
 
+    def _relatorio_integridade(self):
+        def _dir_size(path):
+            total = 0
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    fp = os.path.join(path, f)
+                    if os.path.isfile(fp): total += os.path.getsize(fp)
+            return total
+
+        cfg = _get_backup_cfg()
+        bdir = cfg['path']
+        backups_db = sorted(
+            (f for f in os.listdir(bdir) if f.startswith('DB_SGDP_BACKUP_') and f.endswith('.db')),
+            reverse=True
+        ) if os.path.isdir(bdir) else []
+        backups_json = sorted(
+            (f for f in os.listdir(bdir) if f.startswith('SIS_SGDP_BACKUP_') and f.endswith('.json')),
+            reverse=True
+        ) if os.path.isdir(bdir) else []
+
+        with get_db() as conn:
+            contagens = {
+                'documentos': conn.execute('SELECT COUNT(*) FROM documentos WHERE excluido_em IS NULL').fetchone()[0],
+                'arquivos': conn.execute('SELECT COUNT(*) FROM arquivos').fetchone()[0],
+                'usuarios': conn.execute('SELECT COUNT(*) FROM usuarios WHERE ativo=1').fetchone()[0],
+                'tags': conn.execute('SELECT COUNT(*) FROM tags').fetchone()[0],
+                'vinculos': conn.execute('SELECT COUNT(*) FROM documento_vinculos').fetchone()[0],
+                'assinaturas': conn.execute('SELECT COUNT(*) FROM signatures').fetchone()[0],
+                'lembretes_pendentes': conn.execute('SELECT COUNT(*) FROM lembretes WHERE concluido=0').fetchone()[0],
+                'na_lixeira': conn.execute('SELECT COUNT(*) FROM documentos WHERE excluido_em IS NOT NULL').fetchone()[0],
+            }
+            eventos = [dict(r) for r in conn.execute(
+                '''SELECT * FROM auditoria WHERE acao IN
+                   ('sincronizar_backup','restaurar_backup','restaurar_db','factory_reset')
+                   ORDER BY id DESC LIMIT 15''').fetchall()]
+            last_row = conn.execute("SELECT value FROM sys_settings WHERE key='auto_backup_last'").fetchone()
+
+        self._json(200, {
+            'auto_backup_enabled': cfg['enabled'], 'auto_backup_keep': cfg['keep'], 'backup_path': bdir,
+            'last_backup': last_row['value'] if last_row else None,
+            'db_size_bytes': os.path.getsize(DB_PATH) if os.path.isfile(DB_PATH) else 0,
+            'uploads_size_bytes': _dir_size(UPLOADS_DIR),
+            'uploads_count': len([f for f in os.listdir(UPLOADS_DIR)]) if os.path.isdir(UPLOADS_DIR) else 0,
+            'backups_db_count': len(backups_db), 'backups_json_count': len(backups_json),
+            'backups_db_size_bytes': sum(os.path.getsize(os.path.join(bdir, f)) for f in backups_db),
+            'contagens': contagens, 'eventos_recentes': eventos,
+        })
+
+    def _relatorio_etiquetas(self):
+        with get_db() as conn:
+            tags = conn.execute('SELECT id, nome FROM tags ORDER BY nome').fetchall()
+            items = []
+            for t in tags:
+                docs = conn.execute(
+                    '''SELECT d.id,d.tipo,d.numero,d.ano,d.ementa FROM documento_tags dt
+                       JOIN documentos d ON dt.documento_id=d.id
+                       WHERE dt.tag_id=? AND d.excluido_em IS NULL ORDER BY d.ano DESC, d.numero DESC''',
+                    (t['id'],)).fetchall()
+                items.append({'nome': t['nome'], 'total': len(docs), 'documentos': [dict(d) for d in docs]})
+            sem_tag = conn.execute(
+                '''SELECT COUNT(*) FROM documentos d WHERE d.excluido_em IS NULL
+                   AND d.id NOT IN (SELECT documento_id FROM documento_tags)'''
+            ).fetchone()[0]
+        items.sort(key=lambda x: -x['total'])
+        self._json(200, {'items': items, 'sem_etiqueta': sem_tag})
+
     # ── Agenda / Lembretes ────────────────────────────────────────────────────
 
     def _list_lembretes(self, qs, s):
         so_pendentes = qs.get('pendentes', [None])[0]
-        w = 'WHERE l.concluido=0' if so_pendentes else ''
+        doc_id = qs.get('documento_id', [None])[0]
+        where, params = [], []
+        if so_pendentes: where.append('l.concluido=0')
+        if doc_id: where.append('l.documento_id=?'); params.append(int(doc_id))
+        w = ('WHERE ' + ' AND '.join(where)) if where else ''
         with get_db() as conn:
             rows = conn.execute(
                 f'''SELECT l.*, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano
                     FROM lembretes l LEFT JOIN documentos d ON l.documento_id=d.id
-                    {w} ORDER BY l.data_prazo ASC'''
+                    {w} ORDER BY l.data_prazo ASC''', params
             ).fetchall()
         self._json(200, {'items': [dict(r) for r in rows]})
 
