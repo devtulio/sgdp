@@ -7,3 +7,6 @@ sgdp.db-wal
 sgdp_errors.log
 uploads/
 backups/
+
+# Arquivos institucionais (não versionar)
+brasao.png
