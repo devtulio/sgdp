@@ -5,6 +5,11 @@
 
 ---
 
+## [1.19.3] — 2026-07-09
+
+### Corrigido
+- **Cor do cabeçalho dos modais** — a v1.19.2 usou `var(--accent)` para o banner colorido, copiado literalmente do SGCD. `--accent` só coincide com `--brand` (navy) no SGCD/SGCA — no SGDP `--accent` é dourado (`#b8962e`), uma cor de destaque diferente da marca. Trocado para `var(--brand)`, que é navy nos 3 sistemas
+
 ## [1.19.2] — 2026-07-09
 
 ### Alterado
