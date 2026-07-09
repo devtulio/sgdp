@@ -5,6 +5,12 @@
 
 ---
 
+## [1.20.2] — 2026-07-09
+
+### Alterado
+- **Tela de Configurações unificada com SGCD/SGCA** — lista de usuários passa de cards para tabela (Usuário/Nome/Cargo-Matrícula/Admin/Ativo/Ações), com heading "Gerenciar Usuários" e subtítulo; título "Configurações" ganha botões "← Voltar" e "Salvar" no mesmo cabeçalho, igual ao padrão dos outros dois sistemas
+- **Botão Salvar único e consolidado** — Interface, Organização, Comunicação (SMTP) e o backup automático (aba Dados) deixam de ter botões de salvar independentes por seção e passam a ser salvos juntos por um único botão "Salvar" no cabeçalho, com indicador visual (pulso) quando há alterações não salvas. Seleção de pasta de backup, exportar/restaurar/sincronizar backup, Factory Reset e troca de senha continuam sendo ações imediatas e independentes, como já eram
+
 ## [1.20.1] — 2026-07-09
 
 ### Corrigido
