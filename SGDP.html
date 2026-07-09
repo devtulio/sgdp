@@ -93,6 +93,7 @@ body.tema-escuro .pag-btn,
 body.tema-escuro .gsearch-box,
 body.tema-escuro #notif-panel,
 body.tema-escuro .user-card,
+body.tema-escuro .skeleton,
 body.tema-escuro .skeleton-stat,
 body.tema-escuro .skeleton-card { background: #1e2436; }
 body.tema-escuro .upload-zone { background: #1e2436; border-color: var(--gray-300); }
@@ -341,11 +342,11 @@ tr:hover td { background: var(--gray-50); }
 }
 
 /* ── Skeleton loading ────────────────────────────────────────────────────── */
-.skeleton { background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius); }
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .skeleton-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 20px; }
 .skeleton-stat { background: #fff; border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); border-left: 4px solid var(--gray-200); display: flex; flex-direction: column; gap: 10px; }
-.skeleton-card { background: #fff; border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); margin-bottom: 10px; height: 60px; }
+.skeleton-card { background: #fff; border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); margin-bottom: 10px; height: 90px; }
+.skeleton { background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius); }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* ── Busca Global ────────────────────────────────────────────────────────── */
 #global-search-overlay {
@@ -460,15 +461,15 @@ tr:hover td { background: var(--gray-50); }
   padding: 2px 6px; border-radius: 4px; }
 
 /* ── Toasts ──────────────────────────────────────────────────────────────── */
-#toast-box { position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+#toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999;
   display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-.toast { padding: 12px 18px; border-radius: var(--radius); box-shadow: var(--shadow-lg);
-  font-size: 13px; font-weight: 500; pointer-events: all; max-width: 360px;
-  animation: slideIn .2s ease; }
-.toast-success { background: var(--green-bg); color: #166534; border: 1px solid #86efac; }
-.toast-error   { background: var(--red-bg);   color: #991b1b; border: 1px solid #fca5a5; }
-.toast-info    { background: var(--brand-light); color: var(--brand); border: 1px solid #93c5fd; }
-@keyframes slideIn { from { transform: translateX(40px); opacity: 0; } }
+.toast-msg { background: var(--accent); color: #fff; padding: 10px 16px;
+  border-radius: var(--radius); font-size: .8rem; box-shadow: var(--shadow-md);
+  animation: slideIn .2s ease; max-width: 320px;
+  border-left: 4px solid var(--brand); }
+.toast-msg.success { background: var(--accent); border-color: var(--green); }
+.toast-msg.error   { background: var(--accent); border-color: var(--red); }
+@keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
 /* ── Modal de confirmação ────────────────────────────────────────────────── */
 #modal-confirm .modal { max-width: 420px; }
@@ -615,7 +616,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.20.0</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.20.1</span>
     </div>
     <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
@@ -711,7 +712,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.20.0
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.20.1
     </footer>
   </main>
 </div>
@@ -1151,7 +1152,7 @@ tr:hover td { background: var(--gray-50); }
 </div>
 
 <!-- ── Toasts ─────────────────────────────────────────────────────────────── -->
-<div id="toast-box"></div>
+<div id="toast"></div>
 
 <script>
 'use strict';
@@ -4245,9 +4246,9 @@ function toast(msg, type = 'info') {
   if (type === 'success') playSuccess();
   else if (type === 'error') playError();
   else playNotify();
-  const box = document.getElementById('toast-box');
+  const box = document.getElementById('toast');
   const el = document.createElement('div');
-  el.className = `toast toast-${type}`;
+  el.className = `toast-msg ${type}`;
   el.textContent = msg;
   box.appendChild(el);
   setTimeout(() => el.remove(), 4000);

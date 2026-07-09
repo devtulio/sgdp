@@ -1,4 +1,4 @@
-# SGDP v1.20.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.20.1 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -1725,10 +1725,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with open(filepath, 'rb') as f:
             data = f.read()
         inline = (qs.get('inline') or ['0'])[0] == '1'
+        safe_fn = arq['nome_original'].replace('"', '_').replace('\n', '_').replace('\r', '_')
         self.send_response(200)
         self._cors()
         self.send_header('Content-Type', 'application/pdf')
-        self.send_header('Content-Disposition', 'inline' if inline else f'attachment; filename="{arq["nome_original"]}"')
+        self.send_header('Content-Disposition', 'inline' if inline else f'attachment; filename="{safe_fn}"')
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -1898,6 +1899,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.execute('DELETE FROM arquivos')
             conn.execute('DELETE FROM contadores')
             conn.execute('DELETE FROM auditoria')
+            conn.execute('DELETE FROM signatures')
+            conn.execute('DELETE FROM lembretes')
             conn.commit()
         import shutil
         shutil.rmtree(UPLOADS_DIR, ignore_errors=True)
@@ -1914,6 +1917,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 'SELECT id,username,nome,senha_hash,admin,ativo,criado_em FROM usuarios').fetchall()]
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
             auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
+            signatures = [dict(r) for r in conn.execute('SELECT * FROM signatures').fetchall()]
             arqs  = []
             for arq in conn.execute('SELECT * FROM arquivos').fetchall():
                 p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
@@ -1922,7 +1926,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
         backup = {'sgdp_version': '1.17.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs,
-                  'auditoria': auditoria}
+                  'auditoria': auditoria, 'signatures': signatures}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
         self._cors()
@@ -1945,6 +1949,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.execute('DELETE FROM documentos')
             conn.execute('DELETE FROM arquivos')
             conn.execute('DELETE FROM contadores')
+            conn.execute('DELETE FROM signatures')
             for arq in backup.get('arquivos', []):
                 nome_disco = f"{secrets.token_hex(16)}.pdf"
                 with open(os.path.join(UPLOADS_DIR, nome_disco), 'wb') as f:
@@ -1964,6 +1969,17 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             for u in backup.get('usuarios', []):
                 conn.execute('INSERT OR REPLACE INTO usuarios (id,username,nome,senha_hash,admin,ativo,criado_em) VALUES (?,?,?,?,?,?,?)',
                              (u['id'],u['username'],u['nome'],u['senha_hash'],u['admin'],u.get('ativo',1),u.get('criado_em')))
+            for sig in backup.get('signatures', []):
+                conn.execute(
+                    '''INSERT OR REPLACE INTO signatures
+                       (id,cod,documento_id,doc_tipo,doc_numero,doc_ano,doc_ementa,
+                        signer_user_id,signer_name,method,cert_subject,hash_sha256,signed_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                    (sig.get('id'), sig.get('cod'), sig.get('documento_id'), sig.get('doc_tipo'),
+                     sig.get('doc_numero'), sig.get('doc_ano'), sig.get('doc_ementa'),
+                     sig.get('signer_user_id'), sig.get('signer_name'), sig.get('method'),
+                     sig.get('cert_subject'), sig.get('hash_sha256'), sig.get('signed_at'))
+                )
             ndoc = len(backup.get('documentos', []))
             narq = len(backup.get('arquivos', []))
             audit(conn, s['user_id'], s['nome'], 'restaurar_backup', detalhes=f"{ndoc} documentos, {narq} arquivos")

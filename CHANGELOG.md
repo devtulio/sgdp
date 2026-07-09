@@ -5,6 +5,16 @@
 
 ---
 
+## [1.20.1] — 2026-07-09
+
+### Corrigido
+- **Backup/restore perdia as assinaturas digitais** — exportação/importação de backup não incluíam a tabela `signatures`. Corrigido para exportar e reimportar, igual ao SGCA
+- **Factory reset não limpava assinaturas e lembretes** — `documento_id` em `signatures`/`lembretes` usa `ON DELETE SET NULL`, então excluir os documentos deixava esses registros órfãos em vez de apagados. `/api/factory-reset` agora limpa as duas tabelas explicitamente
+- **Nome de arquivo não sanitizado no download** — `nome_original` ia direto para o cabeçalho `Content-Disposition` sem escapar aspas/quebras de linha, permitindo injeção de cabeçalhos HTTP a partir de um nome de arquivo malicioso. Mesma sanitização já usada no SGCD/SGCA
+
+### Alterado
+- **Toasts e skeletons de carregamento unificados com SGCD/SGCA** — toasts passam do estilo pastel (`#toast-box`/`.toast`) para o pill sólido com borda colorida (`#toast`/`.toast-msg`); skeletons de card ganham a animação shimmer (antes ficavam estáticos por causa da ordem das regras CSS) e a altura de 90px, igual aos outros dois sistemas
+
 ## [1.20.0] — 2026-07-09
 
 ### Adicionado
