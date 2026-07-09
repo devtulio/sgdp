@@ -5,6 +5,12 @@
 
 ---
 
+## [1.20.4] — 2026-07-09
+
+### Corrigido
+- **Título de página desalinhado do conteúdo em modo Compacto** — `.page-header` não respeitava o mesmo `max-width`/centralização que `.page-content`, então em telas largas o título (fixo à esquerda) ficava visualmente desconectado do card de conteúdo (centralizado) abaixo dele — mais perceptível em Configurações. Criado `.page-header-inner`, que replica o mesmo box-model de `.page-content` (mesmo padding, mesmo `max-width:1100px` centralizado em modo Compacto), alinhando os dois em todas as páginas. Removido também o `max-width:900px` específico do `.cfg-wrap` (remendo da v1.18.0 só para caber as abas) — agora usa a largura padrão da página, como o SGCD
+- **Configuração de "Tamanho da fonte" sem nenhum efeito visível** — `body` tinha `font-size` fixo em `px` (não herdava do `<html>`) e praticamente todo o restante da folha de estilo também usava `px` em vez de `rem`, então as classes `html.font-pequena`/`.font-grande` (aplicadas ao trocar a preferência) não alteravam nada visível na tela. Convertidas cerca de 90 declarações de `font-size` — a folha de estilo principal e as telas de Configurações/Backup, onde o problema foi reportado — de `px` para `rem`, mesmo padrão já usado pelo SGCD. Os documentos em papel timbrado continuam fixos em `px` de propósito (impressão não deve variar com a preferência de acessibilidade da tela)
+
 ## [1.20.3] — 2026-07-09
 
 ### Alterado

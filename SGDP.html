@@ -41,8 +41,9 @@ html.font-grande  { font-size: 18px; }
 
 /* ── Reset / Base ───────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px; color: var(--gray-800); background: var(--gray-100); }
+html, body { height: 100%; }
+body { font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.875rem; color: var(--gray-800); background: var(--gray-100); }
 a { color: var(--brand); text-decoration: none; }
 input, textarea, select, button { font-family: inherit; font-size: inherit; }
 button { cursor: pointer; }
@@ -66,8 +67,6 @@ html.tema-roxo {
 
 /* ── Largura do conteúdo ─────────────────────────────────────────────────── */
 #main.layout-compacto .page-content { max-width: 1100px; margin: 0 auto; width: 100%; }
-.cfg-wrap { max-width: 900px; margin: 0 auto; }
-#main:not(.layout-compacto) .cfg-wrap { max-width: none; }
 
 /* ── Tema escuro ─────────────────────────────────────────────────────────── */
 body.tema-escuro {
@@ -129,12 +128,12 @@ body.tema-escuro #tela-login input {
   background: rgba(184,150,46,.15); border: 2px solid rgba(184,150,46,.4);
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
 }
-.login-hd h1 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 2px; }
-.login-hd p  { font-size: 11px; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .08em; font-weight: 500; }
+.login-hd h1 { font-size: 1.0625rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
+.login-hd p  { font-size: 0.6875rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .08em; font-weight: 500; }
 .login-hd .login-badge {
   display: inline-flex; align-items: center; gap: 5px; margin-top: 12px;
   background: rgba(184,150,46,.2); border: 1px solid rgba(184,150,46,.35);
-  color: #d4b86a; font-size: 10px; font-weight: 600; padding: 3px 10px;
+  color: #d4b86a; font-size: 0.625rem; font-weight: 600; padding: 3px 10px;
   border-radius: 20px; letter-spacing: .04em;
 }
 .login-body { padding: 22px 28px 24px; }
@@ -146,20 +145,20 @@ body.tema-escuro #tela-login input {
 .login-orgao .lo-avatar {
   width: 30px; height: 30px; border-radius: 6px; background: var(--brand);
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+  font-size: 0.75rem; font-weight: 700; color: #fff; flex-shrink: 0;
 }
-.login-orgao .lo-nome { flex: 1; font-size: 12px; font-weight: 600; color: var(--brand-dark); }
-.login-orgao .lo-sub  { font-size: 10px; color: var(--gray-500); margin-top: 1px; }
+.login-orgao .lo-nome { flex: 1; font-size: 0.75rem; font-weight: 600; color: var(--brand-dark); }
+.login-orgao .lo-sub  { font-size: 0.625rem; color: var(--gray-500); margin-top: 1px; }
 #login-erro {
   display: none; align-items: center; gap: 7px;
   background: var(--red-bg); border: 1px solid #fca5a5;
-  border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #991b1b; margin-bottom: 12px;
+  border-radius: 6px; padding: 8px 12px; font-size: 0.75rem; color: #991b1b; margin-bottom: 12px;
 }
 .login-field { margin-bottom: 14px; }
-.login-field label { display: block; font-size: 11px; font-weight: 600; color: var(--brand); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.login-field label { display: block; font-size: 0.6875rem; font-weight: 600; color: var(--brand); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
 .login-field input {
   width: 100%; height: 44px; border: 1.5px solid var(--gray-300); border-radius: 8px;
-  padding: 0 14px; font-size: 14px; outline: none; background: var(--gray-50);
+  padding: 0 14px; font-size: 0.875rem; outline: none; background: var(--gray-50);
   transition: border-color .15s, box-shadow .15s;
 }
 .login-field input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); background: #fff; }
@@ -172,13 +171,13 @@ body.tema-escuro #tela-login input {
 }
 .btn-pw-eye:hover { color: var(--gray-600); }
 #login-caps {
-  display: none; align-items: center; gap: 6px; font-size: 12px;
+  display: none; align-items: center; gap: 6px; font-size: 0.75rem;
   color: #92400e; background: #fef3c7; border: 1px solid #fcd34d;
   border-radius: 6px; padding: 6px 10px; margin-top: -8px; margin-bottom: 12px;
 }
 .btn-login {
   width: 100%; height: 46px; background: var(--brand); color: #fff; border: none;
-  border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer;
+  border-radius: 8px; font-size: 0.875rem; font-weight: 700; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   transition: background .15s; margin-top: 4px;
 }
@@ -187,7 +186,7 @@ body.tema-escuro #tela-login input {
   background: var(--gray-50); border-top: 1px solid var(--gray-200);
   padding: 10px 28px; display: flex; align-items: center; justify-content: space-between;
 }
-.login-ft span { font-size: 10px; color: var(--gray-400); }
+.login-ft span { font-size: 0.625rem; color: var(--gray-400); }
 @keyframes login-shake {
   0%,100% { transform: translateX(0); }
   20%      { transform: translateX(-6px); }
@@ -202,7 +201,7 @@ body.tema-escuro #tela-login input {
 @keyframes cfg-pulse { 0%,100% { box-shadow:0 0 0 3px rgba(26,58,107,.25); } 50% { box-shadow:0 0 0 6px rgba(26,58,107,.08); } }
 .cfg-tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--gray-200); margin-bottom: 20px; }
 .cfg-tab {
-  padding: 8px 18px; font-size: 12px; font-weight: 600; text-transform: uppercase;
+  padding: 8px 18px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
   letter-spacing: .4px; color: var(--gray-500); cursor: pointer;
   border: none; background: none; border-bottom: 2px solid transparent;
   margin-bottom: -2px; border-radius: 4px 4px 0 0; transition: color .15s, border-color .15s;
@@ -212,9 +211,9 @@ body.tema-escuro #tela-login input {
 .cfg-panel { display: none; }
 .cfg-panel.active { display: block; }
 .cfg-section { margin-bottom: 20px; }
-.cfg-section h3 { font-size: 12px; font-weight: 700; color: var(--brand); text-transform: uppercase;
+.cfg-section h3 { font-size: 0.75rem; font-weight: 700; color: var(--brand); text-transform: uppercase;
   letter-spacing: .4px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--brand-light); }
-#senha-status { font-size: 12px; margin-top: 8px; display: none; }
+#senha-status { font-size: 0.75rem; margin-top: 8px; display: none; }
 
 /* ── App Shell ──────────────────────────────────────────────────────────── */
 #app { display: none; height: 100vh; overflow: hidden; }
@@ -230,16 +229,16 @@ body.tema-escuro #tela-login input {
   text-align: center;
 }
 .sidebar-brasao { width: 80px; height: 80px; object-fit: contain; display: block; margin: 0 auto 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
-.sidebar-logo .s-title { font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
-.sidebar-logo .s-sub   { font-size: 10px; opacity: .7; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
-.sidebar-logo .s-muni  { font-size: 11px; opacity: .85; margin-top: 6px; line-height: 1.3; }
+.sidebar-logo .s-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -.5px; }
+.sidebar-logo .s-sub   { font-size: 0.625rem; opacity: .7; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+.sidebar-logo .s-muni  { font-size: 0.6875rem; opacity: .85; margin-top: 6px; line-height: 1.3; }
 
 .sidebar-nav { flex: 1; padding: 12px 0; }
-.nav-section { font-size: 10px; font-weight: 700; text-transform: uppercase;
+.nav-section { font-size: 0.625rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: .8px; opacity: .5; padding: 14px 18px 6px; }
 .nav-item {
   display: flex; align-items: center; gap: 10px; padding: 9px 18px;
-  font-size: 13px; font-weight: 500; color: rgba(255,255,255,.8);
+  font-size: 0.8125rem; font-weight: 500; color: rgba(255,255,255,.8);
   cursor: pointer; transition: all .15s; border-left: 3px solid transparent;
 }
 .nav-item:hover { background: rgba(255,255,255,.08); color: #fff; }
@@ -248,17 +247,17 @@ body.tema-escuro #tela-login input {
 .nav-item .nav-ico { width: 18px; height: 18px; flex-shrink: 0; opacity: .85; display: flex; align-items: center; justify-content: center; }
 .nav-item .nav-ico svg { width: 18px; height: 18px; }
 .nav-badge { margin-left: auto; background: rgba(255,255,255,.2);
-  border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+  border-radius: 10px; padding: 1px 7px; font-size: 0.6875rem; font-weight: 700; }
 
 .sidebar-user {
   padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.12);
   display: flex; align-items: center; gap: 10px;
 }
 .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.2);
-  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8125rem; flex-shrink: 0; }
 .user-info { flex: 1; min-width: 0; }
-.user-nome  { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.user-cargo { font-size: 10px; opacity: .6; }
+.user-nome  { font-size: 0.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-cargo { font-size: 0.625rem; opacity: .6; }
 .btn-sair { background: none; border: none; color: rgba(255,255,255,.6); padding: 4px;
   border-radius: 4px; transition: color .15s; }
 .btn-sair:hover { color: #fff; }
@@ -267,23 +266,25 @@ body.tema-escuro #tela-login input {
 #main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
 .page-header {
   background: #fff; border-bottom: 1px solid var(--gray-200);
-  padding: 0 28px; height: 56px; display: flex; align-items: center;
-  justify-content: space-between; flex-shrink: 0; position: sticky; top: 0; z-index: 10;
+  height: 56px; display: flex; align-items: center;
+  flex-shrink: 0; position: sticky; top: 0; z-index: 10;
 }
-.page-title { font-size: 16px; font-weight: 700; color: var(--gray-800); }
+.page-header-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 28px; }
+#main.layout-compacto .page-header-inner { max-width: 1100px; margin: 0 auto; }
+.page-title { font-size: 1rem; font-weight: 700; color: var(--gray-800); }
 .page-content { padding: 24px 28px; flex: 1; }
 
 /* ── Botões ──────────────────────────────────────────────────────────────── */
 .btn { display: inline-flex; align-items: center; gap: 6px; border: none;
   border-radius: var(--radius); padding: 8px 16px; font-weight: 600;
-  font-size: 13px; transition: all .15s; white-space: nowrap; }
+  font-size: 0.8125rem; transition: all .15s; white-space: nowrap; }
 .btn-primary  { background: var(--brand); color: #fff; }
 .btn-primary:hover  { background: var(--brand-dark); }
 .btn-outline  { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
 .btn-outline:hover  { border-color: var(--gray-400); background: var(--gray-50); }
 .btn-danger   { background: var(--red); color: #fff; }
 .btn-danger:hover   { background: #b91c1c; }
-.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-sm { padding: 5px 10px; font-size: 0.75rem; }
 .btn-icon { padding: 6px; border-radius: 6px; line-height: 1; }
 
 /* ── Cards do dashboard ──────────────────────────────────────────────────── */
@@ -295,10 +296,10 @@ body.tema-escuro #tela-login input {
   border-top: 3px solid var(--tc, var(--gray-300));
 }
 .dash-card:hover { box-shadow: var(--shadow-md); }
-.dash-card .dc-label { font-size: 11px; font-weight: 700; text-transform: uppercase;
+.dash-card .dc-label { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: .5px; color: var(--gray-500); margin-bottom: 8px; }
-.dash-card .dc-total { font-size: 28px; font-weight: 800; color: var(--tc, var(--gray-700)); line-height: 1; }
-.dash-card .dc-ano   { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+.dash-card .dc-total { font-size: 1.75rem; font-weight: 800; color: var(--tc, var(--gray-700)); line-height: 1; }
+.dash-card .dc-ano   { font-size: 0.75rem; color: var(--gray-400); margin-top: 4px; }
 
 /* ── Tabela ──────────────────────────────────────────────────────────────── */
 .table-wrap { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
@@ -313,31 +314,31 @@ body.tema-escuro #tela-login input {
   padding: 7px 10px; outline: none; background: #fff; }
 table { width: 100%; border-collapse: collapse; }
 th { background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
-  padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700;
+  padding: 10px 14px; text-align: left; font-size: 0.6875rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: .4px; color: var(--gray-500); white-space: nowrap; }
 td { padding: 11px 14px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--gray-50); }
 .td-ementa { max-width: 320px; }
 .td-ementa span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.tag-pill { display: inline-flex; align-items: center; gap: 4px; background: var(--gray-100); color: var(--gray-600); font-size: 11px; padding: 2px 8px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
+.tag-pill { display: inline-flex; align-items: center; gap: 4px; background: var(--gray-100); color: var(--gray-600); font-size: 0.6875rem; padding: 2px 8px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
 .tag-pill:hover { background: var(--gray-200); }
 .td-acoes { white-space: nowrap; display: flex; gap: 4px; }
 .empty-row td { text-align: center; padding: 48px; color: var(--gray-400); }
 
 /* Paginação */
 .pagination { display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px; border-top: 1px solid var(--gray-200); font-size: 12px; color: var(--gray-500); }
+  padding: 12px 16px; border-top: 1px solid var(--gray-200); font-size: 0.75rem; color: var(--gray-500); }
 .pag-btns { display: flex; gap: 4px; }
 .pag-btn  { border: 1px solid var(--gray-300); background: #fff; border-radius: 6px;
-  padding: 4px 10px; font-size: 12px; transition: all .15s; }
+  padding: 4px 10px; font-size: 0.75rem; transition: all .15s; }
 .pag-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
 .pag-btn:disabled { opacity: .4; cursor: default; }
 .pag-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
 
 /* ── Badges tipo ─────────────────────────────────────────────────────────── */
 .badge-tipo {
-  display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px;
+  display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.6875rem;
   font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
   background: var(--tb); color: var(--tc);
 }
@@ -370,7 +371,7 @@ tr:hover td { background: var(--gray-50); }
 .notif-item { padding:10px 16px;border-bottom:1px solid var(--gray-100);cursor:pointer;transition:background .1s;display:flex;gap:10px;align-items:flex-start }
 .notif-item:hover { background:var(--gray-50) }
 .notif-item:last-child { border-bottom:none }
-.notif-icon { width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px }
+.notif-icon { width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size: 0.875rem }
 .notif-body { flex:1;min-width:0 }
 .notif-title { font-size:.8rem;font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
 .notif-sub { font-size:.72rem;color:var(--gray-500);margin-top:2px }
@@ -395,7 +396,7 @@ tr:hover td { background: var(--gray-50); }
 .modal-body { padding: 22px; overflow-y: auto; flex: 1; }
 .modal-ft  { padding: 14px 22px; border-top: 1px solid var(--gray-200);
   display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
-.btn-close { background: none; border: none; font-size: 18px; color: var(--gray-400);
+.btn-close { background: none; border: none; font-size: 1.125rem; color: var(--gray-400);
   width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
 .btn-close:hover { background: var(--gray-100); color: var(--gray-700); }
 .modal-hd .btn-close { color: rgba(255,255,255,.7); }
@@ -406,7 +407,7 @@ tr:hover td { background: var(--gray-50); }
 .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
 .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
 .form-group { display: flex; flex-direction: column; gap: 5px; }
-.form-group label { font-size: 12px; font-weight: 600; color: var(--gray-600); }
+.form-group label { font-size: 0.75rem; font-weight: 600; color: var(--gray-600); }
 /* Modal de Usuário: rótulos maiúsculos pequenos, igual ao .info-field label do SGCD/SGCA */
 #modal-usuario-body .form-group label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--gray-500); }
 .form-group input, .form-group textarea, .form-group select {
@@ -417,7 +418,7 @@ tr:hover td { background: var(--gray-50); }
   border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light);
 }
 .form-group textarea { resize: vertical; min-height: 80px; }
-.form-hint { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.form-hint { font-size: 0.6875rem; color: var(--gray-400); margin-top: 2px; }
 
 /* Upload de arquivo */
 .upload-zone {
@@ -429,20 +430,20 @@ tr:hover td { background: var(--gray-50); }
 .upload-zone:hover, .upload-zone.dragover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
 .upload-zone input { display: none; }
 .upload-zone svg { margin-bottom: 8px; }
-.upload-zone p  { font-size: 13px; }
-.upload-zone small { font-size: 11px; }
+.upload-zone p  { font-size: 0.8125rem; }
+.upload-zone small { font-size: 0.6875rem; }
 
 .arquivo-info {
   display: flex; align-items: center; gap: 12px; padding: 12px 14px;
   background: var(--green-bg); border: 1px solid #86efac; border-radius: var(--radius);
 }
-.arquivo-info .arq-nome { flex: 1; font-size: 13px; font-weight: 500; color: var(--green); word-break: break-all; }
-.arquivo-info .arq-size { font-size: 11px; color: var(--green); opacity: .7; white-space: nowrap; }
+.arquivo-info .arq-nome { flex: 1; font-size: 0.8125rem; font-weight: 500; color: var(--green); word-break: break-all; }
+.arquivo-info .arq-size { font-size: 0.6875rem; color: var(--green); opacity: .7; white-space: nowrap; }
 
 
 /* ── Auditoria ───────────────────────────────────────────────────────────── */
-.audit-table td { font-size: 12px; }
-.audit-acao { font-family: monospace; font-size: 11px; background: var(--gray-100);
+.audit-table td { font-size: 0.75rem; }
+.audit-acao { font-family: monospace; font-size: 0.6875rem; background: var(--gray-100);
   padding: 2px 6px; border-radius: 4px; }
 
 /* ── Toasts ──────────────────────────────────────────────────────────────── */
@@ -459,7 +460,7 @@ tr:hover td { background: var(--gray-50); }
 /* ── Modal de confirmação ────────────────────────────────────────────────── */
 #modal-confirm .modal { max-width: 420px; }
 #modal-doc .modal { max-width: 720px; }
-#modal-confirm .modal-body { padding: 24px 22px; font-size: 14px; line-height: 1.6; }
+#modal-confirm .modal-body { padding: 24px 22px; font-size: 0.875rem; line-height: 1.6; }
 
 /* ── PDF viewer ──────────────────────────────────────────────────────────── */
 #modal-pdf .modal { max-width: 95vw; width: 95vw; height: 92vh; }
@@ -477,10 +478,10 @@ tr:hover td { background: var(--gray-50); }
 }
 
 /* ── Misc ────────────────────────────────────────────────────────────────── */
-.section-title { font-size: 13px; font-weight: 700; color: var(--gray-700);
+.section-title { font-size: 0.8125rem; font-weight: 700; color: var(--gray-700);
   margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-.loading { text-align: center; padding: 48px; color: var(--gray-400); font-size: 13px; }
-.num-doc { font-family: monospace; font-weight: 700; color: var(--tc, var(--gray-700)); font-size: 13px; }
+.loading { text-align: center; padding: 48px; color: var(--gray-400); font-size: 0.8125rem; }
+.num-doc { font-family: monospace; font-weight: 700; color: var(--tc, var(--gray-700)); font-size: 0.8125rem; }
 .action-row { display: flex; align-items: center; gap: 8px; }
 </style>
 </head>
@@ -601,7 +602,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.20.3</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.20.4</span>
     </div>
     <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
@@ -690,14 +691,16 @@ tr:hover td { background: var(--gray-50); }
   <!-- Conteúdo principal -->
   <main id="main">
     <div class="page-header">
-      <div class="page-title" id="page-title">Dashboard</div>
-      <div id="header-actions"></div>
+      <div class="page-header-inner">
+        <div class="page-title" id="page-title">Dashboard</div>
+        <div id="header-actions"></div>
+      </div>
     </div>
     <div class="page-content" id="page-content">
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.20.3
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.20.4
     </footer>
   </main>
 </div>
@@ -3334,28 +3337,28 @@ async function renderBackup(container) {
   target.innerHTML = `
     <div class="cfg-wrap">
       <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px;margin-bottom:16px">
-        <legend style="font-size:11px;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Backup de Dados</legend>
+        <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Backup de Dados</legend>
 
         <!-- Pasta de backup -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <label style="font-size:13px;color:var(--gray-600);white-space:nowrap;min-width:130px">Pasta de backup</label>
-          <input id="bkp-path" type="text" style="flex:1;border:1px solid var(--gray-300);border-radius:var(--radius);padding:7px 10px;font-size:12px;background:var(--gray-50);outline:none" readonly
+          <label style="font-size:0.8125rem;color:var(--gray-600);white-space:nowrap;min-width:130px">Pasta de backup</label>
+          <input id="bkp-path" type="text" style="flex:1;border:1px solid var(--gray-300);border-radius:var(--radius);padding:7px 10px;font-size:0.75rem;background:var(--gray-50);outline:none" readonly
             value="${esc(d?.path || cfg.path || '')}">
           <button class="btn btn-outline btn-sm" onclick="selecionarPastaBackup()" style="white-space:nowrap">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             Selecionar pasta
           </button>
         </div>
-        <p style="font-size:11px;color:var(--gray-400);margin-bottom:12px;line-height:1.5">Backups automáticos e manuais do banco são salvos nesta pasta.</p>
+        <p style="font-size:0.6875rem;color:var(--gray-400);margin-bottom:12px;line-height:1.5">Backups automáticos e manuais do banco são salvos nesta pasta.</p>
         <button class="btn btn-outline btn-sm" onclick="gerarRelatorioIntegridade()" style="margin-bottom:12px">📊 Relatório de Backup e Integridade</button>
 
         <hr style="border:none;border-top:1px solid var(--gray-100);margin:4px 0 12px">
 
         <!-- Backup manual -->
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px">Backup manual</div>
+        <div style="font-size:0.8125rem;font-weight:600;color:var(--gray-700);margin-bottom:8px">Backup manual</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:6px">
-            <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px">Sistema (JSON)</div>
+            <div style="font-size:0.6875rem;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px">Sistema (JSON)</div>
             <button class="btn btn-outline btn-sm" onclick="exportBackup()" style="justify-content:flex-start">
               ${_ICONE_DOWN} Exportar backup
             </button>
@@ -3365,7 +3368,7 @@ async function renderBackup(container) {
             </label>
           </div>
           <div style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:6px">
-            <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px">Banco de dados (.db)</div>
+            <div style="font-size:0.6875rem;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px">Banco de dados (.db)</div>
             <button class="btn btn-outline btn-sm" onclick="exportarBackupDB()" style="justify-content:flex-start">
               ${_ICONE_DOWN} Exportar backup
             </button>
@@ -3379,8 +3382,8 @@ async function renderBackup(container) {
         <hr style="border:none;border-top:1px solid var(--gray-100);margin:4px 0 12px">
 
         <!-- Sincronizar com outro agente -->
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px">Sincronizar com outro agente</div>
-        <p style="font-size:11px;color:var(--gray-400);margin-bottom:8px;line-height:1.5">Mescla o backup (JSON) de outra máquina com os dados atuais — soma o que é novo, mantém o que já existe, e deixa você revisar registros que foram alterados nos dois lados antes de aplicar.</p>
+        <div style="font-size:0.8125rem;font-weight:600;color:var(--gray-700);margin-bottom:8px">Sincronizar com outro agente</div>
+        <p style="font-size:0.6875rem;color:var(--gray-400);margin-bottom:8px;line-height:1.5">Mescla o backup (JSON) de outra máquina com os dados atuais — soma o que é novo, mantém o que já existe, e deixa você revisar registros que foram alterados nos dois lados antes de aplicar.</p>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;justify-content:flex-start;margin-bottom:12px;display:inline-flex">
           ↻ Sincronizar backup
           <input type="file" accept=".json" style="display:none" onchange="sincronizarBackup(this.files[0]).then(()=>this.value='')">
@@ -3395,28 +3398,28 @@ async function renderBackup(container) {
               onchange="document.getElementById('bkp-auto-sub').style.opacity=this.checked?'1':'.45'">
           </label>
           <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--gray-700)">Backup automático ao fechar o sistema</div>
-            <p style="font-size:11px;color:var(--gray-500);margin:3px 0 8px;line-height:1.5">Cria um backup do banco (sgdp.db) sempre que o sistema for encerrado.</p>
+            <div style="font-size:0.8125rem;font-weight:600;color:var(--gray-700)">Backup automático ao fechar o sistema</div>
+            <p style="font-size:0.6875rem;color:var(--gray-500);margin:3px 0 8px;line-height:1.5">Cria um backup do banco (sgdp.db) sempre que o sistema for encerrado.</p>
             <div id="bkp-auto-sub" style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:var(--gray-50);border-radius:var(--radius);border:1px solid var(--gray-100);transition:opacity .15s;opacity:${enabled?'1':'.45'}">
               <div style="display:flex;align-items:center;gap:8px">
-                <label style="font-size:12px;color:var(--gray-600);white-space:nowrap">Backups mantidos</label>
+                <label style="font-size:0.75rem;color:var(--gray-600);white-space:nowrap">Backups mantidos</label>
                 <input id="bkp-auto-keep" type="number" min="1" max="99" value="${esc(String(cfg.keep||7))}"
                   style="width:64px;border:1px solid var(--gray-300);border-radius:var(--radius);padding:5px 8px;outline:none">
-                <span style="font-size:12px;color:var(--gray-500)">arquivos mais recentes</span>
+                <span style="font-size:0.75rem;color:var(--gray-500)">arquivos mais recentes</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:12px;color:var(--gray-600)">Último backup</span>
-                <span id="bkp-auto-last" style="font-size:12px;color:var(--gray-700)">${d?.last_backup ? new Date(d.last_backup).toLocaleString('pt-BR') : '—'}</span>
+                <span style="font-size:0.75rem;color:var(--gray-600)">Último backup</span>
+                <span id="bkp-auto-last" style="font-size:0.75rem;color:var(--gray-700)">${d?.last_backup ? new Date(d.last_backup).toLocaleString('pt-BR') : '—'}</span>
               </div>
-              <p style="font-size:11px;color:var(--gray-500);margin:0;line-height:1.5">Os arquivos mais antigos são apagados automaticamente ao atingir o limite.</p>
+              <p style="font-size:0.6875rem;color:var(--gray-500);margin:0;line-height:1.5">Os arquivos mais antigos são apagados automaticamente ao atingir o limite.</p>
             </div>
           </div>
         </div>
       </fieldset>
 
       <fieldset style="border:1.5px solid var(--red);border-radius:var(--radius);padding:14px">
-        <legend style="font-size:11px;font-weight:700;color:var(--red);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Zona de Perigo</legend>
-        <p style="font-size:12px;color:var(--gray-500);margin-bottom:12px;line-height:1.5">
+        <legend style="font-size:0.6875rem;font-weight:700;color:var(--red);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Zona de Perigo</legend>
+        <p style="font-size:0.75rem;color:var(--gray-500);margin-bottom:12px;line-height:1.5">
           Apaga <strong>permanentemente</strong> todos os documentos, PDFs e registros de auditoria.
           Um backup do banco é criado automaticamente antes do reset.
         </p>
@@ -3524,13 +3527,13 @@ function _revisarConflitosSync(conflitos) {
           <span class="badge-tipo tipo-${c.local.tipo}">${TIPOS_LABELS[c.local.tipo] || c.local.tipo}</span>
           ${fmtNum(c.local.numero, c.local.ano)}
         </td>
-        <td style="padding:8px 6px;border-bottom:1px solid var(--gray-100);font-size:12px">
+        <td style="padding:8px 6px;border-bottom:1px solid var(--gray-100);font-size:0.75rem">
           <div><strong>Atual:</strong> ${esc(c.local.ementa || '')}</div>
           <div><strong>Backup:</strong> ${esc(c.backup.ementa || '')}</div>
         </td>
         <td style="padding:8px 6px;border-bottom:1px solid var(--gray-100);white-space:nowrap">
-          <label style="font-size:12px;margin-right:10px"><input type="radio" name="conf-${i}" value="atual" checked> Manter atual</label>
-          <label style="font-size:12px"><input type="radio" name="conf-${i}" value="backup" data-chave="${c.chave}"> Usar backup</label>
+          <label style="font-size:0.75rem;margin-right:10px"><input type="radio" name="conf-${i}" value="atual" checked> Manter atual</label>
+          <label style="font-size:0.75rem"><input type="radio" name="conf-${i}" value="backup" data-chave="${c.chave}"> Usar backup</label>
         </td>
       </tr>`).join('');
 
@@ -3707,62 +3710,62 @@ async function renderConfiguracoes(abaInicial) {
         <div class="table-wrap" style="padding:24px;display:flex;flex-direction:column;gap:16px">
 
           <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:11px;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Tema de aparência</legend>
-            <select id="cfg-ui-tema" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px;outline:none">
+            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Tema de aparência</legend>
+            <select id="cfg-ui-tema" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:0.8125rem;outline:none">
               <option value="claro" ${_tema==='claro'?'selected':''}>Claro — fundo branco</option>
               <option value="escuro" ${_tema==='escuro'?'selected':''}>Escuro — fundo escuro</option>
             </select>
-            <p style="font-size:11px;color:var(--gray-500);margin-top:6px;line-height:1.4">A alteração é aplicada imediatamente.</p>
+            <p style="font-size:0.6875rem;color:var(--gray-500);margin-top:6px;line-height:1.4">A alteração é aplicada imediatamente.</p>
           </fieldset>
 
           <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:11px;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Largura do conteúdo</legend>
-            <select id="cfg-ui-largura" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px;outline:none">
+            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Largura do conteúdo</legend>
+            <select id="cfg-ui-largura" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:0.8125rem;outline:none">
               <option value="compacto"  ${_largura==='compacto' ?'selected':''}>Compacta — margens laterais confortáveis</option>
               <option value="expandido" ${_largura==='expandido'?'selected':''}>Expandida — aproveita toda a tela útil</option>
             </select>
-            <p style="font-size:11px;color:var(--gray-500);margin-top:6px;line-height:1.4">A alteração é aplicada imediatamente ao salvar.</p>
+            <p style="font-size:0.6875rem;color:var(--gray-500);margin-top:6px;line-height:1.4">A alteração é aplicada imediatamente ao salvar.</p>
           </fieldset>
 
           <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:11px;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Cor de destaque</legend>
+            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Cor de destaque</legend>
             <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8125rem">
                 <input type="radio" name="cfg-tema-cor" value="institucional" ${_corDestaque==='institucional'?'checked':''} style="accent-color:#1a3a6b">
                 <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#1a3a6b"></span>
                 Institucional
               </label>
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8125rem">
                 <input type="radio" name="cfg-tema-cor" value="azul" ${_corDestaque==='azul'?'checked':''} style="accent-color:#0066CC">
                 <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#0066CC"></span>
                 Azul
               </label>
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8125rem">
                 <input type="radio" name="cfg-tema-cor" value="verde" ${_corDestaque==='verde'?'checked':''} style="accent-color:#1a7a3c">
                 <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#1a7a3c"></span>
                 Verde
               </label>
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8125rem">
                 <input type="radio" name="cfg-tema-cor" value="roxo" ${_corDestaque==='roxo'?'checked':''} style="accent-color:#5E2750">
                 <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#5E2750"></span>
                 Roxo
               </label>
             </div>
-            <p style="font-size:11px;color:var(--gray-500);margin-top:8px;line-height:1.4">Altera a cor de botões, links e destaques em todo o sistema.</p>
+            <p style="font-size:0.6875rem;color:var(--gray-500);margin-top:8px;line-height:1.4">Altera a cor de botões, links e destaques em todo o sistema.</p>
           </fieldset>
 
           <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:11px;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Tamanho da fonte</legend>
-            <select id="cfg-ui-font" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:13px;outline:none">
+            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Tamanho da fonte</legend>
+            <select id="cfg-ui-font" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:0.8125rem;outline:none">
               <option value="pequena" ${_fs==='pequena'?'selected':''}>Pequena — mais itens visíveis</option>
               <option value="normal"  ${_fs==='normal' ?'selected':''}>Normal — padrão do sistema</option>
               <option value="grande"  ${_fs==='grande' ?'selected':''}>Grande — melhor legibilidade</option>
             </select>
-            <p style="font-size:11px;color:var(--gray-500);margin-top:6px;line-height:1.4">Afeta todo o sistema. Útil para monitores menores ou acessibilidade.</p>
+            <p style="font-size:0.6875rem;color:var(--gray-500);margin-top:6px;line-height:1.4">Afeta todo o sistema. Útil para monitores menores ou acessibilidade.</p>
           </fieldset>
 
           <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:11px;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Brasão do município</legend>
+            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Brasão do município</legend>
             <p style="font-size:.72rem;color:var(--gray-500);margin-bottom:10px;line-height:1.5">Substitua o brasão exibido no topo da barra lateral pelo do seu município.</p>
             <div style="display:flex;align-items:center;gap:12px">
               <img id="cfg-brasao-preview" style="height:56px;width:auto;display:none;border:1px solid var(--gray-200);border-radius:4px;padding:2px">
@@ -3795,7 +3798,7 @@ async function renderConfiguracoes(abaInicial) {
           </div>
           <div class="cfg-section" style="margin-top:24px">
             <h3>Autoridade Responsável</h3>
-            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Usado no cabeçalho do Relatório Gerencial quando impresso/exportado.</p>
+            <p style="font-size:0.75rem;color:var(--gray-500);margin-bottom:10px">Usado no cabeçalho do Relatório Gerencial quando impresso/exportado.</p>
             <div class="form-row cols-2">
               <div class="form-group">
                 <label>Nome</label>
@@ -3860,7 +3863,7 @@ async function renderConfiguracoes(abaInicial) {
         <div class="table-wrap" style="padding:24px">
           <div class="cfg-section">
             <h3>E-mail (SMTP)</h3>
-            <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px;line-height:1.5">
+            <p style="font-size:0.75rem;color:var(--gray-500);margin-bottom:10px;line-height:1.5">
               Usado para enviar documentos por e-mail e para avisos automáticos de prazo. O servidor local (<strong>server.py</strong>) deve estar em execução.<br><br>
               Assim que configurado, o sistema passa a enviar automaticamente um <strong>resumo diário por e-mail</strong> (lembretes vencidos e vencendo nos próximos 7 dias) para o e-mail interno abaixo — mesmo sem ninguém logado.
             </p>
@@ -3882,10 +3885,10 @@ async function renderConfiguracoes(abaInicial) {
             <div class="form-group"><label>Senha</label><input id="smtp-pass" type="password" autocomplete="new-password"></div>
             <div class="form-group"><label>Nome do remetente</label><input id="smtp-from-name" type="text" placeholder="SGDP — Procuradoria"></div>
             <div class="form-group"><label>E-mail interno (destinatário padrão)</label><input id="smtp-to" type="email" placeholder="ex: procuradoria@municipio.gov.br"></div>
-            <p style="font-size:11px;color:var(--gray-400);margin:6px 0 14px">Usado nos avisos de prazo quando o lembrete não tiver responsável com e-mail cadastrado.</p>
+            <p style="font-size:0.6875rem;color:var(--gray-400);margin:6px 0 14px">Usado nos avisos de prazo quando o lembrete não tiver responsável com e-mail cadastrado.</p>
             <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
               <button class="btn btn-outline btn-sm" onclick="testarSmtp()">🔌 Testar conexão com servidor</button>
-              <span id="smtp-test-result" style="font-size:12px"></span>
+              <span id="smtp-test-result" style="font-size:0.75rem"></span>
             </div>
           </div>
         </div>
@@ -3899,11 +3902,11 @@ async function renderConfiguracoes(abaInicial) {
       <div class="cfg-panel${primeiraAba==='diag'?' active':''}" id="cfg-diag">
         <div class="table-wrap" style="padding:24px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <p style="font-size:13px;color:var(--gray-500)">Verifica a integridade dos dados e consistência entre banco e disco.</p>
+            <p style="font-size:0.8125rem;color:var(--gray-500)">Verifica a integridade dos dados e consistência entre banco e disco.</p>
             <button class="btn btn-outline btn-sm" onclick="runDiagnostico()">↻ Reanalisar</button>
           </div>
           <div id="diag-resultado">
-            <p style="color:var(--gray-400);font-style:italic;font-size:13px">Executando diagnóstico…</p>
+            <p style="color:var(--gray-400);font-style:italic;font-size:0.8125rem">Executando diagnóstico…</p>
           </div>
         </div>
       </div>` : ''}
