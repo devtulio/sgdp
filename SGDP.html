@@ -602,7 +602,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.20.4</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.20.5</span>
     </div>
     <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
@@ -700,7 +700,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.20.4
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.20.5
     </footer>
   </main>
 </div>
@@ -1119,7 +1119,7 @@ tr:hover td { background: var(--gray-50); }
 </div>
 
 <!-- ── Busca Global ───────────────────────────────────────────────────────── -->
-<div id="global-search-overlay" style="display:none" onclick="if(event.target===this)fecharGlobalSearch()">
+<div id="global-search-overlay" style="display:none">
   <div class="gsearch-box">
     <div class="gsearch-input-wrap">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--gray-500);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -4183,7 +4183,6 @@ async function alterarSenha() {
 function abrirModal(id) {
   const m = document.getElementById(id);
   m.classList.add('open');
-  m.addEventListener('click', e => { if (e.target === m) fecharModal(id); }, { once: true });
 }
 
 function fecharModal(id) {

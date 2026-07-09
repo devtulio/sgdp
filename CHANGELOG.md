@@ -5,6 +5,11 @@
 
 ---
 
+## [1.20.5] — 2026-07-09
+
+### Corrigido
+- **Clicar fora de um modal fechava a janela e descartava os dados digitados** — a função compartilhada `abrirModal()` anexava um fechamento por clique no fundo a todo modal aberto por ela (Documento, Usuário, Lembrete, E-mail, Histórico, Vínculos, Assinatura, CSV, Confirmação), além da Busca Global. Removido; agora só fecham pelo botão Cancelar/✕ ou pela tecla Esc
+
 ## [1.20.4] — 2026-07-09
 
 ### Corrigido
