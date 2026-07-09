@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.20.2-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.20.3-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -72,10 +72,10 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 
 ### Login inicial
 
-| Campo   | Valor      |
-|---------|------------|
-| Usuário | `admin`    |
-| Senha   | `sgdp2024` |
+| Campo   | Valor       |
+|---------|-------------|
+| Usuário | `admin`     |
+| Senha   | `admin123`  |
 
 ### Modo de operação
 

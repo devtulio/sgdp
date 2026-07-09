@@ -70,7 +70,7 @@ class SGDPTestCase(unittest.TestCase):
             parsed = data  # resposta binária (ex: download de arquivo)
         return resp.status, parsed
 
-    def login(self, username='admin', password='sgdp2024'):
+    def login(self, username='admin', password='admin123'):
         status, data = self.request('POST', '/api/auth/login', {'username': username, 'password': password})
         self.assertEqual(status, 200, data)
         return data['token']
@@ -79,7 +79,7 @@ class SGDPTestCase(unittest.TestCase):
 class TestAuth(SGDPTestCase):
 
     def test_login_com_credenciais_corretas(self):
-        status, data = self.request('POST', '/api/auth/login', {'username': 'admin', 'password': 'sgdp2024'})
+        status, data = self.request('POST', '/api/auth/login', {'username': 'admin', 'password': 'admin123'})
         self.assertEqual(status, 200)
         self.assertIn('token', data)
         self.assertTrue(data['user']['admin'])

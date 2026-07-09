@@ -1,4 +1,4 @@
-# SGDP v1.20.2 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.20.3 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -279,10 +279,10 @@ def init_db():
         if conn.execute('SELECT COUNT(*) FROM usuarios').fetchone()[0] == 0:
             conn.execute(
                 'INSERT INTO usuarios (username,nome,senha_hash,admin) VALUES (?,?,?,1)',
-                ('admin', 'Administrador', _hash_password('sgdp2024'))
+                ('admin', 'Administrador', _hash_password('admin123'))
             )
             conn.commit()
-            print('Usuário padrão criado: admin / sgdp2024 — troque a senha nas Configurações.')
+            print('Usuário padrão criado: admin / admin123 — troque a senha nas Configurações.')
 
 def _fts_match_query(text):
     """Converte texto livre em uma query FTS5 (AND de prefixos por palavra)."""

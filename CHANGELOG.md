@@ -5,6 +5,11 @@
 
 ---
 
+## [1.20.3] — 2026-07-09
+
+### Alterado
+- **Senha padrão do usuário admin** — instalações novas passam a criar `admin` / `admin123`, igual ao SGCD/SGCA (era `admin` / `sgdp2024`). Instalações já existentes não são alteradas — a senha continua sendo o que já foi definido no banco
+
 ## [1.20.2] — 2026-07-09
 
 ### Alterado
