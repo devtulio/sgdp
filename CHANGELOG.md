@@ -5,6 +5,11 @@
 
 ---
 
+## [1.20.0] — 2026-07-09
+
+### Adicionado
+- **Cargo e Matrícula no cadastro de usuário** — campos que faltavam para paridade completa com SGCD/SGCA. Adicionados ao schema (`usuarios`), aos endpoints de criar/editar/listar usuário, à sessão/login e ao modal de Usuário (posicionados após E-mail, mesma ordem do SGCD)
+
 ## [1.19.3] — 2026-07-09
 
 ### Corrigido

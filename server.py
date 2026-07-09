@@ -1,4 +1,4 @@
-# SGDP v1.19.3 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.20.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -255,6 +255,8 @@ def init_db():
         cols_usu = [r[1] for r in conn.execute('PRAGMA table_info(usuarios)').fetchall()]
         if 'email' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN email TEXT DEFAULT ''")
         if 'cpf'   not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN cpf   TEXT DEFAULT ''")
+        if 'cargo' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN cargo TEXT DEFAULT ''")
+        if 'matricula' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN matricula TEXT DEFAULT ''")
         cols_lem = [r[1] for r in conn.execute('PRAGMA table_info(lembretes)').fetchall()]
         if 'notificado_em' not in cols_lem: conn.execute("ALTER TABLE lembretes ADD COLUMN notificado_em TEXT DEFAULT NULL")
         # Migração: alinha as chaves de SMTP com o padrão do SGCD (smtp_from -> smtp_from_name,
@@ -388,7 +390,7 @@ def get_session(token):
     with get_db() as conn:
         row = conn.execute(
             '''SELECT s.token, s.user_id, s.expires,
-                      u.nome, u.username, u.cpf, u.email, u.admin, u.ativo
+                      u.nome, u.username, u.cpf, u.email, u.cargo, u.matricula, u.admin, u.ativo
                FROM sessions s JOIN usuarios u ON u.id=s.user_id
                WHERE s.token=? AND s.expires>? AND u.ativo=1''',
             (token, time.time())
@@ -603,7 +605,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
         elif p == '/api/auth/me':
             self._json(200, {'id': s['user_id'], 'username': s['username'], 'nome': s['nome'],
-                              'cpf': s.get('cpf'), 'email': s.get('email'), 'admin': bool(s['admin'])})
+                              'cpf': s.get('cpf'), 'email': s.get('email'),
+                              'cargo': s.get('cargo'), 'matricula': s.get('matricula'), 'admin': bool(s['admin'])})
 
         elif p == '/api/documentos':
             self._list_docs(qs, s)
@@ -656,7 +659,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif p == '/api/usuarios':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             with get_db() as conn:
-                rows = conn.execute('SELECT id,username,nome,cpf,email,admin,ativo,criado_em FROM usuarios ORDER BY nome').fetchall()
+                rows = conn.execute('SELECT id,username,nome,cpf,email,cargo,matricula,admin,ativo,criado_em FROM usuarios ORDER BY nome').fetchall()
             self._json(200, [dict(r) for r in rows])
 
         elif p == '/api/diagnostico':
@@ -927,7 +930,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self._json(200, {
             'token': token,
             'user': {'id': row['id'], 'username': row['username'], 'nome': row['nome'],
-                      'cpf': row['cpf'], 'email': row['email'], 'admin': bool(row['admin'])}
+                      'cpf': row['cpf'], 'email': row['email'],
+                      'cargo': row['cargo'], 'matricula': row['matricula'], 'admin': bool(row['admin'])}
         })
 
     # ── Documentos ────────────────────────────────────────────────────────────
@@ -1779,9 +1783,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._json(400, {'error': 'Senha mínima: 6 caracteres'}); return
         try:
             with get_db() as conn:
-                conn.execute('INSERT INTO usuarios (username,nome,senha_hash,admin,email,cpf) VALUES (?,?,?,?,?,?)',
+                conn.execute('INSERT INTO usuarios (username,nome,senha_hash,admin,email,cpf,cargo,matricula) VALUES (?,?,?,?,?,?,?,?)',
                              (username, nome, _hash_password(senha), int(bool(data.get('admin'))),
-                              (data.get('email') or '').strip(), (data.get('cpf') or '').strip()))
+                              (data.get('email') or '').strip(), (data.get('cpf') or '').strip(),
+                              (data.get('cargo') or '').strip(), (data.get('matricula') or '').strip()))
                 uid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
                 audit(conn, s['user_id'], s['nome'], 'criar_usuario', detalhes=f"@{username} ({nome})")
                 conn.commit()
@@ -1795,6 +1800,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if 'nome'  in data: fields['nome']  = data['nome'].strip()
         if 'email' in data: fields['email'] = data['email'].strip()
         if 'cpf'   in data: fields['cpf']   = data['cpf'].strip()
+        if 'cargo' in data: fields['cargo'] = data['cargo'].strip()
+        if 'matricula' in data: fields['matricula'] = data['matricula'].strip()
         if 'admin' in data: fields['admin'] = int(bool(data['admin']))
         if 'ativo' in data: fields['ativo'] = int(bool(data['ativo']))
         if data.get('senha'):
