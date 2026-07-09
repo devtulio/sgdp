@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.20.2-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20HTML5-navy) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.20.2-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -10,7 +10,7 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 
 ---
 
-## Funcionalidades
+## Funcionalidades Principais
 
 - **Gestão de 5 tipos de documento:** Lei, Decreto, Portaria, Parecer e Ofício
 - **Numeração automática** por tipo e ano, com possibilidade de ajuste manual
@@ -65,8 +65,10 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 
 1. Copie a pasta `SGDP/` para o computador que atuará como servidor
 2. Clique duas vezes em **`Iniciar SGDP.bat`**
-3. O navegador abrirá automaticamente em `http://localhost:3001`
+3. Selecione o modo de operação no menu que aparecer
 4. Faça login com as credenciais iniciais abaixo e **altere a senha imediatamente**
+
+> ⚠️ **Importante:** abrir o `SGDP.html` diretamente pelo navegador (sem o servidor) impede o funcionamento do sistema. Use sempre o `Iniciar SGDP.bat`.
 
 ### Login inicial
 
@@ -75,13 +77,23 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 | Usuário | `admin`    |
 | Senha   | `sgdp2024` |
 
+### Modo de operação
+
+| Opção | Descrição |
+|-------|-----------|
+| **[1] Pessoal** | Uso individual — abre o navegador automaticamente e encerra ao sair |
+| **[2] Servidor** | Máquina central em rede — fica rodando continuamente (Ctrl+C para parar) |
+| **[3] Diagnóstico** | Verifica rede, porta e firewall |
+
 ### Acesso em rede local
 
 Os outros procuradores acessam pelo IP do computador servidor:
 
 ```
-http://192.168.x.x:3001
+http://192.168.x.x:3001/SGDP.html
 ```
+
+Execute **`Diagnostico SGDP.bat`** (ou a opção **[3]** do `Iniciar SGDP.bat`) para descobrir o IP e verificar a acessibilidade pela rede.
 
 ---
 
@@ -111,29 +123,49 @@ SGDP/
 
 ---
 
-## Testes
+## Segurança
 
-O sistema em si continua zero-dependência (Python stdlib + HTML puro). Há uma suíte de testes automatizados do backend (`server.py`), usando só `unittest` da stdlib — sobe o servidor real contra um banco e uploads temporários e testa os endpoints REST (login, documentos, lembretes, auditoria, backup e sincronização):
+- Senhas armazenadas com **PBKDF2-HMAC-SHA256** e salt aleatório por usuário
+- Sessões invalidadas automaticamente após 8 horas de inatividade
+- Acesso à API exige token de sessão em todas as rotas (exceto login e verificação)
+- Upload restrito a PDF, com limite de 50 MB
+- Trilha de auditoria imutável registra todas as ações com usuário e timestamp
+- Verificação de integridade do banco de dados (SQLite `PRAGMA integrity_check`) na inicialização
+- Recomenda-se uso em rede interna (LAN) apenas
 
-```bash
-python -m unittest discover -s tests -v
-```
+---
 
-Para quem for alterar o código, há também um lint opcional que verifica variáveis indefinidas no JavaScript de `SGDP.html`:
+## Tecnologias
+
+| Tecnologia | Uso |
+|-----------|-----|
+| **HTML5 + CSS3** | Interface da aplicação, temas claro/escuro, layout responsivo |
+| **JavaScript puro (ES6+)** | Toda a lógica de negócio, sem frameworks externos |
+| **Python 3 (stdlib)** | Servidor local: REST API, SQLite, auth, SMTP |
+| **SQLite** | Armazenamento persistente dos dados (`sgdp.db`), com índice FTS5 para busca full-text |
+
+---
+
+## Desenvolvimento
+
+O sistema em si continua zero-dependência (Python stdlib + HTML puro). Para quem for alterar o código, há um lint opcional que verifica variáveis indefinidas no JavaScript de `SGDP.html`:
 
 ```bash
 npm install   # uma vez, instala apenas o ESLint (ferramenta de dev, não é usada em produção)
 npm run lint
 ```
 
+Há também uma suíte de testes automatizados do backend (`server.py`), usando só `unittest` da stdlib — sobe o servidor real contra um banco e uploads temporários e testa os endpoints REST (login, documentos, lembretes, auditoria, backup e sincronização):
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 ---
 
-## Segurança
+## Versionamento
 
-- Senhas armazenadas com **PBKDF2-HMAC-SHA256** e salt aleatório por usuário
-- Sessões invalidadas automaticamente após 8 horas de inatividade
-- Acesso à API exige token de sessão em todas as rotas (exceto login)
-- Recomenda-se uso em rede interna (LAN) apenas
+Consulte o [CHANGELOG.md](CHANGELOG.md) para o histórico completo de versões e alterações.
 
 ---
 
@@ -145,4 +177,6 @@ Contribuições são bem-vindas! Veja o [CONTRIBUTING.md](CONTRIBUTING.md) para 
 
 ## Licença
 
-MIT © Município — uso interno da Procuradoria-Geral.
+Distribuído sob a licença **MIT**. Veja [LICENSE](LICENSE) para o texto completo.
+
+> **Aviso:** Os dados ficam armazenados no arquivo `sgdp.db` na pasta do sistema. Faça backups regulares em **Configurações → Dados** e mantenha cópia do `sgdp.db` em local seguro.
