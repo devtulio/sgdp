@@ -5,6 +5,12 @@
 
 ---
 
+## [1.19.2] — 2026-07-09
+
+### Alterado
+- **Cabeçalho dos modais colorido** — o cabeçalho (`.modal-hd`, usado por todo modal do sistema) deixa de ser branco/neutro e passa a ter um banner na cor de destaque com título em branco, igual ao `.modal-header` do SGCD/SGCA. Muda uma regra CSS compartilhada — o efeito cascateia para todos os modais (Usuário, Documento, Lembrete, Confirmação, etc.), não só o de Usuário
+- **Modal de Usuário em 1 coluna** — layout (antes 2 colunas) e rótulos (maiúsculos pequenos, sem dica de texto nem asterisco vermelho) alinhados ao padrão do SGCD/SGCA. Mesmos campos e textos, só a apresentação visual muda
+
 ## [1.19.1] — 2026-07-09
 
 ### Alterado

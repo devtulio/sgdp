@@ -386,15 +386,18 @@ tr:hover td { background: var(--gray-50); }
   transform: translateY(12px); transition: transform .2s; }
 .modal-overlay.open .modal { transform: translateY(0); }
 .modal-xl { max-width: 900px; }
-.modal-hd { padding: 18px 22px; border-bottom: 1px solid var(--gray-200);
-  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-.modal-hd h2 { font-size: 16px; font-weight: 700; }
+.modal-hd { padding: 16px 24px; border-bottom: 3px solid var(--brand-dark);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  background: var(--accent); border-radius: 12px 12px 0 0; }
+.modal-hd h2 { font-size: .9rem; font-weight: 500; color: #fff; letter-spacing: .8px; }
 .modal-body { padding: 22px; overflow-y: auto; flex: 1; }
 .modal-ft  { padding: 14px 22px; border-top: 1px solid var(--gray-200);
   display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
 .btn-close { background: none; border: none; font-size: 18px; color: var(--gray-400);
   width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
 .btn-close:hover { background: var(--gray-100); color: var(--gray-700); }
+.modal-hd .btn-close { color: rgba(255,255,255,.7); }
+.modal-hd .btn-close:hover { background: rgba(255,255,255,.1); color: #fff; }
 
 /* Formulário */
 .form-row { display: grid; gap: 16px; margin-bottom: 16px; }
@@ -402,6 +405,8 @@ tr:hover td { background: var(--gray-50); }
 .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
 .form-group { display: flex; flex-direction: column; gap: 5px; }
 .form-group label { font-size: 12px; font-weight: 600; color: var(--gray-600); }
+/* Modal de Usuário: rótulos maiúsculos pequenos, igual ao .info-field label do SGCD/SGCA */
+#modal-usuario-body .form-group label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--gray-500); }
 .form-group input, .form-group textarea, .form-group select {
   border: 1px solid var(--gray-300); border-radius: var(--radius);
   padding: 8px 12px; outline: none; transition: border-color .15s; width: 100%;
@@ -610,7 +615,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.19.1</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.19.2</span>
     </div>
     <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
@@ -706,7 +711,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.19.1
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.19.2
     </footer>
   </main>
 </div>
@@ -894,43 +899,47 @@ tr:hover td { background: var(--gray-50); }
       <h2 id="modal-user-titulo">Novo Usuário</h2>
       <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-usuario')">✕</button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" id="modal-usuario-body">
       <div class="form-row">
         <div class="form-group">
-          <label>Nome completo <span style="color:var(--red)">*</span></label>
-          <input id="u-nome" type="text" placeholder="Ex: Dr. João da Silva">
-        </div>
-      </div>
-      <div class="form-row cols-2">
-        <div class="form-group">
-          <label>Usuário (login) <span style="color:var(--red)">*</span></label>
+          <label>Usuário (login) *</label>
           <input id="u-username" type="text" placeholder="Ex: joao.silva" autocomplete="off">
         </div>
+      </div>
+      <div class="form-row">
         <div class="form-group">
-          <label id="u-senha-label">Senha <span style="color:var(--red)">*</span></label>
+          <label id="u-senha-label">Senha *</label>
           <input id="u-senha" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
         </div>
       </div>
-      <div class="form-row cols-2">
+      <div class="form-row">
         <div class="form-group">
-          <label>E-mail <span style="color:var(--gray-400);font-weight:400">(recebe avisos de prazo de lembretes)</span></label>
-          <input id="u-email" type="email" placeholder="Ex: joao.silva@procuradoria.gov.br">
+          <label>Nome completo</label>
+          <input id="u-nome" type="text" placeholder="Ex: Dr. João da Silva">
         </div>
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label>CPF</label>
           <input id="u-cpf" type="text" placeholder="000.000.000-00" maxlength="14" oninput="maskCpf(this)">
         </div>
       </div>
       <div class="form-row">
+        <div class="form-group">
+          <label>E-mail</label>
+          <input id="u-email" type="email" placeholder="Ex: joao.silva@procuradoria.gov.br">
+        </div>
+      </div>
+      <div class="form-row">
         <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
           <input id="u-admin" type="checkbox" style="width:auto">
-          <label for="u-admin" style="font-weight:600;cursor:pointer">Administrador (acesso total)</label>
+          <label for="u-admin" style="text-transform:none;font-weight:600;font-size:.85rem;color:inherit;cursor:pointer">Administrador (acesso total)</label>
         </div>
       </div>
       <div class="form-row" id="u-ativo-row" style="display:none">
         <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
           <input id="u-ativo" type="checkbox" style="width:auto" checked>
-          <label for="u-ativo" style="font-weight:600;cursor:pointer">Conta ativa</label>
+          <label for="u-ativo" style="text-transform:none;font-weight:600;font-size:.85rem;color:inherit;cursor:pointer">Conta ativa</label>
         </div>
       </div>
     </div>
