@@ -610,7 +610,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.18.0</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.19.0</span>
     </div>
     <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
@@ -706,7 +706,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.18.0
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.19.0
     </footer>
   </main>
 </div>
@@ -911,10 +911,14 @@ tr:hover td { background: var(--gray-50); }
           <input id="u-senha" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
         </div>
       </div>
-      <div class="form-row">
+      <div class="form-row cols-2">
         <div class="form-group">
           <label>E-mail <span style="color:var(--gray-400);font-weight:400">(recebe avisos de prazo de lembretes)</span></label>
           <input id="u-email" type="email" placeholder="Ex: joao.silva@procuradoria.gov.br">
+        </div>
+        <div class="form-group">
+          <label>CPF</label>
+          <input id="u-cpf" type="text" placeholder="000.000.000-00" maxlength="14" oninput="maskCpf(this)">
         </div>
       </div>
       <div class="form-row">
@@ -3057,6 +3061,13 @@ function imprimirPdf() {
 }
 
 // ── Usuários ──────────────────────────────────────────────────────────────────
+function maskCpf(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 9) v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{0,3})/, '$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/^(\d{3})(\d{0,3})/, '$1.$2');
+  input.value = v;
+}
 async function renderUsuarios(container) {
   const target = container || document.getElementById('page-content');
   const r = await API.get('/api/usuarios');
@@ -3073,7 +3084,7 @@ async function renderUsuarios(container) {
         <div class="uc-user">@${esc(u.username)}</div>
       </div>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-outline btn-sm" onclick="abrirEditarUsuario(${u.id},'${esc(u.nome)}','${esc(u.username)}',${u.admin},${u.ativo},'${esc(u.email || '')}')">✎ Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="abrirEditarUsuario(${u.id},'${esc(u.nome)}','${esc(u.username)}',${u.admin},${u.ativo},'${esc(u.email || '')}','${esc(u.cpf || '')}')">✎ Editar</button>
         ${u.id !== S.user.id ? `<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="excluirUsuario(${u.id},'${esc(u.nome)}')">✕</button>` : ''}
       </div>
     </div>
@@ -3091,12 +3102,13 @@ function abrirNovoUsuario() {
   document.getElementById('u-senha').value = '';
   document.getElementById('u-senha-label').innerHTML = 'Senha <span style="color:var(--red)">*</span>';
   document.getElementById('u-email').value = '';
+  document.getElementById('u-cpf').value = '';
   document.getElementById('u-admin').checked = false;
   document.getElementById('u-ativo-row').style.display = 'none';
   abrirModal('modal-usuario');
 }
 
-function abrirEditarUsuario(id, nome, username, admin, ativo, email) {
+function abrirEditarUsuario(id, nome, username, admin, ativo, email, cpf) {
   S.editUid = id;
   document.getElementById('modal-user-titulo').textContent = 'Editar Usuário';
   document.getElementById('u-nome').value = nome;
@@ -3105,6 +3117,7 @@ function abrirEditarUsuario(id, nome, username, admin, ativo, email) {
   document.getElementById('u-senha').value = '';
   document.getElementById('u-senha-label').innerHTML = 'Nova senha <span style="color:var(--gray-400);font-weight:400">(deixe em branco para não alterar)</span>';
   document.getElementById('u-email').value = email || '';
+  document.getElementById('u-cpf').value = cpf || '';
   document.getElementById('u-admin').checked = !!admin;
   document.getElementById('u-ativo').checked = !!ativo;
   document.getElementById('u-ativo-row').style.display = '';
@@ -3115,18 +3128,19 @@ async function salvarUsuario() {
   const nome  = document.getElementById('u-nome').value.trim();
   const senha = document.getElementById('u-senha').value;
   const email = document.getElementById('u-email').value.trim();
+  const cpf   = document.getElementById('u-cpf').value.trim();
   const admin = document.getElementById('u-admin').checked;
   if (!nome) { toast('Nome é obrigatório.', 'error'); return; }
   let r, d;
   if (S.editUid) {
-    const payload = { nome, admin, email, ativo: document.getElementById('u-ativo').checked };
+    const payload = { nome, admin, email, cpf, ativo: document.getElementById('u-ativo').checked };
     if (senha) payload.senha = senha;
     r = await API.put(`/api/usuarios/${S.editUid}`, payload);
   } else {
     const username = document.getElementById('u-username').value.trim();
     if (!username) { toast('Usuário é obrigatório.', 'error'); return; }
     if (!senha)    { toast('Senha é obrigatória.', 'error'); return; }
-    r = await API.post('/api/usuarios', { username, nome, senha, admin, email });
+    r = await API.post('/api/usuarios', { username, nome, senha, admin, email, cpf });
   }
   d = await API.json(r);
   if (!r.ok) { toast(d?.error || 'Erro ao salvar.', 'error'); return; }

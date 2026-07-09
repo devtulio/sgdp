@@ -5,6 +5,14 @@
 
 ---
 
+## [1.19.0] — 2026-07-09
+
+### Adicionado
+- **CPF no cadastro de usuário** — novo campo no modal de Usuário, pareado com o E-mail já existente (logo após Nome). Sincronizado com SGCD e SGCA, onde também foi adicionado o campo E-mail
+
+### Corrigido
+- Badge de versão da capa do Manual Operacional estava desatualizado (mostrava v1.17.0)
+
 ## [1.18.0] — 2026-07-08
 
 ### Adicionado
