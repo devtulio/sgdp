@@ -5,6 +5,11 @@
 
 ---
 
+## [1.19.1] — 2026-07-09
+
+### Alterado
+- **Ordem das abas de Configurações** — alinhada ao padrão do SGCD/SGCA: `Interface, Organização, Comunicação, Dados, Segurança, Diagnóstico, Usuários` (antes: Usuários era a 3ª aba e a de backup se chamava "Backup"). Sem mudança de conteúdo, só ordem e rótulo
+
 ## [1.19.0] — 2026-07-09
 
 ### Adicionado

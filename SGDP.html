@@ -610,7 +610,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.19.0</span>
+      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.19.1</span>
     </div>
     <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
@@ -706,7 +706,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.19.0
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.19.1
     </footer>
   </main>
 </div>
@@ -3674,11 +3674,11 @@ async function renderConfiguracoes(abaInicial) {
       <div class="cfg-tabs">
         <button class="cfg-tab${primeiraAba==='interface'?' active':''}" onclick="switchCfgTab('interface',this)">Interface</button>
         ${isAdmin ? `<button class="cfg-tab${primeiraAba==='org'?' active':''}" onclick="switchCfgTab('org',this)">Organização</button>` : ''}
-        ${isAdmin ? `<button class="cfg-tab${primeiraAba==='usuarios'?' active':''}" onclick="switchCfgTab('usuarios',this)">Usuários</button>` : ''}
         ${isAdmin ? `<button class="cfg-tab${primeiraAba==='comunicacao'?' active':''}" onclick="switchCfgTab('comunicacao',this)">Comunicação</button>` : ''}
+        ${isAdmin ? `<button class="cfg-tab${primeiraAba==='backup'?' active':''}" onclick="switchCfgTab('backup',this)">Dados</button>` : ''}
         <button class="cfg-tab${primeiraAba==='seg'?' active':''}" onclick="switchCfgTab('seg',this)">Segurança</button>
-        ${isAdmin ? `<button class="cfg-tab${primeiraAba==='backup'?' active':''}" onclick="switchCfgTab('backup',this)">Backup</button>` : ''}
         ${isAdmin ? `<button class="cfg-tab${primeiraAba==='diag'?' active':''}" onclick="switchCfgTab('diag',this);runDiagnostico()">Diagnóstico</button>` : ''}
+        ${isAdmin ? `<button class="cfg-tab${primeiraAba==='usuarios'?' active':''}" onclick="switchCfgTab('usuarios',this)">Usuários</button>` : ''}
       </div>
 
       <!-- Interface (todos) -->
