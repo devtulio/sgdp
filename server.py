@@ -1,4 +1,4 @@
-# SGDP v1.20.5 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.21.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -257,6 +257,7 @@ def init_db():
         if 'cpf'   not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN cpf   TEXT DEFAULT ''")
         if 'cargo' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN cargo TEXT DEFAULT ''")
         if 'matricula' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN matricula TEXT DEFAULT ''")
+        if 'must_change_password' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN must_change_password INTEGER DEFAULT 0")
         cols_lem = [r[1] for r in conn.execute('PRAGMA table_info(lembretes)').fetchall()]
         if 'notificado_em' not in cols_lem: conn.execute("ALTER TABLE lembretes ADD COLUMN notificado_em TEXT DEFAULT NULL")
         # Migração: alinha as chaves de SMTP com o padrão do SGCD (smtp_from -> smtp_from_name,
@@ -278,11 +279,11 @@ def init_db():
         conn.commit()
         if conn.execute('SELECT COUNT(*) FROM usuarios').fetchone()[0] == 0:
             conn.execute(
-                'INSERT INTO usuarios (username,nome,senha_hash,admin) VALUES (?,?,?,1)',
+                'INSERT INTO usuarios (username,nome,senha_hash,admin,must_change_password) VALUES (?,?,?,1,1)',
                 ('admin', 'Administrador', _hash_password('admin123'))
             )
             conn.commit()
-            print('Usuário padrão criado: admin / admin123 — troque a senha nas Configurações.')
+            print('Usuário padrão criado: admin / admin123 — troque a senha no primeiro acesso.')
 
 def _fts_match_query(text):
     """Converte texto livre em uma query FTS5 (AND de prefixos por palavra)."""
@@ -931,7 +932,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             'token': token,
             'user': {'id': row['id'], 'username': row['username'], 'nome': row['nome'],
                       'cpf': row['cpf'], 'email': row['email'],
-                      'cargo': row['cargo'], 'matricula': row['matricula'], 'admin': bool(row['admin'])}
+                      'cargo': row['cargo'], 'matricula': row['matricula'], 'admin': bool(row['admin']),
+                      'mustChangePassword': bool(row['must_change_password'])}
         })
 
     # ── Documentos ────────────────────────────────────────────────────────────
@@ -1808,6 +1810,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if data.get('senha'):
             if len(data['senha']) < 6: self._json(400, {'error': 'Senha mínima: 6 caracteres'}); return
             fields['senha_hash'] = _hash_password(data['senha'])
+            fields['must_change_password'] = 0
         if not fields: self._json(400, {'error': 'Nada para atualizar'}); return
         with get_db() as conn:
             row = conn.execute('SELECT nome, username FROM usuarios WHERE id=?', (uid,)).fetchone()

@@ -5,6 +5,14 @@
 
 ---
 
+## [1.21.0] — 2026-07-09
+
+### Adicionado
+- **Troca de senha obrigatória no primeiro acesso** — o admin padrão (criado com `admin`/`admin123`) é obrigado a definir uma nova senha antes de acessar o sistema, em vez de depender só do aviso impresso no terminal. Nova coluna `usuarios.must_change_password` (migração automática, instalações existentes não são afetadas). Mesma implementação do SGCD/SGCA
+
+### Corrigido
+- **Ping de renovação de sessão só começava depois do login completo** — o `setInterval` que renova a sessão a cada 5s (`SESSION_TTL=15s`) ficava dentro de `mostrarApp()`, chamada só após o usuário passar pela tela de troca de senha obrigatória. Se o usuário demorasse mais de 15s nessa tela, a sessão expirava e a troca de senha falhava com 401. Movido para escopo global, como já era no SGCD/SGCA
+
 ## [1.20.5] — 2026-07-09
 
 ### Corrigido
