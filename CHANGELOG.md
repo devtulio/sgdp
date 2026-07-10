@@ -5,6 +5,11 @@
 
 ---
 
+## [1.25.2] — 2026-07-10
+
+### Corrigido
+- **Nome do órgão na barra lateral combinava com o município** ("Prefeitura Municipal de Orindiúva — Orindiúva/SP") — agora mostra só o nome do órgão, mesmo padrão do SGCD e do SGCA
+
 ## [1.25.1] — 2026-07-10
 
 ### Adicionado
