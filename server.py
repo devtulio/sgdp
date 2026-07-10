@@ -1,4 +1,4 @@
-# SGDP v1.24.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.25.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -37,7 +37,7 @@ UPLOADS_DIR       = os.path.join(_DATA_DIR, 'uploads')
 BACKUP_DIR        = os.path.join(_DATA_DIR, 'backups')
 LOG_PATH          = os.path.join(_DATA_DIR, 'sgdp_errors.log')
 BACKUP_KEEP       = 7
-SESSION_TTL       = 15   # 15s — renovado pelo ping a cada 5s; expira rápido se browser fechar
+SESSION_TTL       = 60   # renovado pelo ping a cada 5s (ver comentário em _watchdog mais abaixo)
 MAX_UPLOAD_SIZE   = 50 * 1024 * 1024
 
 os.makedirs(_DATA_DIR, exist_ok=True)
@@ -52,8 +52,7 @@ os.chdir(_BASE)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR,  exist_ok=True)
 
-_had_session      = False   # True após primeiro login; evita encerramento antes de qualquer usuário logar
-_modo_servidor    = False   # True = modo servidor contínuo (sem encerramento automático)
+_had_session      = False   # True após primeiro login; controla quando o backup pós-sessão pode disparar
 _backup_pos_sess  = False   # True = backup pós-sessão já executado; aguarda nova sessão para resetar
 FTS_AVAILABLE     = False   # True se o SQLite tem FTS5 compilado (setado em init_db)
 _watchdog_paused  = False   # pausa o watchdog durante diálogos bloqueantes (ex: FolderBrowser)
@@ -417,28 +416,23 @@ def active_sessions():
         return conn.execute('SELECT COUNT(*) FROM sessions WHERE expires>?', (time.time(),)).fetchone()[0]
 
 def _check_shutdown():
-    """Encerra o servidor quando não há mais sessões ativas (último logout).
-    No modo servidor contínuo (_modo_servidor=True), apenas faz backup sem encerrar."""
+    """O servidor nunca encerra sozinho por contagem de sessões — só via Ctrl+C
+    no terminal (ver bloco principal). Aqui só dispara um backup automático,
+    uma única vez, depois que a última sessão ativa termina.
+
+    ponytail: existia um modo "Pessoal" que fazia os._exit(0) nesta função
+    quando a última sessão caía — a ideia era encerrar sozinho ao fechar a
+    janela do navegador. Removido — se o encerramento automático por
+    inatividade real for necessário de novo, a forma correta é um timeout bem
+    mais longo (minutos, não segundos), não a contagem de sessões do ping."""
     global _backup_pos_sess
-    if _modo_servidor:
-        if _had_session and active_sessions() == 0 and not _backup_pos_sess:
-            _backup_pos_sess = True
-            cfg = _get_backup_cfg()
-            if cfg['enabled']:
-                print('\nÚltima sessão encerrada. Executando backup automático...')
-                _do_json_backup(cfg)
-                _do_db_backup(cfg)
-        return
-    if not _had_session:
-        return
-    if active_sessions() > 0:
-        return
-    print('\nÚltima sessão encerrada. Executando backup e encerrando servidor...')
-    cfg = _get_backup_cfg()
-    if cfg['enabled']:
-        _do_json_backup(cfg)
-        _do_db_backup(cfg)
-    os._exit(0)
+    if _had_session and active_sessions() == 0 and not _backup_pos_sess:
+        _backup_pos_sess = True
+        cfg = _get_backup_cfg()
+        if cfg['enabled']:
+            print('\nÚltima sessão encerrada. Executando backup automático...')
+            _do_json_backup(cfg)
+            _do_db_backup(cfg)
 
 # ── Helpers de domínio ────────────────────────────────────────────────────────
 
@@ -518,7 +512,24 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
+    def _safe_dispatch(self, inner):
+        # handle_error (mais abaixo) nunca era chamado de verdade — é método de
+        # socketserver.BaseServer, não do request handler, então exceções não
+        # tratadas em qualquer do_GET/POST/PUT/DELETE só apareciam no console
+        # (nada no log, cliente só via a conexão cair). Isso escondia bugs reais.
+        try:
+            inner()
+        except Exception as e:
+            _log.error('Erro não tratado em %s %s: %s', self.command, self.path, e)
+            try:
+                self._json(500, {'error': 'Erro interno no servidor.'})
+            except Exception:
+                pass  # resposta já pode ter começado a ser enviada
+
     def do_GET(self):
+        self._safe_dispatch(self._do_GET)
+
+    def _do_GET(self):
         parsed = urlparse(self.path)
         p  = parsed.path.rstrip('/')
         qs = parse_qs(parsed.query)
@@ -563,6 +574,9 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
+        self._safe_dispatch(self._do_POST)
+
+    def _do_POST(self):
         parsed = urlparse(self.path)
         p = parsed.path.rstrip('/')
 
@@ -583,12 +597,18 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self._route_post(p, s)
 
     def do_PUT(self):
+        self._safe_dispatch(self._do_PUT)
+
+    def _do_PUT(self):
         p = urlparse(self.path).path.rstrip('/')
         s = self._auth()
         if not s: return
         self._route_put(p, self._body(), s)
 
     def do_DELETE(self):
+        self._safe_dispatch(self._do_DELETE)
+
+    def _do_DELETE(self):
         p = urlparse(self.path).path.rstrip('/')
         s = self._auth()
         if not s: return
@@ -1882,12 +1902,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
         try:
             tmp.write(raw); tmp.close()
-            with sqlite3.connect(tmp.name) as tc:
+            with sqlite3.connect(tmp.name, factory=_ConnAutoClose) as tc:
                 tables = {r[0] for r in tc.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
             if not {'documentos', 'arquivos', 'usuarios'}.issubset(tables):
                 self._json(400, {'error': 'Banco inválido: tabelas obrigatórias ausentes'}); return
             _do_db_backup()  # backup do atual antes de restaurar
-            with sqlite3.connect(tmp.name) as src, sqlite3.connect(DB_PATH) as dst:
+            with sqlite3.connect(tmp.name, factory=_ConnAutoClose) as src, sqlite3.connect(DB_PATH, factory=_ConnAutoClose) as dst:
                 src.backup(dst)
             with get_db() as conn:
                 audit(conn, s['user_id'], s['nome'], 'restaurar_db', detalhes='Banco restaurado a partir de arquivo .db')
@@ -2143,10 +2163,6 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if not s: self._json(401, {'error': 'Não autenticado'})
         return s
 
-    def handle_error(self, request, client_address):
-        import traceback
-        _log.error('Erro na requisição de %s:\n%s', client_address, traceback.format_exc())
-
     def log_message(self, fmt, *args):
         pass
 
@@ -2161,10 +2177,14 @@ def _get_backup_cfg():
         cfg = {r['key']: r['value'] for r in rows}
     except Exception:
         cfg = {}
+    try:
+        keep = max(1, int(cfg.get('auto_backup_keep') or BACKUP_KEEP))
+    except (TypeError, ValueError):
+        keep = BACKUP_KEEP  # valor não-numérico salvo por engano (ex.: via chamada direta à API) — ignora em vez de derrubar o watchdog
     return {
         'path':    cfg.get('backup_path') or BACKUP_DIR,
         'enabled': cfg.get('auto_backup_enabled', '1') != '0',
-        'keep':    max(1, int(cfg.get('auto_backup_keep') or BACKUP_KEEP)),
+        'keep':    keep,
     }
 
 def _do_json_backup(cfg=None):
@@ -2201,7 +2221,7 @@ def _do_db_backup(cfg=None):
     bdir = cfg['path']; os.makedirs(bdir, exist_ok=True)
     name = time.strftime('DB_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.db')
     try:
-        with sqlite3.connect(DB_PATH) as src, sqlite3.connect(os.path.join(bdir, name)) as bk:
+        with sqlite3.connect(DB_PATH, factory=_ConnAutoClose) as src, sqlite3.connect(os.path.join(bdir, name), factory=_ConnAutoClose) as bk:
             src.backup(bk)
         with get_db() as conn:
             conn.execute("INSERT OR REPLACE INTO sys_settings VALUES ('auto_backup_last',?)",
@@ -2355,16 +2375,21 @@ def _send_daily_summary():
         conn.commit()
 
 def _watchdog():
-    # Limpa sessões expiradas a cada 5s e verifica encerramento.
-    # Com SESSION_TTL=15s e ping a cada 5s, um browser fechado sem logout
-    # causa encerramento do servidor em no máximo ~20 segundos.
+    # Limpa sessões expiradas a cada 5s e dispara o backup pós-sessão
+    # (_check_shutdown — não encerra mais o servidor, só faz backup).
+    # SESSION_TTL=60s dá folga de sobra sobre o ping a cada 5s: um TTL curto
+    # (era 15s) expirava sessões à toa quando o ping atrasava por qualquer
+    # motivo comum — carregamento inicial da página disputando conexão HTTP
+    # com várias outras chamadas simultâneas, ou a aba principal perdendo
+    # foco ao abrir um popup de documento.
     while True:
         time.sleep(5)
         if _watchdog_paused:
             continue
         with get_db() as conn:
             conn.execute('DELETE FROM sessions WHERE expires<?', (time.time(),))
-        _check_shutdown()
+        try: _check_shutdown()
+        except Exception as e: _log.error('Erro em _check_shutdown: %s', e)
         try: _send_daily_summary()
         except Exception as e: _log.error('Erro ao enviar resumo diário: %s', e)
 
@@ -2393,36 +2418,26 @@ def _check_db_integrity():
         _log.error('Erro ao verificar integridade do banco: %s', e)
 
 def _selecionar_modo():
-    global _modo_servidor
     print()
     print('  ╔══════════════════════════════════════════════════╗')
     print('  ║   SGDP — Gestão de Documentos da Procuradoria    ║')
     print('  ╚══════════════════════════════════════════════════╝')
     print()
-    print('  Selecione o modo de operação:')
-    print()
-    print('  [1] Pessoal   — Uso individual no próprio computador')
-    print('                  Abre o app automaticamente no navegador')
-    print('                  Encerra quando o último usuário sair')
-    print()
-    print('  [2] Servidor  — Máquina central / acesso pela rede')
-    print('                  Não abre navegador automaticamente')
-    print('                  Fica rodando continuamente (Ctrl+C para parar)')
-    print()
-    print('  [3] Diagnóstico — Verifica rede, firewall e acessibilidade')
+    print('  [1] Diagnóstico     — Verifica rede, firewall e acessibilidade')
+    print('  [2] Iniciar Servidor')
     print()
     if not sys.stdin.isatty():
         op = '2'
     else:
         while True:
             try:
-                op = input('  Opção [1/2/3]: ').strip()
+                op = input('  Opção [1/2]: ').strip()
             except (EOFError, KeyboardInterrupt):
-                op = '1'
-            if op in ('1', '2', '3'):
+                op = '2'
+            if op in ('1', '2'):
                 break
-            print('  Digite 1, 2 ou 3.')
-    if op == '3':
+            print('  Digite 1 ou 2.')
+    if op == '1':
         import importlib.util, pathlib
         diag = pathlib.Path(__file__).parent / 'diagnostico.py'
         spec = importlib.util.spec_from_file_location('diagnostico', diag)
@@ -2435,9 +2450,7 @@ def _selecionar_modo():
         mod.resumo(socket.gethostbyname(socket.gethostname()), srv_ativo, regra_fw)
         input('  Pressione Enter para fechar...')
         sys.exit(0)
-    _modo_servidor = (op == '2')
     print()
-    print(f'  Modo: {"SERVIDOR CONTÍNUO" if _modo_servidor else "PESSOAL"}')
     print('  ─────────────────────────────────────────────────────────')
 
 if __name__ == '__main__':
@@ -2452,37 +2465,30 @@ if __name__ == '__main__':
     socketserver.ThreadingTCPServer.allow_reuse_address = True
     with socketserver.ThreadingTCPServer(('', PORT), SGDPHandler) as srv:
         print(f'  Servidor: http://localhost:{PORT}/SGDP.html')
+        import socket as _socket
+        try:
+            ip_local = _socket.gethostbyname(_socket.gethostname())
+        except Exception:
+            ip_local = 'desconhecido'
+        print(f'  Rede:     http://{ip_local}:{PORT}/SGDP.html')
+        print()
 
-        if _modo_servidor:
-            import socket as _socket
-            try:
-                ip_local = _socket.gethostbyname(_socket.gethostname())
-            except Exception:
-                ip_local = 'desconhecido'
-            print(f'  Rede:     http://{ip_local}:{PORT}/SGDP.html')
-            print()
-            print('  Aguardando conexões... (Ctrl+C para encerrar)')
-            try:
-                srv.serve_forever()
-            except KeyboardInterrupt:
-                print('\n  Encerrando servidor...')
+        browser = _find_browser()
+        if browser:
+            profile_dir = os.path.join(os.environ.get('TEMP', os.path.expanduser('~')), 'SGDP-Profile')
+            subprocess.Popen([
+                browser,
+                f'--app=http://localhost:{PORT}/SGDP.html',
+                '--start-maximized',
+                '--disable-background-mode',
+                f'--user-data-dir={profile_dir}',
+            ])
+            print('  App aberto no navegador.')
         else:
-            browser = _find_browser()
-            if browser:
-                threading.Thread(target=srv.serve_forever, daemon=True).start()
-                time.sleep(1)
-                profile_dir = os.path.join(os.environ.get('TEMP', os.path.expanduser('~')), 'SGDP-Profile')
-                proc = subprocess.Popen([
-                    browser,
-                    f'--app=http://localhost:{PORT}/SGDP.html',
-                    '--start-maximized',
-                    '--disable-background-mode',
-                    f'--user-data-dir={profile_dir}',
-                ])
-                print('  App aberto. Feche a janela do SGDP para encerrar.')
-                proc.wait()
-                print('  Encerrando servidor...')
-                while True: time.sleep(1)
-            else:
-                print(f'  Chrome/Edge não encontrado. Abra manualmente: http://localhost:{PORT}/SGDP.html')
-                srv.serve_forever()
+            print(f'  Chrome/Edge não encontrado. Abra manualmente: http://localhost:{PORT}/SGDP.html')
+
+        print('  Aguardando conexões... (Ctrl+C para encerrar)')
+        try:
+            srv.serve_forever()
+        except KeyboardInterrupt:
+            print('\n  Encerrando servidor...')
