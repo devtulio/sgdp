@@ -5,6 +5,11 @@
 
 ---
 
+## [1.22.0] — 2026-07-10
+
+### Adicionado
+- **Exportar CSV na Trilha de Auditoria** — botão "Exportar CSV" no cabeçalho da tela, respeitando a busca/filtros ativos. Mesmo padrão do SGCD/SGCA (SGDP não tem tela de Fornecedores)
+
 ## [1.21.0] — 2026-07-09
 
 ### Adicionado

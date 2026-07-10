@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.21.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.22.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -41,6 +41,7 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Etiquetas (tags) livres** — categorização adicional além do Assunto fixo, com autocomplete e filtro por etiqueta
 - **Vínculos entre documentos** — relação tipada (revoga, altera, complementa, referencia) navegável nos dois sentidos
 - **Exportação do relatório** — CSV com os dados brutos do período, e impressão/PDF limpo (sem menu/sidebar)
+- **Exportação da Trilha de Auditoria em CSV**, respeitando os filtros ativos na tela
 - **Assinatura digital ICP-Brasil** — assina o PDF anexado com certificado A1 (`.pfx`), nível qualificado (dependência opcional)
 - **Verificação pública de assinatura** — cada assinatura gera um código de verificação consultável sem login em `/verificar/<código>`
 - **Sincronização de auditoria entre instâncias** — a sincronização de backup também mescla o histórico de auditoria, preservando autor e data originais
