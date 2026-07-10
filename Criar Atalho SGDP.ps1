@@ -1,4 +1,4 @@
-# SGDP v1.5.0 — Cria atalho "Iniciar SGDP.lnk" na Area de Trabalho com icone personalizado
+# Cria atalho "Iniciar SGDP.lnk" na Area de Trabalho com icone personalizado
 $batPath  = Join-Path $PSScriptRoot "Iniciar SGDP.bat"
 $icoPath  = Join-Path $PSScriptRoot "sgdp.ico"
 $desktop  = [Environment]::GetFolderPath("Desktop")

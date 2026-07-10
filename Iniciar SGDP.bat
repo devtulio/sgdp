@@ -1,5 +1,4 @@
 @echo off
-:: SGDP v1.10.1 — Inicializador do servidor
 setlocal
 
 set "EMBED_DIR=C:\Python312-embed"

@@ -121,6 +121,7 @@ SGDP/
 ├── sgdp.ico                # Ícone personalizado do sistema
 ├── sgdp.db                 # Banco de dados SQLite (criado automaticamente)
 ├── uploads/                # PDFs armazenados (criado automaticamente)
+├── backups/                # Backups automáticos (criado automaticamente)
 ├── requirements.txt        # Dependência opcional (pyhanko — só p/ assinatura ICP-Brasil)
 ├── README.md
 ├── CHANGELOG.md
