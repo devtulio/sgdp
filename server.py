@@ -1,4 +1,4 @@
-# SGDP v1.23.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.24.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -26,16 +26,21 @@ for _stream in (sys.stdout, sys.stderr):
         except Exception:
             pass
 
-PORT              = 3001
+PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
-DB_PATH           = os.path.join(_BASE, 'sgdp.db')
-UPLOADS_DIR       = os.path.join(_BASE, 'uploads')
-BACKUP_DIR        = os.path.join(_BASE, 'backups')
-LOG_PATH          = os.path.join(_BASE, 'sgdp_errors.log')
+# SGDP_DATA_DIR: usado pelos testes E2E para isolar banco/uploads/backups do
+# sgdp.db real sem precisar rodar o servidor a partir de outra pasta (os
+# arquivos estáticos como SGDP.html continuam servidos a partir de _BASE).
+_DATA_DIR         = os.environ.get('SGDP_DATA_DIR', _BASE)
+DB_PATH           = os.path.join(_DATA_DIR, 'sgdp.db')
+UPLOADS_DIR       = os.path.join(_DATA_DIR, 'uploads')
+BACKUP_DIR        = os.path.join(_DATA_DIR, 'backups')
+LOG_PATH          = os.path.join(_DATA_DIR, 'sgdp_errors.log')
 BACKUP_KEEP       = 7
 SESSION_TTL       = 15   # 15s — renovado pelo ping a cada 5s; expira rápido se browser fechar
 MAX_UPLOAD_SIZE   = 50 * 1024 * 1024
 
+os.makedirs(_DATA_DIR, exist_ok=True)
 logging.basicConfig(
     filename=LOG_PATH, level=logging.ERROR,
     format='%(asctime)s %(levelname)s %(message)s',

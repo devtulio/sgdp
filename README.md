@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.23.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
+![Versão](https://img.shields.io/badge/versão-v1.24.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet)
 
 ## Descrição
 
@@ -107,7 +107,8 @@ SGDP/
 ├── SGDP.html               # Frontend — aplicação web completa
 ├── server.py               # Servidor Python (API REST + SQLite + uploads)
 ├── tests/                  # Suíte de testes automatizados do backend
-│   └── test_server.py
+│   ├── test_server.py
+│   └── e2e/                # Testes E2E (Playwright) — navegador real de ponta a ponta
 ├── Iniciar SGDP.bat        # Inicializa o servidor
 ├── python-3.12.9-embed-amd64.zip  # Python portátil (fallback se não houver Python instalado)
 ├── Instalar Assinatura ICP-Brasil.bat  # Opcional — instala pip + pyhanko no Python embarcável
@@ -165,6 +166,16 @@ Há também uma suíte de testes automatizados do backend (`server.py`), usando 
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+Há também uma suíte de testes E2E (`tests/e2e/`), usando Playwright — sobe o servidor real e dirige um Chromium de verdade pelo fluxo completo (login com troca de senha obrigatória, criar documento):
+
+```bash
+npm install
+npx playwright install chromium   # uma vez, baixa o navegador de teste
+npm run test:e2e
+```
+
+Roda contra um banco/uploads/backups temporários (nunca o `sgdp.db` real), criados e descartados automaticamente a cada execução.
 
 ---
 

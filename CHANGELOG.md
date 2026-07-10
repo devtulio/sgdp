@@ -5,6 +5,11 @@
 
 ---
 
+## [1.24.0] — 2026-07-10
+
+### Adicionado
+- **Suíte de testes E2E (`tests/e2e/`)**, usando Playwright — sobe o servidor real (`SGDP_PORT`/`SGDP_DATA_DIR` isolam porta e banco/uploads/backups dos de produção) e dirige um Chromium de verdade pelo login com troca de senha obrigatória e criação de documento. Mesma implementação do SGCD/SGCA
+
 ## [1.23.0] — 2026-07-10
 
 ### Adicionado

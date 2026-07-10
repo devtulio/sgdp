@@ -10,3 +10,8 @@ backups/
 
 # Arquivos institucionais (não versionar)
 brasao.png
+
+# Ferramentas de desenvolvimento (lint, testes) — não fazem parte do runtime
+node_modules/
+test-results/
+playwright-report/
