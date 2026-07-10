@@ -5,6 +5,11 @@
 
 ---
 
+## [1.25.1] — 2026-07-10
+
+### Adicionado
+- **Data de hoje na barra lateral**, abaixo do campo de busca — mesmo padrão visual já usado no SGCD e no SGCA
+
 ## [1.25.0] — 2026-07-10
 
 ### Corrigido
