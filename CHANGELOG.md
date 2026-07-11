@@ -5,6 +5,18 @@
 
 ---
 
+## [1.26.0] — 2026-07-10
+
+### Adicionado — Acessibilidade (WCAG 2.1 AA)
+Correções de uma auditoria de acessibilidade dedicada (leitura de código + cálculo de contraste, 8 frentes: contraste de cor, texto alternativo, associação de rótulos, teclado, foco, alvo de toque, modais, landmarks).
+
+- **Navegação por teclado** — menu lateral (12 itens) e demais elementos clicáveis que usavam `<div onclick>`/`<span onclick>` (cards de dashboard, chips de etiqueta, itens de busca global e notificações) agora têm `role="button"` + `tabindex="0"`, ativados por Enter/Espaço via um único listener delegado
+- **Rótulos de formulário associados** — `<label for>`/`id` ou `aria-label` adicionados em todos os campos que dependiam só de proximidade visual: modais de documento, usuário, lembrete, e-mail, vínculos, assinatura, troca de senha forçada, e todas as abas de Configurações (Organização, Segurança, Interface, Backup, SMTP)
+- **Contraste de texto corrigido** — `--gray-400` (usado como cor de texto em ~30 pontos: dicas de formulário, estados vazios, "Carregando…") tinha 2,54:1 de contraste sobre branco; unificado com `--gray-500` (4,83:1). Texto secundário da barra lateral (data, seções do menu) também ajustado
+- **Indicador de foco visível** — adicionado `:focus`/`:focus-visible` nos campos que removiam o contorno padrão sem substituto (filtros de auditoria, pasta de backup, seletor de tema/largura/fonte, campo de confirmação de exclusão, busca global)
+- **Modais com semântica de diálogo** — `role="dialog"` + `aria-modal="true"` + `aria-labelledby` nos 10 modais do sistema; foco automático no primeiro campo ao abrir; Tab preso dentro do modal enquanto aberto; foco devolvido a quem acionou o modal ao fechar
+- **Alt text e área de toque** — imagens de brasão (sidebar e preview de upload) com texto alternativo correto; botões de fechar (✕) com área clicável de 44×44px sem alterar o tamanho visual do ícone
+
 ## [1.25.2] — 2026-07-10
 
 ### Corrigido

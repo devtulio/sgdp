@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.25.2</title>
+<title>Manual Operacional — SGDP v1.26.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.25.2 — Manual Operacional";
+        content: "SGDP v1.26.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -112,7 +112,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.25.2</div>
+    <div class="cover-version">Versão 1.26.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -642,6 +642,17 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.26.0 — 10/07/2026</h3>
+  <p><strong>Adicionado — Acessibilidade (WCAG 2.1 AA)</strong></p>
+  <ul>
+    <li><strong>Navegação por teclado</strong> — o menu lateral inteiro e os cards/itens clicáveis (dashboard, etiquetas, busca global, notificações) agora respondem a Tab + Enter/Espaço, não só a clique de mouse</li>
+    <li><strong>Rótulos de formulário associados</strong> — todos os campos dos modais (documento, usuário, lembrete, e-mail, vínculos, assinatura, configurações) agora têm <code>&lt;label for&gt;</code> ou <code>aria-label</code>, para funcionar corretamente com leitor de tela</li>
+    <li><strong>Contraste de texto corrigido</strong> — o tom de cinza usado como texto secundário (~30 pontos do sistema) tinha contraste insuficiente (2,54:1); corrigido para 4,83:1. Texto secundário da barra lateral também ajustado</li>
+    <li><strong>Indicador de foco visível</strong> em todos os campos que antes removiam o contorno de foco padrão sem substituto</li>
+    <li><strong>Modais com semântica de diálogo</strong> — <code>role="dialog"</code>, foco automático no primeiro campo ao abrir, Tab preso dentro do modal enquanto aberto, e foco devolvido a quem abriu o modal ao fechar</li>
+    <li><strong>Alt text e área de toque</strong> — imagens de brasão com texto alternativo correto; botões de fechar (✕) com área clicável mínima de 44×44px</li>
+  </ul>
 
   <h3>v1.25.2 — 10/07/2026</h3>
   <p><strong>Corrigido</strong></p>
