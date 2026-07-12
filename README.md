@@ -90,13 +90,24 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 
 ### Acesso em rede local
 
-Os outros procuradores acessam pelo IP do computador servidor:
+O sistema foi projetado para uso multiusuário em rede local (LAN): **uma única máquina executa o servidor** (e guarda o banco de dados) e os demais procuradores acessam pelo navegador, sem instalar nada.
+
+**Na máquina servidora (uma vez só):**
+
+1. Execute **`Liberar Porta SGDP.bat`** como Administrador (botão direito → *Executar como administrador*) — cria a regra no Firewall do Windows liberando a porta 3001 para conexões de entrada
+2. Inicie o sistema pelo `Iniciar SGDP.bat` e deixe a máquina ligada — ao iniciar, o console mostra o endereço de rede pronto para distribuir (`Rede: http://<IP>:3001/SGDP.html`)
+
+**Nas outras máquinas:** basta abrir o navegador (Chrome ou Edge) no endereço do servidor:
 
 ```
 http://192.168.x.x:3001/SGDP.html
 ```
 
-Execute **`Diagnostico SGDP.bat`** (ou a opção **[3]** do `Iniciar SGDP.bat`) para descobrir o IP e verificar a acessibilidade pela rede.
+Cada procurador faz login com sua própria conta — o servidor atende acessos simultâneos e todos enxergam os mesmos dados.
+
+Se a conexão não funcionar, execute **`Diagnostico SGDP.bat`** (ou a opção **[3]** do `Iniciar SGDP.bat`) na máquina servidora: ele descobre o IP e verifica a acessibilidade pela rede.
+
+> ⚠️ **Uso restrito à rede interna.** A comunicação é HTTP simples (sem criptografia de transporte) — adequado para uma LAN interna confiável, mas **nunca exponha a porta do sistema à internet** (redirecionamento de porta no roteador, DMZ etc.). Para acesso remoto, use a VPN institucional.
 
 ---
 
