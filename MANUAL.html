@@ -233,16 +233,25 @@
 
   <h3 id="s2-3">2.3 Acesso em rede local</h3>
   <p>
-    Para que outros procuradores acessem o sistema em seus próprios computadores:
+    O SGDP foi projetado para uso <strong>multiusuário em rede local (LAN)</strong>: uma única máquina executa o servidor (e guarda o banco de dados <code>sgdp.db</code>) e os demais procuradores acessam pelo navegador, sem instalar nada.
   </p>
+  <p><strong>Na máquina servidora (configuração única):</strong></p>
   <ol>
-    <li>Descubra o IP do computador servidor: abra o Prompt de Comando e digite <code>ipconfig</code>; o IP aparece em "Endereço IPv4" (ex: <code>192.168.1.10</code>)</li>
-    <li>Nos computadores dos procuradores, abra o navegador e acesse <code>http://192.168.1.10:3001</code></li>
-    <li>Certifique-se de que o firewall do Windows não está bloqueando a porta 3001 (se necessário, crie uma regra de entrada para essa porta)</li>
+    <li>Execute o arquivo <strong><code>Liberar Porta SGDP.bat</code></strong> como Administrador (botão direito → <em>Executar como administrador</em>). Ele cria a regra no Firewall do Windows liberando a porta <strong>3001</strong> para conexões de entrada — precisa ser feito apenas uma vez</li>
+    <li>Inicie o sistema normalmente pelo <code>Iniciar SGDP.bat</code> e deixe a máquina ligada. Ao iniciar, o console exibe o endereço de rede pronto para distribuir aos procuradores (ex.: <code>Rede: http://192.168.1.10:3001/SGDP.html</code>)</li>
   </ol>
+  <p><strong>Nos computadores dos procuradores:</strong> basta abrir o navegador (Chrome ou Edge) no endereço do servidor — cada um faz login com sua própria conta, e todos trabalham sobre os mesmos dados.</p>
+
+  <div class="dica">
+    <strong>Conexão não funciona?</strong> Execute o <code>Diagnostico SGDP.bat</code> (ou a opção <strong>[3]</strong> do <code>Iniciar SGDP.bat</code>) na máquina servidora: ele descobre o IP, verifica a porta 3001, as regras de firewall e a acessibilidade pela rede, com instruções de correção item a item.
+  </div>
 
   <div class="dica">
     <strong>Dica:</strong> Crie um atalho no navegador de cada procurador apontando para o endereço IP do servidor para facilitar o acesso diário.
+  </div>
+
+  <div class="aviso">
+    <strong>Uso restrito à rede interna.</strong> A comunicação entre as máquinas é HTTP simples (sem criptografia de transporte) — adequado para uma rede interna confiável do órgão, mas <strong>nunca exponha a porta do sistema à internet</strong> (redirecionamento de porta no roteador, DMZ etc.). Para acesso remoto, utilize a VPN institucional.
   </div>
 </div>
 
