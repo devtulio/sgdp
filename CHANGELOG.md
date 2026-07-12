@@ -5,6 +5,17 @@
 
 ---
 
+## [1.27.0] — 2026-07-12
+
+### Adicionado
+- **Últimos instrumentos no Dashboard** — cada card de tipo agora mostra uma linha "Último: 012/2026" com a numeração mais alta cadastrada daquele tipo (ex: a última Lei, o último Parecer), em destaque na cor do tipo; "Último: —" quando ainda não há documento. Backend: `/api/dashboard` ganhou o campo `ultimos` (maior `ano`/`numero` por tipo, ignorando lixeira)
+
+### Corrigido
+- **Título da aba do navegador** — mostrava "SGDP — Procuradoria-Geral"; padronizado com SGCD/SGCA para "SGDP v1.27.0" via nova constante `SGDP_VERSION` + `document.title`. A versão agora tem fonte única: o badge da tela de login e o rodapé do app leem da mesma constante (classe `.sgdp-version-badge`, como o `.sgcd-version-badge` do SGCD) em vez de números hardcoded em três lugares
+- **Card do Dashboard mostrava "Parecers"** — o rótulo era montado como singular + "s", plural errado para Parecer; novo mapa `TIPOS_PLURAL` com os plurais corretos
+
+---
+
 ## [1.26.0] — 2026-07-10
 
 ### Adicionado — Acessibilidade (WCAG 2.1 AA)

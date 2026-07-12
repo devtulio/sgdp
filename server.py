@@ -1,4 +1,4 @@
-# SGDP v1.26.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.27.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -1796,7 +1796,14 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                    WHERE d.excluido_em IS NULL
                    ORDER BY d.criado_em DESC LIMIT 10'''
             ).fetchall()
-        self._json(200, {'totais': totais, 'ano_atual': ano_atual, 'recentes': [dict(r) for r in recentes]})
+            ultimos = {}
+            for t in TIPOS:
+                row = conn.execute(
+                    '''SELECT id, numero, ano FROM documentos
+                       WHERE tipo=? AND excluido_em IS NULL
+                       ORDER BY ano DESC, numero DESC LIMIT 1''', (t,)).fetchone()
+                ultimos[t] = dict(row) if row else None
+        self._json(200, {'totais': totais, 'ano_atual': ano_atual, 'recentes': [dict(r) for r in recentes], 'ultimos': ultimos})
 
     # ── Usuários ──────────────────────────────────────────────────────────────
 

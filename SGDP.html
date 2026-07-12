@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SGDP — Procuradoria-Geral</title>
+<title>SGDP</title>
 <link rel="icon" type="image/x-icon" href="sgdp.ico">
 <style>
 html { font-size: 16px; }
@@ -314,6 +314,8 @@ body.tema-escuro #tela-login input {
   letter-spacing: .5px; color: var(--gray-500); margin-bottom: 8px; }
 .dash-card .dc-total { font-size: 1.75rem; font-weight: 800; color: var(--tc, var(--gray-700)); line-height: 1; }
 .dash-card .dc-ano   { font-size: 0.75rem; color: var(--gray-400); margin-top: 4px; }
+.dash-card .dc-ultimo { font-size: 0.75rem; font-weight: 700; color: var(--tc, var(--gray-600));
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gray-100); }
 
 /* ── Tabela ──────────────────────────────────────────────────────────────── */
 .table-wrap { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
@@ -628,7 +630,7 @@ tr:hover td { background: var(--gray-50); }
     </div>
     <div class="login-ft">
       <span><strong>SGDP</strong> — Procuradoria-Geral</span>
-      <span style="background:var(--gray-200);padding:2px 7px;border-radius:10px">v1.26.0</span>
+      <span class="sgdp-version-badge" style="background:var(--gray-200);padding:2px 7px;border-radius:10px"></span>
     </div>
     <div id="login-last-backup" style="text-align:center;font-size:10px;color:var(--gray-400);padding:6px 28px 10px"></div>
   </div>
@@ -755,7 +757,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="loading">Carregando…</div>
     </div>
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
-      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; v1.26.0
+      SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; <span class="sgdp-version-badge"></span>
     </footer>
   </main>
 </div>
@@ -1223,7 +1225,15 @@ const TIPOS_NOVO = {
   lei: 'Nova Lei', decreto: 'Novo Decreto', portaria: 'Nova Portaria',
   parecer: 'Novo Parecer', oficio: 'Novo Ofício',
 };
+const TIPOS_PLURAL = {
+  lei: 'Leis', decreto: 'Decretos', portaria: 'Portarias',
+  parecer: 'Pareceres', oficio: 'Ofícios',
+};
 const ANO_ATUAL = new Date().getFullYear();
+
+const SGDP_VERSION = '1.27.0';
+document.title = `SGDP v${SGDP_VERSION}`;
+document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
 // ── API ───────────────────────────────────────────────────────────────────────
 const API = {
@@ -2392,9 +2402,10 @@ async function renderDashboard() {
   });
   const cards = tipos.map(t => `
     <div class="dash-card tipo-${t}" role="button" tabindex="0" onclick="navegar('${t}')">
-      <div class="dc-label">${TIPOS_LABELS[t]}s</div>
+      <div class="dc-label">${TIPOS_PLURAL[t]}</div>
       <div class="dc-total">${d.totais[t] || 0}</div>
       <div class="dc-ano">${d.ano_atual[t] || 0} em ${ANO_ATUAL}</div>
+      <div class="dc-ultimo">Último: ${d.ultimos?.[t] ? fmtNum(d.ultimos[t].numero, d.ultimos[t].ano).replace('nº ','') : '—'}</div>
     </div>
   `).join('');
 
