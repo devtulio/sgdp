@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.30.3</title>
+<title>Manual Operacional — SGDP v1.31.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.30.3 — Manual Operacional";
+        content: "SGDP v1.31.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -651,6 +651,12 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.31.0 — 13/07/2026</h3>
+  <p><strong>Alterado</strong></p>
+  <ul>
+    <li><strong>Motor de navegação reescrito (Fase 1 da padronização com SGCD)</strong> — as telas passam a ser blocos fixos com cabeçalho próprio (mostrados/escondidos ao navegar), em vez de reconstruir a página inteira a cada clique. Corrige de vez a raiz do bug do cabeçalho branco no tema escuro (v1.30.3) e um bug de roteamento por link direto (abrir <code>#agenda</code> ou <code>#lixeira</code> direto na URL caía no Dashboard)</li>
+  </ul>
 
   <h3>v1.30.3 — 13/07/2026</h3>
   <p><strong>Corrigido</strong></p>

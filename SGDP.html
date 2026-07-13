@@ -79,7 +79,7 @@ html.tema-roxo {
 }
 
 /* ── Largura do conteúdo ─────────────────────────────────────────────────── */
-#main.layout-compacto .page-content { max-width: 960px; margin: 0 auto; width: 100%; }
+#main.layout-compacto .view { max-width: 960px; margin: 0 auto; width: 100%; }
 
 /* ── Tema escuro ─────────────────────────────────────────────────────────── */
 body.dark {
@@ -109,7 +109,6 @@ body.dark .skeleton-stat,
 body.dark .skeleton-card { background: #1e2436; }
 body.dark .upload-zone { background: #1e2436; border-color: var(--gray-300); }
 body.dark .modal > div { background: #1e2436; }
-body.dark .page-header { background: #1e2436; }
 body.dark .cfg-tabs    { border-color: var(--gray-200); }
 body.dark fieldset     { border-color: var(--gray-200) !important; }
 
@@ -287,16 +286,11 @@ body.dark #tela-login input {
 .btn-sair::after { content: ''; position: absolute; inset: -10px; }
 
 /* Main */
-#main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-.page-header {
-  background: #fff; border-bottom: 1px solid var(--gray-200);
-  height: 56px; display: flex; align-items: center;
-  flex-shrink: 0; position: sticky; top: 0; z-index: 10;
-}
-.page-header-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 28px; }
-#main.layout-compacto .page-header-inner { max-width: 960px; margin: 0 auto; }
-.page-title { font-size: 1rem; font-weight: 700; color: var(--gray-800); }
-.page-content { padding: 24px 28px; flex: 1; }
+#main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 24px 28px; }
+.view { display: none; }
+.view.active { display: block; }
+.dash-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.dash-top h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
 
 /* ── Botões ──────────────────────────────────────────────────────────────── */
 .btn { display: inline-flex; align-items: center; gap: 6px; border: none;
@@ -510,7 +504,7 @@ tr:hover td { background: var(--gray-50); }
 .print-only { display: none; }
 @media print {
   #sidebar, .no-print, .modal-overlay { display: none !important; }
-  #app, .page-content { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+  #app, .view { width: 100% !important; margin: 0 !important; padding: 0 !important; }
   body { background: #fff !important; }
   .print-only { display: block !important; }
   @page { margin: 14mm; }
@@ -758,15 +752,71 @@ tr:hover td { background: var(--gray-50); }
 
   <!-- Conteúdo principal -->
   <main id="main">
-    <div class="page-header">
-      <div class="page-header-inner">
-        <div class="page-title" id="page-title">Dashboard</div>
-        <div id="header-actions"></div>
+    <div id="view-dashboard" class="view active">
+      <div class="dash-top"><h2>Dashboard</h2></div>
+      <div id="dashboard-conteudo">
+        <div class="skeleton-stats">
+          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
+          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
+          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
+          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
+          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
+        </div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
       </div>
     </div>
-    <div class="page-content" id="page-content">
-      <div class="loading">Carregando…</div>
+
+    <div id="view-documentos" class="view">
+      <div class="dash-top">
+        <h2 id="doc-titulo">Leis</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline" onclick="abrirModalCsv(S.view)">⇪ Importar CSV</button>
+          <button class="btn btn-primary" onclick="abrirNovoDoc(S.view)">+ <span id="doc-btn-novo-label">Nova Lei</span></button>
+        </div>
+      </div>
+      <div id="documentos-conteudo"><div class="loading">Carregando…</div></div>
     </div>
+
+    <div id="view-relatorio" class="view">
+      <div class="dash-top"><h2>Relatório Gerencial</h2></div>
+      <div id="relatorio-conteudo"><div class="loading">Carregando relatório…</div></div>
+    </div>
+
+    <div id="view-agenda" class="view">
+      <div class="dash-top">
+        <h2>Agenda de Vencimentos</h2>
+        <button class="btn btn-primary" onclick="abrirNovoLembrete()">+ Novo Lembrete</button>
+      </div>
+      <div id="agenda-conteudo"><div class="loading">Carregando…</div></div>
+    </div>
+
+    <div id="view-lixeira" class="view">
+      <div class="dash-top"><h2>Lixeira</h2></div>
+      <div id="lixeira-conteudo"><div class="loading">Carregando…</div></div>
+    </div>
+
+    <div id="view-auditoria" class="view">
+      <div class="dash-top">
+        <h2>Trilha de Auditoria</h2>
+        <button class="btn btn-outline" onclick="exportarAuditoriaCSV()">⬇ Exportar CSV</button>
+      </div>
+      <div id="auditoria-conteudo"><div class="loading">Carregando…</div></div>
+    </div>
+
+    <div id="view-configuracoes" class="view">
+      <div class="dash-top">
+        <h2>Configurações</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="navegar('dashboard')">← Voltar</button>
+          <button class="btn btn-primary" onclick="saveSettings()" id="btn-save-settings">Salvar</button>
+        </div>
+      </div>
+      <div id="config-conteudo"><div class="loading">Carregando…</div></div>
+    </div>
+
     <footer style="text-align:center;padding:10px 16px;font-size:.72rem;color:var(--gray-400);border-top:1px solid var(--gray-100);flex-shrink:0">
       SGDP — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; <span class="sgdp-version-badge"></span>
     </footer>
@@ -1242,7 +1292,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.30.3';
+const SGDP_VERSION = '1.31.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1293,9 +1343,8 @@ async function init() {
 
   if (S.token && S.user) {
     mostrarApp();
-    const views = ['dashboard','lei','decreto','portaria','parecer','oficio','relatorio','auditoria','configuracoes'];
     const hash = location.hash.replace('#','');
-    navegar(views.includes(hash) ? hash : 'dashboard');
+    navegar(hash in NAV_ROUTES ? hash : 'dashboard');
   } else {
     requestAnimationFrame(() => _loginCanvasStart());
     // exibe nome do órgão no primeiro acesso via rede (sem localStorage)
@@ -1460,6 +1509,63 @@ async function _atualizarBadgeNotif() {
 }
 
 // ── Navegação ─────────────────────────────────────────────────────────────────
+// ── Views (padrão SGCD: blocos estáticos, mostrar/esconder via .active) ────────
+function _hideAllViews() { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); }
+function setNavActive(view) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === view));
+}
+function _showView(viewId, navView) {
+  _hideAllViews();
+  document.getElementById(viewId).classList.add('active');
+  setNavActive(navView);
+}
+
+async function showDashboard() {
+  _showView('view-dashboard', 'dashboard');
+  await renderDashboard();
+}
+async function showDocumentos(tipo) {
+  _showView('view-documentos', tipo);
+  document.getElementById('doc-titulo').textContent = TIPOS_PLURAL[tipo];
+  document.getElementById('doc-btn-novo-label').textContent = TIPOS_NOVO[tipo];
+  await renderDocumentos(tipo, 1);
+}
+async function showRelatorio() {
+  _showView('view-relatorio', 'relatorio');
+  await renderRelatorio();
+}
+async function showAgenda() {
+  _showView('view-agenda', 'agenda');
+  await renderAgenda();
+}
+async function showLixeira() {
+  _showView('view-lixeira', 'lixeira');
+  await renderLixeira();
+}
+async function showAuditoria() {
+  _showView('view-auditoria', 'auditoria');
+  await renderAuditoria();
+}
+async function showConfiguracoes(abaInicial) {
+  _showView('view-configuracoes', 'configuracoes');
+  await renderConfiguracoes(abaInicial);
+}
+
+// Mapa único de rotas — fonte da verdade também para o roteamento por hash em init().
+const NAV_ROUTES = {
+  dashboard:     showDashboard,
+  lei:           () => showDocumentos('lei'),
+  decreto:       () => showDocumentos('decreto'),
+  portaria:      () => showDocumentos('portaria'),
+  parecer:       () => showDocumentos('parecer'),
+  oficio:        () => showDocumentos('oficio'),
+  relatorio:     showRelatorio,
+  agenda:        showAgenda,
+  lixeira:       showLixeira,
+  auditoria:     showAuditoria,
+  configuracoes: showConfiguracoes,
+};
+
 async function navegar(view) {
   // replaceState (não location.hash=) evita empilhar histórico de navegação,
   // que impede window.close() em janelas --app do Chrome
@@ -1467,38 +1573,7 @@ async function navegar(view) {
   S.view = view;
   S.pag  = { page: 1, total: 0, per: 50 };
   S.filtros = { q: '', ano: '', tag: '' };
-  document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.view === view);
-  });
-  const titles = {
-    dashboard: 'Dashboard', lei: 'Leis', decreto: 'Decretos',
-    portaria: 'Portarias', parecer: 'Pareceres', oficio: 'Ofícios',
-    relatorio: 'Relatório Gerencial', agenda: 'Agenda', lixeira: 'Lixeira',
-    auditoria: 'Auditoria', configuracoes: 'Configurações',
-  };
-  document.getElementById('page-title').textContent = titles[view] || view;
-  const ha = document.getElementById('header-actions');
-  ha.innerHTML = '';
-  if (['lei','decreto','portaria','parecer','oficio'].includes(view)) {
-    ha.innerHTML = `<button class="btn btn-outline" onclick="abrirModalCsv('${view}')">⇪ Importar CSV</button>
-      <button class="btn btn-primary" onclick="abrirNovoDoc('${view}')">+ ${TIPOS_NOVO[view]}</button>`;
-  } else if (view === 'agenda') {
-    ha.innerHTML = `<button class="btn btn-primary" onclick="abrirNovoLembrete()">+ Novo Lembrete</button>`;
-  } else if (view === 'auditoria') {
-    ha.innerHTML = `<button class="btn btn-outline" onclick="exportarAuditoriaCSV()">⬇ Exportar CSV</button>`;
-  } else if (view === 'configuracoes') {
-    ha.innerHTML = `<button class="btn btn-outline" onclick="navegar('dashboard')">← Voltar</button>
-      <button class="btn btn-primary" onclick="saveSettings()" id="btn-save-settings">Salvar</button>`;
-  }
-  const pc = document.getElementById('page-content');
-  pc.innerHTML = '<div class="loading">Carregando…</div>';
-  if (view === 'dashboard') await renderDashboard();
-  else if (['lei','decreto','portaria','parecer','oficio'].includes(view)) await renderDocumentos(view);
-  else if (view === 'relatorio')     await renderRelatorio();
-  else if (view === 'agenda')        await renderAgenda();
-  else if (view === 'lixeira')       await renderLixeira();
-  else if (view === 'auditoria')     await renderAuditoria();
-  else if (view === 'configuracoes') await renderConfiguracoes();
+  await (NAV_ROUTES[view] || NAV_ROUTES.dashboard)();
 }
 
 // ── Relatório Gerencial ───────────────────────────────────────────────────────
@@ -2195,7 +2270,7 @@ async function exportarRelatorioCsv(de, ate) {
 
 async function renderRelatorio(periodo, de, ate) {
   periodo = periodo || localStorage.getItem('sgdp-rel-periodo') || 'mes';
-  const pc = document.getElementById('page-content');
+  const pc = document.getElementById('relatorio-conteudo');
 
   let deDt, ateDt;
   if (periodo === 'custom') {
@@ -2389,19 +2464,7 @@ async function renderRelatorio(periodo, de, ate) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-function _dashSkeleton() {
-  const stats = Array(5).fill(`
-    <div class="skeleton-stat">
-      <div class="skeleton" style="height:10px;width:50%"></div>
-      <div class="skeleton" style="height:28px;width:40%"></div>
-      <div class="skeleton" style="height:8px;width:70%"></div>
-    </div>`).join('');
-  const cards = Array(4).fill('<div class="skeleton skeleton-card"></div>').join('');
-  return `<div class="skeleton-stats">${stats}</div>${cards}`;
-}
-
 async function renderDashboard() {
-  document.getElementById('page-content').innerHTML = _dashSkeleton();
   const r = await API.get('/api/dashboard');
   const d = await API.json(r);
   if (!d) return;
@@ -2430,7 +2493,7 @@ async function renderDashboard() {
     </tr>
   `).join('') : `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--gray-400)">Nenhum documento cadastrado ainda.</td></tr>`;
 
-  document.getElementById('page-content').innerHTML = `
+  document.getElementById('dashboard-conteudo').innerHTML = `
     <div class="dash-cards">${cards}</div>
     <div class="section-title">📄 Documentos recentes</div>
     <div class="table-wrap">
@@ -2446,7 +2509,7 @@ async function renderDashboard() {
 async function renderDocumentos(tipo, page = 1) {
   S.pag.page = page;
   S.pag.tipo = tipo;
-  const pc = document.getElementById('page-content');
+  const pc = document.getElementById('documentos-conteudo');
   if (pc && !pc.querySelector('.table-wrap')) {
     pc.innerHTML = Array(4).fill('<div class="skeleton skeleton-card"></div>').join('');
   }
@@ -2513,7 +2576,7 @@ async function renderDocumentos(tipo, page = 1) {
   const anoOpts = `<option value="">Todos os anos</option>` +
     anos.map(a => `<option value="${a}" ${S.filtros.ano == a ? 'selected' : ''}>${a}</option>`).join('');
 
-  document.getElementById('page-content').innerHTML = `
+  document.getElementById('documentos-conteudo').innerHTML = `
     <div class="table-wrap">
       <div class="table-toolbar">
         <input class="search-input" placeholder="Buscar por número, ementa, partes…" aria-label="Buscar documentos"
@@ -2745,7 +2808,7 @@ async function renderLixeira() {
       </td>
     </tr>
   `).join('') : `<tr class="empty-row"><td colspan="5">A lixeira está vazia.</td></tr>`;
-  document.getElementById('page-content').innerHTML = `
+  document.getElementById('lixeira-conteudo').innerHTML = `
     <div class="table-wrap">
       <table>
         <thead><tr><th>Número</th><th>Data</th><th>Ementa</th><th>Excluído em</th><th>Ações</th></tr></thead>
@@ -2790,7 +2853,7 @@ async function renderAgenda() {
       <td><button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirLembrete(${l.id})" title="Excluir" aria-label="Excluir lembrete">✕</button></td>
     </tr>`;
   }).join('') : `<tr class="empty-row"><td colspan="5">Nenhum lembrete cadastrado.</td></tr>`;
-  document.getElementById('page-content').innerHTML = `
+  document.getElementById('agenda-conteudo').innerHTML = `
     <div class="table-wrap">
       <table>
         <thead><tr><th></th><th>Título</th><th>Prazo</th><th>Documento</th><th>Ações</th></tr></thead>
@@ -3324,7 +3387,7 @@ async function renderAuditoria() {
   const acaoOpts = Object.entries(_AUDIT_LABELS)
     .map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
 
-  document.getElementById('page-content').innerHTML = `
+  document.getElementById('auditoria-conteudo').innerHTML = `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
       <input id="aud-q" type="text" placeholder="Buscar usuário ou detalhes…" aria-label="Buscar usuário ou detalhes"
         style="flex:1;min-width:180px;border:1px solid var(--gray-300);border-radius:var(--radius);padding:7px 10px;font-size:13px"
@@ -3448,7 +3511,7 @@ const _ICONE_DOWN = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
 const _ICONE_UP   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
 
 async function renderBackup(container) {
-  const target = container || document.getElementById('page-content');
+  const target = container;
   const r = await API.get('/api/backups/db');
   const d = await API.json(r);
   const cfg = d?.cfg || {};
@@ -3813,7 +3876,7 @@ async function renderConfiguracoes(abaInicial) {
   const _largura = localStorage.getItem('sgdp-layout-width') || 'compacto';
   const _corDestaque = localStorage.getItem('sgdp-tema-cor') || 'institucional';
 
-  document.getElementById('page-content').innerHTML = `
+  document.getElementById('config-conteudo').innerHTML = `
     <div class="cfg-wrap">
       <div class="cfg-tabs">
         <button class="cfg-tab${primeiraAba==='interface'?' active':''}" onclick="switchCfgTab('interface',this)">Interface</button>

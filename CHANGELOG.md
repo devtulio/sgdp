@@ -5,6 +5,16 @@
 
 ---
 
+## [1.31.0] — 2026-07-13
+
+### Alterado — Padronização arquitetural no padrão SGCD (Fase 1)
+- **Motor de navegação reescrito**: as 9 rotas (Dashboard, 5 tipos de documento, Relatório, Agenda, Lixeira, Auditoria, Configurações) deixam de reconstruir a página inteira (cabeçalho incluso) a cada navegação. Agora são 7 blocos de tela estáticos (`view-dashboard`, `view-documentos` — compartilhado pelos 5 tipos —, `view-relatorio`, `view-agenda`, `view-lixeira`, `view-auditoria`, `view-configuracoes`), cada um com seu próprio cabeçalho fixo (título + botões de ação), mostrados/escondidos via `_showView()` — mesmo padrão já usado no SGCD/SGCA/SGDP (dashboard) e agora replicado nas telas restantes
+- **Removida a barra de cabeçalho compartilhada** (`.page-header`/`#page-title`/`#header-actions`) — a barra compartilhada era a causa raiz do bug do fundo branco no tema escuro corrigido na v1.30.3 (um elemento genérico, reconstruído a cada navegação, sem paralelo nos sistemas irmãos)
+- **Skeleton de carregamento do Dashboard** — agora é HTML estático (visível só no primeiro carregamento da sessão), igual ao padrão do SGCD, em vez de reinjetado via JavaScript a cada vez que se volta para o Dashboard
+
+### Corrigido
+- **Bug de roteamento por link direto/atualização de página** — abrir a URL com `#agenda` ou `#lixeira` (ou atualizar a página nessas telas) caía incorretamente no Dashboard; a lista de rotas válidas usada nesse caminho estava desatualizada e faltavam essas duas entradas. Corrigido na raiz: a lista agora é derivada automaticamente do mapa de rotas usado pela navegação normal, então não pode mais dessincronizar
+
 ## [1.30.3] — 2026-07-13
 
 ### Corrigido
