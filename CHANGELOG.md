@@ -5,6 +5,15 @@
 
 ---
 
+## [1.29.0] — 2026-07-13
+
+### Alterado — Auditoria de consistência visual (P2: convergências ao padrão SGCD)
+- **Tokens de status unificados** — `--green` #16a34a→#15803d e fundos `--green-bg/--red-bg/--yellow-bg` alinhados aos valores do SGCD/SGCA; adicionada a **camada semântica** (`--danger/--success/--warning` + variantes `-light`) com os mesmos nomes dos irmãos, para intercambialidade de código
+- **Botões** — `.btn` .85rem, `.btn-sm` 5px 12px/.78rem, `.btn-outline` borda `--gray-200` e hover na cor da marca, `.btn-danger:hover` #991b1b (valores do SGCD)
+- **Modais** — largura máxima 580→560px e padding do corpo 22px→20px 24px
+- **Escala de z-index normalizada** para a convenção do SGCD — overlay 200, toast 300, busca global 1100, notificações 9999 (antes: 1000/9999/1100/1200, mesma semântica com números próprios)
+- **Miudezas** — foco da busca global (inset −2px), texto da upload-zone `--gray-500`, abas de Configurações (.78rem, margem 24px), cor-base do texto `--gray-900`
+
 ## [1.28.0] — 2026-07-13
 
 ### Alterado — Auditoria de consistência visual (P1)
