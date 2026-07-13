@@ -5,6 +5,11 @@
 
 ---
 
+## [1.30.3] — 2026-07-13
+
+### Corrigido
+- **Barra de cabeçalho ("Configurações", "Voltar", "Salvar" etc.) ficava branca no tema escuro** — o `.page-header` tinha fundo fixo `#fff` sem nenhuma sobrescrita para `body.dark`, deixando uma faixa branca no topo de toda página e o título quase invisível (a cor do título já era clara para o modo escuro, mas ficava sobre fundo branco). Corrigido com `body.dark .page-header { background: #1e2436 }`, a mesma cor de superfície elevada já usada em tabelas, modais e cards escuros
+
 ## [1.30.2] — 2026-07-13
 
 ### Corrigido
