@@ -5,6 +5,11 @@
 
 ---
 
+## [1.30.2] — 2026-07-13
+
+### Corrigido
+- **Legend "Backup de Dados" (aba Dados) usava `var(--brand)` em vez de `var(--accent-light)`** — mesmo desvio de token corrigido na v1.30.1 para a aba Interface, agora estendido a este legend
+
 ## [1.30.1] — 2026-07-13
 
 ### Corrigido — Auditoria de consistência visual (comparação lado a lado com SGCD/SGCA)
