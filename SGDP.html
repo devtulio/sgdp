@@ -777,7 +777,17 @@ tr:hover td { background: var(--gray-50); }
           <button class="btn btn-primary" onclick="abrirNovoDoc(S.view)">+ <span id="doc-btn-novo-label">Nova Lei</span></button>
         </div>
       </div>
-      <div id="documentos-conteudo"><div class="loading">Carregando…</div></div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <input class="search-input" id="doc-search" placeholder="Buscar por número, ementa, partes…" aria-label="Buscar documentos"
+            oninput="S.filtros.q=this.value" onkeydown="if(event.key==='Enter')renderDocumentosLista(1)">
+          <select class="select-sm" id="doc-ano" aria-label="Filtrar por ano" onchange="S.filtros.ano=this.value;renderDocumentosLista(1)"></select>
+          <button class="btn btn-outline btn-sm" onclick="renderDocumentosLista(1)">Filtrar</button>
+          <button class="btn btn-outline btn-sm" onclick="gerarCertidoesEmLote()" title="Gera a certidão de todos os documentos que batem com o filtro atual">📜 Certidões em lote</button>
+          <span id="doc-tag-pill"></span>
+        </div>
+        <div id="documentos-conteudo"><div class="loading">Carregando…</div></div>
+      </div>
     </div>
 
     <div id="view-relatorio" class="view">
@@ -1292,7 +1302,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.31.0';
+const SGDP_VERSION = '1.32.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1528,7 +1538,11 @@ async function showDocumentos(tipo) {
   _showView('view-documentos', tipo);
   document.getElementById('doc-titulo').textContent = TIPOS_PLURAL[tipo];
   document.getElementById('doc-btn-novo-label').textContent = TIPOS_NOVO[tipo];
-  await renderDocumentos(tipo, 1);
+  const anoAtual = ANO_ATUAL;
+  const anoOpts = `<option value="">Todos os anos</option>` +
+    Array.from({length: 6}, (_, i) => anoAtual - i).map(a => `<option value="${a}">${a}</option>`).join('');
+  document.getElementById('doc-ano').innerHTML = anoOpts;
+  await renderDocumentosLista(1);
 }
 async function showRelatorio() {
   _showView('view-relatorio', 'relatorio');
@@ -2506,13 +2520,19 @@ async function renderDashboard() {
 }
 
 // ── Lista de documentos ───────────────────────────────────────────────────────
-async function renderDocumentos(tipo, page = 1) {
+async function renderDocumentosLista(page = 1) {
+  const tipo = S.view;
   S.pag.page = page;
   S.pag.tipo = tipo;
   const pc = document.getElementById('documentos-conteudo');
-  if (pc && !pc.querySelector('.table-wrap')) {
+  if (pc && !pc.querySelector('table')) {
     pc.innerHTML = Array(4).fill('<div class="skeleton skeleton-card"></div>').join('');
   }
+  document.getElementById('doc-search').value = S.filtros.q;
+  document.getElementById('doc-ano').value = S.filtros.ano;
+  document.getElementById('doc-tag-pill').innerHTML = S.filtros.tag ? `<span class="tag-pill" style="background:var(--brand);color:#fff">
+    🏷 ${esc(S.filtros.tag)} <button style="cursor:pointer;background:none;border:none;color:inherit;font:inherit;padding:0" onclick="S.filtros.tag='';renderDocumentosLista(1)" aria-label="Remover filtro de etiqueta">✕</button>
+  </span>` : '';
   const qs = new URLSearchParams({ tipo, page, per: S.pag.per });
   if (S.filtros.q)   qs.set('q',   S.filtros.q);
   if (S.filtros.ano) qs.set('ano', S.filtros.ano);
@@ -2560,47 +2580,28 @@ async function renderDocumentos(tipo, page = 1) {
     <div class="pagination">
       <span>${d.total} documento${d.total !== 1 ? 's' : ''}</span>
       <div class="pag-btns">
-        <button class="pag-btn" onclick="renderDocumentos('${tipo}',${page-1})" ${page<=1?'disabled':''}>‹</button>
+        <button class="pag-btn" onclick="renderDocumentosLista(${page-1})" ${page<=1?'disabled':''}>‹</button>
         ${Array.from({length: Math.min(totalPages,7)}, (_,i) => {
           const pg = i+1;
-          return `<button class="pag-btn ${pg===page?'active':''}" onclick="renderDocumentos('${tipo}',${pg})">${pg}</button>`;
+          return `<button class="pag-btn ${pg===page?'active':''}" onclick="renderDocumentosLista(${pg})">${pg}</button>`;
         }).join('')}
-        <button class="pag-btn" onclick="renderDocumentos('${tipo}',${page+1})" ${page>=totalPages?'disabled':''}>›</button>
+        <button class="pag-btn" onclick="renderDocumentosLista(${page+1})" ${page>=totalPages?'disabled':''}>›</button>
       </div>
     </div>
   ` : `<div class="pagination"><span>${d.total} documento${d.total !== 1 ? 's' : ''}</span></div>`;
 
-  // Anos disponíveis para filtro
-  const anoAtual = ANO_ATUAL;
-  const anos = Array.from({length: 6}, (_, i) => anoAtual - i);
-  const anoOpts = `<option value="">Todos os anos</option>` +
-    anos.map(a => `<option value="${a}" ${S.filtros.ano == a ? 'selected' : ''}>${a}</option>`).join('');
-
   document.getElementById('documentos-conteudo').innerHTML = `
-    <div class="table-wrap">
-      <div class="table-toolbar">
-        <input class="search-input" placeholder="Buscar por número, ementa, partes…" aria-label="Buscar documentos"
-          value="${esc(S.filtros.q)}"
-          oninput="S.filtros.q=this.value" onkeydown="if(event.key==='Enter')renderDocumentos('${tipo}',1)">
-        <select class="select-sm" aria-label="Filtrar por ano" onchange="S.filtros.ano=this.value;renderDocumentos('${tipo}',1)">${anoOpts}</select>
-        <button class="btn btn-outline btn-sm" onclick="renderDocumentos('${tipo}',1)">Filtrar</button>
-        <button class="btn btn-outline btn-sm" onclick="gerarCertidoesEmLote()" title="Gera a certidão de todos os documentos que batem com o filtro atual">📜 Certidões em lote</button>
-        ${S.filtros.tag ? `<span class="tag-pill" style="background:var(--brand);color:#fff">
-          🏷 ${esc(S.filtros.tag)} <button style="cursor:pointer;background:none;border:none;color:inherit;font:inherit;padding:0" onclick="S.filtros.tag='';renderDocumentos('${tipo}',1)" aria-label="Remover filtro de etiqueta">✕</button>
-        </span>` : ''}
-      </div>
-      <table>
-        <thead><tr><th>Número</th><th>Data</th><th>Ementa</th><th>Partes</th><th>PDF</th><th>Ações</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      ${paginacao}
-    </div>
+    <table>
+      <thead><tr><th>Número</th><th>Data</th><th>Ementa</th><th>Partes</th><th>PDF</th><th>Ações</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${paginacao}
   `;
 }
 
 function filtrarPorTag(tag) {
   S.filtros.tag = tag;
-  renderDocumentos(S.pag.tipo, 1);
+  renderDocumentosLista(1);
 }
 
 // ── Modal de documento ────────────────────────────────────────────────────────
@@ -2771,7 +2772,7 @@ async function salvarDocumento() {
 
   fecharModal('modal-doc');
   if (['lei','decreto','portaria','parecer','oficio'].includes(S.view)) {
-    await renderDocumentos(S.view, S.pag.page);
+    await renderDocumentosLista(S.pag.page);
   } else {
     await renderDashboard();
   }
@@ -2785,7 +2786,7 @@ async function excluirDoc(id, label) {
   if (!r.ok) { toast(d?.error || 'Erro ao excluir.', 'error'); return; }
   toast('Documento enviado à lixeira.', 'success');
   if (['lei','decreto','portaria','parecer','oficio'].includes(S.view)) {
-    await renderDocumentos(S.view, S.pag.page);
+    await renderDocumentosLista(S.pag.page);
   }
 }
 
@@ -3045,7 +3046,7 @@ async function assinarDocumento() {
     <a href="${esc(verifUrl)}" target="_blank" rel="noopener">${esc(verifUrl)}</a>`;
   document.getElementById('f-assinar-cert').value = '';
   document.getElementById('f-assinar-senha').value = '';
-  await renderDocumentos(S.pag.tipo, S.pag.page);
+  await renderDocumentosLista(S.pag.page);
 }
 
 // ── E-mail ───────────────────────────────────────────────────────────────────
@@ -3119,7 +3120,7 @@ async function importarCsv() {
   fecharModal('modal-csv');
   toast(`${d.importados} documento(s) importado(s).${d.erros.length ? ' ' + d.erros.length + ' erro(s).' : ''}`,
         d.erros.length ? 'error' : 'success');
-  if (_csvTipoAtual) await renderDocumentos(_csvTipoAtual, 1);
+  if (_csvTipoAtual) await renderDocumentosLista(1);
 }
 
 // ── Upload de PDF ─────────────────────────────────────────────────────────────

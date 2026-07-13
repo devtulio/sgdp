@@ -5,6 +5,12 @@
 
 ---
 
+## [1.32.0] — 2026-07-13
+
+### Corrigido — Padronização arquitetural no padrão SGCD (Fase 2)
+- **Perda de foco/cursor ao paginar a lista de documentos** — o campo de busca, o filtro de ano e os botões da barra de ferramentas eram reconstruídos via `innerHTML` a cada clique de paginação (mesmo com o valor digitado preservado, o campo virava um elemento novo, perdendo posição do cursor e qualquer estado de digitação em andamento). A barra de ferramentas de Leis/Decretos/Portarias/Pareceres/Ofícios agora é fixa — só a lista de documentos e a paginação são atualizadas a cada navegação de página, filtro ou busca
+- Adicionado teste E2E que semeia 55 documentos, pagina e confirma que o campo de busca continua sendo o mesmo elemento do DOM (não reconstruído) — rede de segurança automatizada contra reintroduzir essa classe de bug
+
 ## [1.31.0] — 2026-07-13
 
 ### Alterado — Padronização arquitetural no padrão SGCD (Fase 1)
