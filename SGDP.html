@@ -79,7 +79,7 @@ html.tema-roxo {
 }
 
 /* ── Largura do conteúdo ─────────────────────────────────────────────────── */
-#main.layout-compacto .page-content { max-width: 1100px; margin: 0 auto; width: 100%; }
+#main.layout-compacto .page-content { max-width: 960px; margin: 0 auto; width: 100%; }
 
 /* ── Tema escuro ─────────────────────────────────────────────────────────── */
 body.dark {
@@ -293,7 +293,7 @@ body.dark #tela-login input {
   flex-shrink: 0; position: sticky; top: 0; z-index: 10;
 }
 .page-header-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 28px; }
-#main.layout-compacto .page-header-inner { max-width: 1100px; margin: 0 auto; }
+#main.layout-compacto .page-header-inner { max-width: 960px; margin: 0 auto; }
 .page-title { font-size: 1rem; font-weight: 700; color: var(--gray-800); }
 .page-content { padding: 24px 28px; flex: 1; }
 
@@ -1241,7 +1241,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.30.0';
+const SGDP_VERSION = '1.30.1';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -3829,7 +3829,7 @@ async function renderConfiguracoes(abaInicial) {
         <div class="table-wrap" style="padding:24px;display:flex;flex-direction:column;gap:16px">
 
           <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Tema de aparência</legend>
+            <legend style="font-size:.72rem;font-weight:700;color:var(--accent-light);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Tema de aparência</legend>
             <select id="cfg-ui-tema" class="cfg-ui-select" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:0.8125rem">
               <option value="claro" ${_tema==='claro'?'selected':''}>Claro — fundo branco</option>
               <option value="escuro" ${_tema==='escuro'?'selected':''}>Escuro — fundo escuro</option>
@@ -3838,7 +3838,7 @@ async function renderConfiguracoes(abaInicial) {
           </fieldset>
 
           <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Largura do conteúdo</legend>
+            <legend style="font-size:.72rem;font-weight:700;color:var(--accent-light);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Largura do conteúdo</legend>
             <select id="cfg-ui-largura" class="cfg-ui-select" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:0.8125rem">
               <option value="compacto"  ${_largura==='compacto' ?'selected':''}>Compacta — margens laterais confortáveis</option>
               <option value="expandido" ${_largura==='expandido'?'selected':''}>Expandida — aproveita toda a tela útil</option>
@@ -3847,7 +3847,17 @@ async function renderConfiguracoes(abaInicial) {
           </fieldset>
 
           <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Cor de destaque</legend>
+            <legend style="font-size:.72rem;font-weight:700;color:var(--accent-light);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Tamanho da fonte</legend>
+            <select id="cfg-ui-font" class="cfg-ui-select" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:0.8125rem">
+              <option value="pequena" ${_fs==='pequena'?'selected':''}>Pequena — mais itens visíveis</option>
+              <option value="normal"  ${_fs==='normal' ?'selected':''}>Normal — padrão do sistema</option>
+              <option value="grande"  ${_fs==='grande' ?'selected':''}>Grande — melhor legibilidade</option>
+            </select>
+            <p style="font-size:0.6875rem;color:var(--gray-500);margin-top:6px;line-height:1.4">Afeta todo o sistema. Útil para monitores menores ou acessibilidade.</p>
+          </fieldset>
+
+          <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
+            <legend style="font-size:.72rem;font-weight:700;color:var(--accent-light);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Cor de destaque</legend>
             <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8125rem">
                 <input type="radio" name="cfg-tema-cor" value="institucional" ${_corDestaque==='institucional'?'checked':''} style="accent-color:#1a3a6b">
@@ -3871,29 +3881,6 @@ async function renderConfiguracoes(abaInicial) {
               </label>
             </div>
             <p style="font-size:0.6875rem;color:var(--gray-500);margin-top:8px;line-height:1.4">Altera a cor de botões, links e destaques em todo o sistema.</p>
-          </fieldset>
-
-          <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Tamanho da fonte</legend>
-            <select id="cfg-ui-font" class="cfg-ui-select" style="width:100%;border:1px solid var(--gray-300);border-radius:var(--radius);padding:8px 10px;font-size:0.8125rem">
-              <option value="pequena" ${_fs==='pequena'?'selected':''}>Pequena — mais itens visíveis</option>
-              <option value="normal"  ${_fs==='normal' ?'selected':''}>Normal — padrão do sistema</option>
-              <option value="grande"  ${_fs==='grande' ?'selected':''}>Grande — melhor legibilidade</option>
-            </select>
-            <p style="font-size:0.6875rem;color:var(--gray-500);margin-top:6px;line-height:1.4">Afeta todo o sistema. Útil para monitores menores ou acessibilidade.</p>
-          </fieldset>
-
-          <fieldset style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px">
-            <legend style="font-size:0.6875rem;font-weight:700;color:var(--brand);padding:0 6px;text-transform:uppercase;letter-spacing:.4px">Brasão do município</legend>
-            <p style="font-size:.72rem;color:var(--gray-500);margin-bottom:10px;line-height:1.5">Substitua o brasão exibido no topo da barra lateral pelo do seu município.</p>
-            <div style="display:flex;align-items:center;gap:12px">
-              <img id="cfg-brasao-preview" alt="Pré-visualização do brasão" style="height:56px;width:auto;display:none;border:1px solid var(--gray-200);border-radius:4px;padding:2px">
-              <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
-                ↑ Carregar imagem
-                <input type="file" id="cfg-brasao-input" accept="image/*" style="display:none" onchange="previewBrasao(this)">
-              </label>
-              <button class="btn btn-outline btn-sm" onclick="removerBrasao()" id="btn-remove-brasao" style="display:none">✕ Remover</button>
-            </div>
           </fieldset>
         </div>
       </div>
@@ -3931,6 +3918,18 @@ async function renderConfiguracoes(abaInicial) {
             <div class="form-group">
               <label for="cfg-diario-url">Diário Oficial (link)</label>
               <input id="cfg-diario-url" type="url" value="${esc(cfg?.diario_url||'')}" placeholder="Ex: https://diariooficial.municipio.sp.gov.br">
+            </div>
+          </div>
+          <div class="cfg-section" style="margin-top:24px">
+            <h3>Brasão do Município</h3>
+            <p style="font-size:0.75rem;color:var(--gray-500);margin-bottom:10px">Substitua o brasão exibido no topo da barra lateral pelo do seu município.</p>
+            <div style="display:flex;align-items:center;gap:12px">
+              <img id="cfg-brasao-preview" alt="Pré-visualização do brasão" style="height:56px;width:auto;display:none;border:1px solid var(--gray-200);border-radius:4px;padding:2px">
+              <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+                ↑ Carregar imagem
+                <input type="file" id="cfg-brasao-input" accept="image/*" style="display:none" onchange="previewBrasao(this)">
+              </label>
+              <button class="btn btn-outline btn-sm" onclick="removerBrasao()" id="btn-remove-brasao" style="display:none">✕ Remover</button>
             </div>
           </div>
         </div>

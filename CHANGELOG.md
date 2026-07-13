@@ -5,6 +5,14 @@
 
 ---
 
+## [1.30.1] — 2026-07-13
+
+### Corrigido — Auditoria de consistência visual (comparação lado a lado com SGCD/SGCA)
+- **Largura "Compacta" media 1100px, contra 960px no SGCD/SGCA** — mesmo rótulo, larguras diferentes; corrigido para 960px
+- **Ordem das seções na aba Interface trocada** — "Cor de destaque" vinha antes de "Tamanho da fonte"; invertido para bater com o padrão SGCD/SGCA
+- **"Brasão do Município" estava na aba Interface** — nos irmãos essa configuração fica na aba Organização, junto da Autoridade Responsável; movido para lá
+- **Cor do rótulo das seções (legend) usava `var(--brand)` em vez de `var(--accent-light)`** — mesmo token usado no SGCD/SGCA para essas 4 seções da aba Interface
+
 ## [1.30.0] — 2026-07-13
 
 ### Alterado — Auditoria de consistência visual (P3: dívida estrutural)
