@@ -15,8 +15,8 @@ html.font-grande  { font-size: 18px; }
   --brand:        #1a3a6b;
   --brand-dark:   #102855;
   --brand-light:  #e8eef7;
-  --accent:       #b8962e;
-  --accent-light: #fdf8e8;
+  --accent:       #1a3a6b; /* segue o tema (padrão SGCD) — o dourado antigo (#b8962e) ficava fixo ao trocar de tema */
+  --accent-light: #2a5298;
   --gray-50:  #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
   /* gray-400 igual a gray-500: o tom original (#9ca3af) tinha só 2,54:1 de
      contraste sobre branco como texto (usado em ~30 lugares), abaixo do
@@ -56,16 +56,22 @@ html.tema-azul {
   --brand:       #0066CC;
   --brand-light: #e0eeff;
   --brand-dark:  #0052a3;
+  --accent:       #0052a3;
+  --accent-light: #0066CC;
 }
 html.tema-verde {
   --brand:       #1a7a3c;
   --brand-light: #dcfce7;
   --brand-dark:  #145e2d;
+  --accent:       #145e2d;
+  --accent-light: #1a7a3c;
 }
 html.tema-roxo {
   --brand:       #5E2750;
   --brand-light: #f5edf3;
   --brand-dark:  #44193a;
+  --accent:       #44193a;
+  --accent-light: #5E2750;
 }
 
 /* ── Largura do conteúdo ─────────────────────────────────────────────────── */
@@ -142,7 +148,7 @@ body.tema-escuro #tela-login input {
 .login-body { padding: 22px 28px 24px; }
 .login-orgao {
   display: flex; align-items: center; gap: 9px;
-  background: var(--brand-light); border: 1px solid rgba(26,58,107,.2);
+  background: var(--brand-light); border: 1px solid color-mix(in srgb, var(--brand) 20%, transparent);
   border-radius: 8px; padding: 10px 12px; margin-bottom: 20px;
 }
 .login-orgao .lo-avatar {
@@ -200,8 +206,8 @@ body.tema-escuro #tela-login input {
 .login-shake { animation: login-shake .35s ease; }
 
 /* ── Configurações ──────────────────────────────────────────────────────── */
-#btn-save-settings.has-changes { animation: cfg-pulse 1.8s ease-in-out infinite; box-shadow: 0 0 0 3px rgba(26,58,107,.25); }
-@keyframes cfg-pulse { 0%,100% { box-shadow:0 0 0 3px rgba(26,58,107,.25); } 50% { box-shadow:0 0 0 6px rgba(26,58,107,.08); } }
+#btn-save-settings.has-changes { animation: cfg-pulse 1.8s ease-in-out infinite; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 25%, transparent); }
+@keyframes cfg-pulse { 0%,100% { box-shadow:0 0 0 3px color-mix(in srgb, var(--brand) 25%, transparent); } 50% { box-shadow:0 0 0 6px color-mix(in srgb, var(--brand) 8%, transparent); } }
 .cfg-tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--gray-200); margin-bottom: 20px; }
 .cfg-tab {
   padding: 8px 18px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
@@ -1231,7 +1237,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.27.0';
+const SGDP_VERSION = '1.28.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 

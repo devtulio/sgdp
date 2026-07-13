@@ -5,6 +5,12 @@
 
 ---
 
+## [1.28.0] — 2026-07-13
+
+### Alterado — Auditoria de consistência visual (P1)
+- **Cor de destaque (accent) agora segue o tema de cor** — o dourado fixo (`--accent: #b8962e`) ficava inalterado ao trocar para tema azul/verde/roxo, enquanto nos irmãos SGCD/SGCA o accent acompanha o tema. Valores e sobrescritas de tema alinhados ao padrão SGCD (#1a3a6b no institucional). Afeta: borda do item ativo do menu, fundo dos toasts, tela de troca de senha obrigatória
+- **Anéis de foco/pulso derivam do brand via `color-mix`** — pulso do botão Salvar e borda do card do órgão no login deixam de usar navy fixo e passam a acompanhar o tema (mesmo padrão aplicado ao SGCD/SGCA nesta rodada)
+
 ## [1.27.0] — 2026-07-12
 
 ### Adicionado
