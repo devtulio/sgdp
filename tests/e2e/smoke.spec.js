@@ -20,7 +20,7 @@ test('login força troca de senha e cria documento', async ({ page }) => {
   await page.click('[data-view="lei"]');
   await page.click('button:has-text("Nova Lei")');
   await page.fill('#f-ementa', 'Ementa de teste E2E');
-  await page.click('.modal-ft button:has-text("Salvar")');
+  await page.click('.modal-footer button:has-text("Salvar")');
 
   await expect(page.getByRole('cell', { name: 'Ementa de teste E2E' })).toBeVisible();
 });

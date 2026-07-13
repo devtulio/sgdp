@@ -5,6 +5,11 @@
 
 ---
 
+## [1.30.0] — 2026-07-13
+
+### Alterado — Auditoria de consistência visual (P3: dívida estrutural)
+- **Nomenclatura de classes alinhada ao padrão SGCD/SGCA** — `tema-escuro` → `dark`, `.modal-hd`/`.modal-ft` → `.modal-header`/`.modal-footer` (CSS, JS e testes E2E). Sem efeito visual: apenas os nomes internos usados pelos 3 sistemas passam a ser os mesmos, o que facilita portar correções entre eles
+
 ## [1.29.0] — 2026-07-13
 
 ### Alterado — Auditoria de consistência visual (P2: convergências ao padrão SGCD)
