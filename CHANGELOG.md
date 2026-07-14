@@ -5,6 +5,13 @@
 
 ---
 
+## [1.33.0] — 2026-07-14
+
+### Adicionado
+- **Departamento de usuário** — cada usuário pertence a um departamento fixo (`Procuradoria-Geral` ou `Gabinete`; tupla `DEPARTAMENTOS` em `server.py`, endpoint `GET /api/departamentos`), definido pelo administrador no cadastro
+- **Documentos sigilosos** — coluna `sigiloso` em `documentos`; `pode_ver_doc()`/`pode_editar_doc()` centralizam a regra: sigiloso só é visível para quem criou ou admin (filtrado em listagem, busca por id, download de PDF, dashboard, relatórios — incl. export CSV — e sincronização entre instâncias); documento não-sigiloso pode ser editado/excluído/assinado por qualquer usuário do mesmo departamento de quem criou (ou admin); só o criador ou um admin pode alterar a própria marcação de sigilo. Backups (manual, automático e sync) preservam `departamento` e `sigiloso` no round-trip. *(Implementado via Claude web / PR #1, `31f14ac` — documentado agora)*
+- **Coluna "Origem" no Dashboard e nas listagens de documentos** — mostra o departamento de quem criou cada documento, ao lado da Ementa
+
 ## [1.32.5] — 2026-07-14
 
 ### Removido

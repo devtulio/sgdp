@@ -1242,7 +1242,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.32.5';
+const SGDP_VERSION = '1.33.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -2442,16 +2442,17 @@ async function renderDashboard() {
       <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano)}</span></td>
       <td>${fmtData(doc.data)}</td>
       <td class="td-ementa"><span>${esc(doc.ementa)}</span></td>
+      <td style="font-size:.8rem;color:var(--gray-500)">${esc(doc.criado_por_departamento || '—')}</td>
       <td>${doc.arquivo_id ? '<span style="color:var(--green)">✓ PDF</span>' : '<span style="color:var(--gray-300)">—</span>'}</td>
     </tr>
-  `).join('') : `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--gray-400)">Nenhum documento cadastrado ainda.</td></tr>`;
+  `).join('') : `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--gray-400)">Nenhum documento cadastrado ainda.</td></tr>`;
 
   document.getElementById('dashboard-conteudo').innerHTML = `
     <div class="dash-cards">${cards}</div>
     <div class="section-title">📄 Documentos recentes</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Tipo</th><th>Número</th><th>Data</th><th>Ementa</th><th>PDF</th></tr></thead>
+        <thead><tr><th>Tipo</th><th>Número</th><th>Data</th><th>Ementa</th><th>Origem</th><th>PDF</th></tr></thead>
         <tbody>${recentes}</tbody>
       </table>
     </div>
@@ -2493,6 +2494,7 @@ async function renderDocumentosLista(page = 1) {
           `<span class="tag-pill" role="button" tabindex="0" onclick="filtrarPorTag('${esc(t)}')" title="Filtrar por esta etiqueta">${esc(t)}</span>`).join('')}</div>` : ''}
       </td>
       <td>${esc(doc.partes || '—')}</td>
+      <td style="font-size:.8rem;color:var(--gray-500)">${esc(doc.criado_por_departamento || '—')}</td>
       <td>${doc.arquivo_id
         ? `<span style="display:flex;gap:4px;align-items:center">
             <button class="btn btn-outline btn-sm btn-icon" onclick="verPdf(${doc.arquivo_id},'${esc(doc.arquivo_nome || 'Documento')}')" title="Visualizar PDF">👁</button>
@@ -2515,7 +2517,7 @@ async function renderDocumentosLista(page = 1) {
       </td>
     </tr>
   `;
-  }).join('') : `<tr class="empty-row"><td colspan="6">Nenhum documento encontrado.</td></tr>`;
+  }).join('') : `<tr class="empty-row"><td colspan="7">Nenhum documento encontrado.</td></tr>`;
 
   const totalPages = Math.ceil(d.total / S.pag.per);
   const paginacao = totalPages > 1 ? `
@@ -2534,7 +2536,7 @@ async function renderDocumentosLista(page = 1) {
 
   document.getElementById('documentos-conteudo').innerHTML = `
     <table>
-      <thead><tr><th>Número</th><th>Data</th><th>Ementa</th><th>Partes</th><th>PDF</th><th>Ações</th></tr></thead>
+      <thead><tr><th>Número</th><th>Data</th><th>Ementa</th><th>Partes</th><th>Origem</th><th>PDF</th><th>Ações</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     ${paginacao}

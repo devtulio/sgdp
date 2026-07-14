@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.32.5</title>
+<title>Manual Operacional — SGDP v1.33.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.32.5 — Manual Operacional";
+        content: "SGDP v1.33.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -148,6 +148,7 @@
     <div class="toc-item h3"><a href="#s4-3">4.3 Anexar PDF assinado</a></div>
     <div class="toc-item h3"><a href="#s4-4">4.4 Assunto e campos específicos por tipo</a></div>
     <div class="toc-item h3"><a href="#s4-5">4.5 Importação em lote via CSV</a></div>
+    <div class="toc-item h3"><a href="#s4-6">4.6 Documentos sigilosos e departamentos</a></div>
     <div class="toc-item h2"><a href="#s5">5. Busca e Filtros</a></div>
     <div class="toc-item h2"><a href="#s6">6. Administração</a></div>
     <div class="toc-item h3"><a href="#s6-1">6.1 Gestão de usuários</a></div>
@@ -278,6 +279,12 @@
     As sessões de login têm duração de <strong>8 horas</strong>. Ao expirar, o sistema retorna
     automaticamente à tela de login. O logout manual encerra a sessão imediatamente.
   </p>
+  <p>
+    Além do perfil, cada usuário pertence a um <strong>Departamento</strong> fixo —
+    <strong>Procuradoria-Geral</strong> ou <strong>Gabinete</strong> — definido pelo administrador
+    ao criar ou editar o usuário. O departamento determina quem pode editar documentos não-sigilosos
+    de terceiros (ver 4.6).
+  </p>
 
   <div class="nota">
     <strong>Segurança:</strong> as senhas são armazenadas com criptografia PBKDF2-HMAC-SHA256
@@ -304,6 +311,7 @@
       <tr><td>Assunto</td><td>Sim</td><td>Categoria do documento, selecionada em lista pré-definida (ver 4.4)</td></tr>
       <tr><td>Partes / Envolvidos</td><td>Não</td><td>Nomes das partes, requerentes, destinatários ou interessados</td></tr>
       <tr><td>Observações</td><td>Não</td><td>Informações internas adicionais; não aparecem em relatórios</td></tr>
+      <tr><td>🔒 Sigiloso</td><td>Não</td><td>Restringe a visibilidade do documento apenas a quem o criou e a administradores (ver 4.6)</td></tr>
       <tr><td>PDF Assinado</td><td>Não</td><td>Arquivo PDF do documento já assinado digitalmente</td></tr>
     </tbody>
   </table>
@@ -384,6 +392,23 @@
     <li>Clique em <em>Importar</em> — documentos sem <code>numero</code> informado recebem numeração automática</li>
   </ol>
   <p>Ao final, o sistema exibe quantos documentos foram importados e lista erros por linha (ex: número já existente para aquele tipo/ano).</p>
+
+  <h3 id="s4-6">4.6 Documentos sigilosos e departamentos</h3>
+  <p>
+    Toda listagem de documentos (e o Dashboard) mostra a coluna <strong>Origem</strong>, com o
+    departamento de quem criou o documento — útil pra identificar rapidamente se um Ofício, por
+    exemplo, veio da Procuradoria-Geral ou do Gabinete.
+  </p>
+  <p>Regras de acesso a um documento:</p>
+  <ul>
+    <li><strong>Edição/exclusão (documento não-sigiloso):</strong> qualquer usuário do <em>mesmo departamento</em> de quem criou pode editar, excluir ou assinar — além do administrador</li>
+    <li><strong>Marcado como 🔒 Sigiloso:</strong> aparece na listagem, no dashboard, na busca e nos relatórios apenas para quem o criou e para administradores — mesmo colegas do mesmo departamento não veem</li>
+    <li><strong>Alterar a marcação de sigilo:</strong> só quem criou o documento ou um administrador pode marcar/desmarcar como sigiloso — nem colegas de departamento podem</li>
+  </ul>
+  <div class="nota">
+    <strong>Nota:</strong> um administrador sempre vê e pode editar todos os documentos,
+    sigilosos ou não, de qualquer departamento.
+  </div>
 </div>
 
 <!-- ── SEÇÃO 5–6 ───────────────────────────────────────────────────────────────── -->
@@ -651,6 +676,14 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.33.0 — 14/07/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Departamento de usuário</strong> — cada usuário pertence a um departamento fixo (Procuradoria-Geral ou Gabinete), definido pelo administrador no cadastro</li>
+    <li><strong>Documentos sigilosos</strong> — checkbox 🔒 Sigiloso no formulário de documento; quando marcado, o documento só aparece pra quem criou e pra administradores (listagem, busca, dashboard, relatórios e sincronização entre instâncias). Documentos não-sigilosos podem ser editados/excluídos/assinados por qualquer usuário do mesmo departamento de quem criou; só o criador ou um administrador pode alterar a marcação de sigilo</li>
+    <li><strong>Coluna "Origem" no Dashboard e nas listagens de documentos</strong> — mostra o departamento de quem criou cada documento</li>
+  </ul>
 
   <h3>v1.32.5 — 14/07/2026</h3>
   <p><strong>Removido</strong></p>

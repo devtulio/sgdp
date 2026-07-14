@@ -1,4 +1,4 @@
-# SGDP v1.32.5 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.33.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -1819,7 +1819,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             totais   = {t: conn.execute(f'SELECT COUNT(*) FROM documentos WHERE tipo=? AND excluido_em IS NULL {vis}', (t, *vp)).fetchone()[0] for t in TIPOS}
             ano_atual = {t: conn.execute(f'SELECT COUNT(*) FROM documentos WHERE tipo=? AND ano=? AND excluido_em IS NULL {vis}', (t, ano, *vp)).fetchone()[0] for t in TIPOS}
             recentes = conn.execute(
-                f'''SELECT d.id, d.tipo, d.numero, d.ano, d.data, d.ementa, d.arquivo_id, u.nome criado_por_nome
+                f'''SELECT d.id, d.tipo, d.numero, d.ano, d.data, d.ementa, d.arquivo_id,
+                          u.nome criado_por_nome, u.departamento criado_por_departamento
                    FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
                    WHERE d.excluido_em IS NULL {vis}
                    ORDER BY d.criado_em DESC LIMIT 10''', vp

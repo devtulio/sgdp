@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.32.5-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/versão-v1.33.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
 
 ## Descrição
 
@@ -24,7 +24,8 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Login multiusuário** com sessões de 8 horas — até N procuradores simultâneos
 - **Busca e filtros** por número, ementa, partes envolvidas e ano
 - **Trilha de auditoria** completa de todas as ações (criar, editar, excluir, upload)
-- **Gestão de usuários** com perfil administrador e perfil padrão
+- **Gestão de usuários** com perfil administrador e perfil padrão, cada um com departamento fixo (Procuradoria-Geral ou Gabinete)
+- **Documentos sigilosos** — marcação opcional que restringe a visibilidade e a edição a quem criou e a administradores; documentos não-sigilosos podem ser editados por qualquer colega do mesmo departamento de quem criou. Coluna "Origem" no Dashboard e nas listagens mostra o departamento de cada documento
 - **Backup e restauração** — exporta JSON com todos os documentos e PDFs; backup automático do banco de dados
 - **Sincronização de backup entre agentes** — mescla dados de outra instalação (soma o que é novo, revisa o que conflita) sem substituir o banco inteiro
 - **Navegação persistente** — F5 mantém o usuário na tela atual via `location.hash`
