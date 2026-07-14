@@ -5,6 +5,11 @@
 
 ---
 
+## [1.32.2] — 2026-07-14
+
+### Corrigido
+- **`customConfirm()` do esqueleto compartilhado (`_esqueleto/base.js`) travava para sempre ao fechar por Esc ou clique fora do overlay** — corrigido na fonte compartilhada e propagado aos 4 sistemas via `sync.py`. Sem efeito prático no SGDP, que usa sua própria caixa de confirmação (não baseada em `customConfirm`); atualização apenas para manter o arquivo vendorizado idêntico ao dos demais sistemas
+
 ## [1.32.1] — 2026-07-13
 
 ### Alterado
