@@ -14,6 +14,9 @@ if (!scripts.length) {
   process.exit(1);
 }
 
+const baseJsPath = join(import.meta.dirname, '..', 'base.js');
+scripts.unshift(readFileSync(baseJsPath, 'utf-8'));
+
 const tmpDir = mkdtempSync(join(tmpdir(), 'sgdp-lint-'));
 const tmpFile = join(tmpDir, 'sgdp.js');
 writeFileSync(tmpFile, scripts.join('\n;\n'));

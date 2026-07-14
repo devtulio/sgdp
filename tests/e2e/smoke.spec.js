@@ -5,9 +5,9 @@ import { test, expect } from '@playwright/test';
 test('login força troca de senha e cria documento', async ({ page }) => {
   await page.goto('/SGDP.html');
 
-  await page.fill('#l-user', 'admin');
-  await page.fill('#l-pass', 'admin123');
-  await page.click('.btn-login');
+  await page.fill('#pin-username', 'admin');
+  await page.fill('#pin-input', 'admin123');
+  await page.click('#overlay-pin button[onclick="fazerLogin()"]');
 
   // Banco novo → admin padrão nasce com troca de senha obrigatória
   await expect(page.locator('#overlay-force-pwd')).toBeVisible();
@@ -35,9 +35,9 @@ test('paginação em Documentos preserva o foco do campo de busca', async ({ pag
   // workers:1) — o teste anterior já trocou a senha padrão, então login aqui usa
   // a senha já definida por ele, sem overlay de troca obrigatória de novo.
   await page.goto('/SGDP.html');
-  await page.fill('#l-user', 'admin');
-  await page.fill('#l-pass', 'novaSenhaE2E123');
-  await page.click('.btn-login');
+  await page.fill('#pin-username', 'admin');
+  await page.fill('#pin-input', 'novaSenhaE2E123');
+  await page.click('#overlay-pin button[onclick="fazerLogin()"]');
   await expect(page.locator('[data-view="dashboard"]')).toBeVisible();
 
   // Semeia documentos suficientes para a paginação aparecer (per=50).
