@@ -893,6 +893,12 @@ tr:hover td { background: var(--gray-50); }
         </div>
       </div>
       <div class="form-row">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
+          <input id="f-sigiloso" type="checkbox" style="width:auto">
+          <label for="f-sigiloso" style="text-transform:none;font-weight:600;font-size:.85rem;color:inherit;cursor:pointer">🔒 Sigiloso — visível apenas para quem criou (e administradores)</label>
+        </div>
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label>PDF Assinado</label>
           <div id="upload-area">
@@ -982,6 +988,12 @@ tr:hover td { background: var(--gray-50); }
         <div class="form-group">
           <label for="u-matricula">Matrícula</label>
           <input id="u-matricula" type="text" placeholder="Matrícula funcional">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="u-departamento">Departamento *</label>
+          <select id="u-departamento"></select>
         </div>
       </div>
       <div class="form-row">
@@ -1213,6 +1225,7 @@ const S = {
   filtros: { q: '', ano: '' },
   confirmCb: null,
   config: null,
+  departamentos: [],
 };
 
 const TIPOS_LABELS = {
@@ -1413,6 +1426,15 @@ function mostrarApp() {
   _atualizarBadgeNotif();
   _atualizarBadgeAgenda();
   _carregarBrasao();
+  _carregarDepartamentos();
+}
+
+async function _carregarDepartamentos() {
+  if (S.departamentos.length) return;
+  try {
+    const r = await API.get('/api/departamentos');
+    if (r && r.ok) S.departamentos = await r.json();
+  } catch (_) {}
 }
 
 let S_brasaoDataUrl = '';
@@ -2459,9 +2481,11 @@ async function renderDocumentosLista(page = 1) {
   if (!d) return;
   S.pag.total = d.total;
 
-  const rows = d.items.length ? d.items.map(doc => `
+  const rows = d.items.length ? d.items.map(doc => {
+    const podeEditar = S.user.admin || (doc.sigiloso ? doc.criado_por === S.user.id : doc.criado_por_departamento === S.user.departamento);
+    return `
     <tr>
-      <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano)}</span></td>
+      <td class="tipo-${doc.tipo}"><span class="num-doc">${doc.sigiloso ? '🔒 ' : ''}${fmtNum(doc.numero, doc.ano)}</span></td>
       <td>${fmtData(doc.data)}</td>
       <td class="td-ementa">
         <span title="${esc(doc.ementa)}">${esc(doc.ementa)}</span>
@@ -2480,17 +2504,18 @@ async function renderDocumentosLista(page = 1) {
         : '<span style="color:var(--gray-300);font-size:12px">Sem PDF</span>'}</td>
       <td>
         <div class="td-acoes">
-          <button class="btn btn-outline btn-sm" onclick="abrirEditarDoc(${doc.id})">✎ Editar</button>
+          ${podeEditar ? `<button class="btn btn-outline btn-sm" onclick="abrirEditarDoc(${doc.id})">✎ Editar</button>` : ''}
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirHistoricoDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Histórico de revisões">🕘</button>
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirVinculosDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Vínculos com outros documentos">🔗</button>
-          <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalAssinar(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Assinar digitalmente (ICP-Brasil)">🔏</button>
+          ${podeEditar ? `<button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalAssinar(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Assinar digitalmente (ICP-Brasil)">🔏</button>` : ''}
           <button class="btn btn-outline btn-sm btn-icon" onclick="gerarCertidaoDocumento(${doc.id})" title="Gerar certidão deste documento">📜</button>
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalEmail(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Enviar por e-mail">✉</button>
-          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Excluir" aria-label="Excluir documento">✕</button>
+          ${podeEditar ? `<button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Excluir" aria-label="Excluir documento">✕</button>` : ''}
         </div>
       </td>
     </tr>
-  `).join('') : `<tr class="empty-row"><td colspan="6">Nenhum documento encontrado.</td></tr>`;
+  `;
+  }).join('') : `<tr class="empty-row"><td colspan="6">Nenhum documento encontrado.</td></tr>`;
 
   const totalPages = Math.ceil(d.total / S.pag.per);
   const paginacao = totalPages > 1 ? `
@@ -2541,6 +2566,8 @@ async function abrirNovoDoc(tipo) {
   document.getElementById('f-ato-tipo').value = '';
   document.getElementById('f-cargo').value = '';
   document.getElementById('f-tags').value = '';
+  document.getElementById('f-sigiloso').checked = false;
+  document.getElementById('f-sigiloso').disabled = false;
   _populaAssunto(tipo, ASSUNTOS_GERAL[0]);
   onTipoChange();
   resetUpload();
@@ -2578,6 +2605,8 @@ async function abrirEditarDoc(id) {
   document.getElementById('f-ato-tipo').value       = doc.ato_tipo      || '';
   document.getElementById('f-cargo').value          = doc.cargo         || '';
   document.getElementById('f-tags').value = (doc.tags || []).join(', ');
+  document.getElementById('f-sigiloso').checked = !!doc.sigiloso;
+  document.getElementById('f-sigiloso').disabled = !(S.user.admin || doc.criado_por === S.user.id);
   _carregarTagsDatalist();
   onTipoChange();
   if (S.existingArq) {
@@ -2658,6 +2687,7 @@ async function salvarDocumento() {
     processo_ref:  document.getElementById('f-processo-ref').value.trim(),
     ato_tipo:      document.getElementById('f-ato-tipo').value,
     cargo:         document.getElementById('f-cargo').value.trim(),
+    sigiloso:      document.getElementById('f-sigiloso').checked,
     data, ementa,
     partes:        document.getElementById('f-partes').value.trim(),
     observacoes:   document.getElementById('f-obs').value.trim(),
@@ -3168,6 +3198,7 @@ async function renderUsuarios() {
           <th style="text-align:left;padding:6px 8px">Usuário</th>
           <th style="text-align:left;padding:6px 8px">Nome</th>
           <th style="text-align:left;padding:6px 8px">Cargo/Matrícula</th>
+          <th style="text-align:left;padding:6px 8px">Departamento</th>
           <th style="text-align:center;padding:6px 8px">Admin</th>
           <th style="text-align:center;padding:6px 8px">Ativo</th>
           <th style="text-align:right;padding:6px 8px">Ações</th>
@@ -3179,17 +3210,24 @@ async function renderUsuarios() {
           <td style="padding:8px"><code style="font-size:.82rem;background:var(--gray-100);padding:2px 6px;border-radius:4px">${esc(u.username)}</code></td>
           <td style="padding:8px">${esc(u.nome || '—')}</td>
           <td style="padding:8px;font-size:.8rem;color:var(--gray-500)">${esc([u.cargo,u.matricula].filter(Boolean).join(' · ') || '—')}</td>
+          <td style="padding:8px;font-size:.8rem;color:var(--gray-500)">${esc(u.departamento || '—')}</td>
           <td style="padding:8px;text-align:center">${u.admin ? '✓' : '—'}</td>
           <td style="padding:8px;text-align:center">
             <span style="font-size:.78rem;font-weight:600;color:${u.ativo ? 'var(--green)' : 'var(--gray-400)'}">${u.ativo ? 'Sim' : 'Não'}</span>
           </td>
           <td style="padding:8px;text-align:right">
-            <button class="btn btn-outline btn-sm" style="font-size:.75rem;padding:3px 10px" onclick="abrirEditarUsuario(${u.id},'${esc(u.nome)}','${esc(u.username)}',${u.admin},${u.ativo},'${esc(u.email || '')}','${esc(u.cpf || '')}','${esc(u.cargo || '')}','${esc(u.matricula || '')}')">Editar</button>
+            <button class="btn btn-outline btn-sm" style="font-size:.75rem;padding:3px 10px" onclick="abrirEditarUsuario(${u.id},'${esc(u.nome)}','${esc(u.username)}',${u.admin},${u.ativo},'${esc(u.email || '')}','${esc(u.cpf || '')}','${esc(u.cargo || '')}','${esc(u.matricula || '')}','${esc(u.departamento || '')}')">Editar</button>
             ${u.id !== S.user.id ? `<button class="btn btn-outline btn-sm" style="font-size:.75rem;padding:3px 10px;color:var(--red)" onclick="excluirUsuario(${u.id},'${esc(u.nome)}')">Excluir</button>` : ''}
           </td>
         </tr>`).join('')}
       </tbody>
     </table>`;
+}
+
+function _populaDepartamento(valorAtual) {
+  const sel = document.getElementById('u-departamento');
+  const lista = S.departamentos.length ? S.departamentos : ['Procuradoria-Geral'];
+  sel.innerHTML = lista.map(d => `<option value="${esc(d)}"${d===valorAtual?' selected':''}>${esc(d)}</option>`).join('');
 }
 
 function abrirNovoUsuario() {
@@ -3204,12 +3242,13 @@ function abrirNovoUsuario() {
   document.getElementById('u-cpf').value = '';
   document.getElementById('u-cargo').value = '';
   document.getElementById('u-matricula').value = '';
+  _populaDepartamento(S.departamentos[0]);
   document.getElementById('u-admin').checked = false;
   document.getElementById('u-ativo-row').style.display = 'none';
   abrirModal('modal-usuario');
 }
 
-function abrirEditarUsuario(id, nome, username, admin, ativo, email, cpf, cargo, matricula) {
+function abrirEditarUsuario(id, nome, username, admin, ativo, email, cpf, cargo, matricula, departamento) {
   S.editUid = id;
   document.getElementById('modal-user-titulo').textContent = 'Editar Usuário';
   document.getElementById('u-nome').value = nome;
@@ -3221,6 +3260,7 @@ function abrirEditarUsuario(id, nome, username, admin, ativo, email, cpf, cargo,
   document.getElementById('u-cpf').value = cpf || '';
   document.getElementById('u-cargo').value = cargo || '';
   document.getElementById('u-matricula').value = matricula || '';
+  _populaDepartamento(departamento);
   document.getElementById('u-admin').checked = !!admin;
   document.getElementById('u-ativo').checked = !!ativo;
   document.getElementById('u-ativo-row').style.display = '';
@@ -3234,18 +3274,19 @@ async function salvarUsuario() {
   const cpf       = document.getElementById('u-cpf').value.trim();
   const cargo     = document.getElementById('u-cargo').value.trim();
   const matricula = document.getElementById('u-matricula').value.trim();
+  const departamento = document.getElementById('u-departamento').value;
   const admin = document.getElementById('u-admin').checked;
   if (!nome) { toast('Nome é obrigatório.', 'error'); return; }
   let r, d;
   if (S.editUid) {
-    const payload = { nome, admin, email, cpf, cargo, matricula, ativo: document.getElementById('u-ativo').checked };
+    const payload = { nome, admin, email, cpf, cargo, matricula, departamento, ativo: document.getElementById('u-ativo').checked };
     if (senha) payload.senha = senha;
     r = await API.put(`/api/usuarios/${S.editUid}`, payload);
   } else {
     const username = document.getElementById('u-username').value.trim();
     if (!username) { toast('Usuário é obrigatório.', 'error'); return; }
     if (!senha)    { toast('Senha é obrigatória.', 'error'); return; }
-    r = await API.post('/api/usuarios', { username, nome, senha, admin, email, cpf, cargo, matricula });
+    r = await API.post('/api/usuarios', { username, nome, senha, admin, email, cpf, cargo, matricula, departamento });
   }
   d = await API.json(r);
   if (!r.ok) { toast(d?.error || 'Erro ao salvar.', 'error'); return; }
