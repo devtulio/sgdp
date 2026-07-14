@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.32.0</title>
+<title>Manual Operacional — SGDP v1.32.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.32.0 — Manual Operacional";
+        content: "SGDP v1.32.1 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -112,7 +112,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.26.0</div>
+    <div class="cover-version">Versão 1.32.1</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -651,6 +651,16 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.32.1 — 13/07/2026</h3>
+  <p><strong>Alterado</strong></p>
+  <ul>
+    <li><strong>Migração para o esqueleto compartilhado da família</strong> (base.css/base.js/sgx_base.py) — remove duplicação de código entre SGCD/SGCA/SGDP/SGEA; tela de login convertida de página cheia pro padrão overlay dos outros 3 sistemas, com a identidade visual do SGDP preservada; os 10 modais mantiveram os mesmos nomes de função, só o mecanismo interno mudou</li>
+  </ul>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Senha incorreta na tela de login não mostrava mensagem de erro</strong> — disparava o mesmo fluxo de "sessão expirada" em vez de avisar o motivo</li>
+  </ul>
 
   <h3>v1.32.0 — 13/07/2026</h3>
   <p><strong>Corrigido</strong></p>

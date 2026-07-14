@@ -5,6 +5,14 @@
 
 ---
 
+## [1.32.1] — 2026-07-13
+
+### Alterado
+- **Migração para o esqueleto compartilhado da família** (`_esqueleto/base.css`/`base.js`/`sgx_base.py`, vendorizados via `sync.py`) — remove duplicação de CSS/JS/backend entre SGCD/SGCA/SGDP/SGEA (tokens, tema de cor, modal, busca global, notificações, `get_db`, hashing, sessões, watchdog). Tela de login convertida de página cheia (`#tela-login`) pro padrão overlay (`#overlay-pin`/`.pin-*`) dos outros 3 sistemas, com a identidade visual do SGDP (cabeçalho e ícone/badge dourados) preservada. Os 10 modais mantiveram os mesmos nomes de função (`abrirModal`/`fecharModal`/`confirmar`) — só o mecanismo interno mudou.
+
+### Corrigido
+- **Senha incorreta na tela de login não mostrava mensagem de erro** — disparava o mesmo fluxo de "sessão expirada" (limpava o campo, sem avisar o motivo). Bug pré-existente, exposto ao comparar com o padrão dos outros sistemas durante a migração acima.
+
 ## [1.32.0] — 2026-07-13
 
 ### Corrigido — Padronização arquitetural no padrão SGCD (Fase 2)
