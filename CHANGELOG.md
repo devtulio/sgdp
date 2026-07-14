@@ -5,6 +5,11 @@
 
 ---
 
+## [1.32.5] — 2026-07-14
+
+### Removido
+- **6 das 8 funções do motor de partículas da tela de login (`_lcLoadConfig`/`_lcSaveConfig`/`_lcToggleConfig`/`_lcParam`/`_lcResetConfig`/`_lcSpeedVal`) reimplementadas localmente**, byte-idênticas às do esqueleto compartilhado (só a chave de `localStorage` estava hardcoded em vez de usar `_lcConfigKey()` — mesmo valor na prática). `_loginCanvasStart`/`_loginCanvasStop` continuam locais (reação a resize da janela durante o login, que o base.js não faz)
+
 ## [1.32.4] — 2026-07-14
 
 ### Removido
