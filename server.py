@@ -1,4 +1,4 @@
-# SGDP v1.32.2 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.32.3 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket

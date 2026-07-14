@@ -210,8 +210,7 @@ body.dark #overlay-pin input {
 #main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 24px 28px; }
 .view { display: none; }
 .view.active { display: block; }
-.dash-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-.dash-top h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
+/* .dash-top é o genérico do base.css. */
 
 /* ── Botões ──────────────────────────────────────────────────────────────── */
 .btn { display: inline-flex; align-items: center; gap: 6px; border: none;
@@ -1230,7 +1229,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.32.2';
+const SGDP_VERSION = '1.32.3';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
