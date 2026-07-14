@@ -60,6 +60,7 @@ FTS_AVAILABLE     = False   # True se o SQLite tem FTS5 compilado (setado em ini
 _watchdog_paused  = False   # pausa o watchdog durante diálogos bloqueantes (ex: FolderBrowser)
 
 TIPOS = ('lei', 'decreto', 'portaria', 'parecer', 'oficio')
+DEPARTAMENTOS = ('Procuradoria-Geral', 'Gabinete')
 TIPOS_LABELS_CSV = {'lei': 'Lei', 'decreto': 'Decreto', 'portaria': 'Portaria', 'parecer': 'Parecer', 'oficio': 'Ofício'}
 
 # tipo de vínculo -> (label no sentido origem->destino, label no sentido inverso)
@@ -249,12 +250,14 @@ def init_db():
         if 'assinado_por'   not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assinado_por   INTEGER REFERENCES usuarios(id)")
         if 'assinado_em'    not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assinado_em    TEXT DEFAULT NULL")
         if 'assinatura_cert' not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assinatura_cert TEXT DEFAULT ''")
+        if 'sigiloso'       not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN sigiloso       INTEGER NOT NULL DEFAULT 0")
         cols_usu = [r[1] for r in conn.execute('PRAGMA table_info(usuarios)').fetchall()]
         if 'email' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN email TEXT DEFAULT ''")
         if 'cpf'   not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN cpf   TEXT DEFAULT ''")
         if 'cargo' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN cargo TEXT DEFAULT ''")
         if 'matricula' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN matricula TEXT DEFAULT ''")
         if 'must_change_password' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN must_change_password INTEGER DEFAULT 0")
+        if 'departamento' not in cols_usu: conn.execute(f"ALTER TABLE usuarios ADD COLUMN departamento TEXT NOT NULL DEFAULT '{DEPARTAMENTOS[0]}'")
         cols_lem = [r[1] for r in conn.execute('PRAGMA table_info(lembretes)').fetchall()]
         if 'notificado_em' not in cols_lem: conn.execute("ALTER TABLE lembretes ADD COLUMN notificado_em TEXT DEFAULT NULL")
         # Migração: alinha as chaves de SMTP com o padrão do SGCD (smtp_from -> smtp_from_name,
@@ -364,7 +367,7 @@ def get_session(token):
     with get_db() as conn:
         row = conn.execute(
             '''SELECT s.token, s.user_id, s.expires,
-                      u.nome, u.username, u.cpf, u.email, u.cargo, u.matricula, u.admin, u.ativo
+                      u.nome, u.username, u.cpf, u.email, u.cargo, u.matricula, u.admin, u.ativo, u.departamento
                FROM sessions s JOIN usuarios u ON u.id=s.user_id
                WHERE s.token=? AND s.expires>? AND u.ativo=1''',
             (token, time.time())
@@ -417,6 +420,18 @@ def audit(conn, uid, nome, acao, doc_id=None, detalhes=None):
         'INSERT INTO auditoria (usuario_id,usuario_nome,acao,documento_id,detalhes) VALUES (?,?,?,?,?)',
         (uid, nome, acao, doc_id, detalhes)
     )
+
+def pode_ver_doc(doc, s):
+    """Documentos sigilosos só são visíveis para o criador ou admin."""
+    return not doc['sigiloso'] or s['admin'] or doc['criado_por'] == s['user_id']
+
+def pode_editar_doc(doc, s):
+    """Sigiloso: só criador ou admin. Não-sigiloso: mesmo departamento do criador ou admin."""
+    if s['admin']:
+        return True
+    if doc['sigiloso']:
+        return doc['criado_por'] == s['user_id']
+    return doc['criado_por_departamento'] == s['departamento']
 
 def _sync_tags(conn, did, tag_names):
     """Substitui as tags do documento pela lista informada (cria as que não existem)."""
@@ -597,12 +612,16 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif p == '/api/auth/me':
             self._json(200, {'id': s['user_id'], 'username': s['username'], 'nome': s['nome'],
                               'cpf': s.get('cpf'), 'email': s.get('email'),
-                              'cargo': s.get('cargo'), 'matricula': s.get('matricula'), 'admin': bool(s['admin'])})
+                              'cargo': s.get('cargo'), 'matricula': s.get('matricula'), 'admin': bool(s['admin']),
+                              'departamento': s.get('departamento')})
+
+        elif p == '/api/departamentos':
+            self._json(200, list(DEPARTAMENTOS))
 
         elif p == '/api/documentos':
             self._list_docs(qs, s)
         elif re.fullmatch(r'/api/documentos/\d+', p):
-            self._get_doc(int(p.split('/')[-1]))
+            self._get_doc(int(p.split('/')[-1]), s)
         elif re.fullmatch(r'/api/documentos/\d+/revisoes', p):
             self._list_revisoes(int(p.split('/')[3]))
         elif re.fullmatch(r'/api/documentos/\d+/vinculos', p):
@@ -624,7 +643,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                               'smtp_ignore_ssl','smtp_from_name','smtp_to')})
 
         elif re.fullmatch(r'/api/arquivos/\d+', p):
-            self._download_arquivo(int(p.split('/')[-1]), qs)
+            self._download_arquivo(int(p.split('/')[-1]), qs, s)
 
         elif p == '/api/contadores':
             self._get_contadores(qs)
@@ -633,12 +652,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._list_tags()
 
         elif p == '/api/dashboard':
-            self._dashboard()
+            self._dashboard(s)
 
         elif p == '/api/relatorio':
-            self._relatorio(qs)
+            self._relatorio(qs, s)
         elif p == '/api/relatorio/export.csv':
-            self._relatorio_export_csv(qs)
+            self._relatorio_export_csv(qs, s)
         elif p == '/api/relatorio/produtividade':
             self._relatorio_produtividade(qs)
         elif p == '/api/relatorio/integridade':
@@ -650,7 +669,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif p == '/api/usuarios':
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             with get_db() as conn:
-                rows = conn.execute('SELECT id,username,nome,cpf,email,cargo,matricula,admin,ativo,criado_em FROM usuarios ORDER BY nome').fetchall()
+                rows = conn.execute('SELECT id,username,nome,cpf,email,cargo,matricula,admin,ativo,departamento,criado_em FROM usuarios ORDER BY nome').fetchall()
             self._json(200, [dict(r) for r in rows])
 
         elif p == '/api/diagnostico':
@@ -923,6 +942,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             'user': {'id': row['id'], 'username': row['username'], 'nome': row['nome'],
                       'cpf': row['cpf'], 'email': row['email'],
                       'cargo': row['cargo'], 'matricula': row['matricula'], 'admin': bool(row['admin']),
+                      'departamento': row['departamento'],
                       'mustChangePassword': bool(row['must_change_password'])}
         })
 
@@ -953,12 +973,14 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if tag:
             where.append('d.id IN (SELECT dt.documento_id FROM documento_tags dt JOIN tags t ON dt.tag_id=t.id WHERE t.nome=? COLLATE NOCASE)')
             params.append(tag)
+        if not s['admin']:
+            where.append('(d.sigiloso=0 OR d.criado_por=?)'); params.append(s['user_id'])
         w = 'WHERE ' + ' AND '.join(where)
 
         with get_db() as conn:
             total = conn.execute(f'SELECT COUNT(*) FROM documentos d {w}', params).fetchone()[0]
             rows  = conn.execute(
-                f'''SELECT d.*, u1.nome criado_por_nome, u2.nome atualizado_por_nome,
+                f'''SELECT d.*, u1.nome criado_por_nome, u1.departamento criado_por_departamento, u2.nome atualizado_por_nome,
                            a.nome_original arquivo_nome, a.tamanho arquivo_tamanho
                     FROM documentos d
                     LEFT JOIN usuarios u1 ON d.criado_por=u1.id
@@ -978,10 +1000,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             items.append(item)
         self._json(200, {'total': total, 'page': page, 'per': per, 'items': items})
 
-    def _get_doc(self, did):
+    def _get_doc(self, did, s):
         with get_db() as conn:
             row = conn.execute(
-                '''SELECT d.*, u1.nome criado_por_nome, u2.nome atualizado_por_nome, u3.nome assinado_por_nome,
+                '''SELECT d.*, u1.nome criado_por_nome, u1.departamento criado_por_departamento, u2.nome atualizado_por_nome, u3.nome assinado_por_nome,
                           a.nome_original arquivo_nome, a.tamanho arquivo_tamanho
                    FROM documentos d
                    LEFT JOIN usuarios u1 ON d.criado_por=u1.id
@@ -991,6 +1013,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                    WHERE d.id=?''', (did,)
             ).fetchone()
             if not row: self._json(404, {'error': 'Não encontrado'}); return
+            if not pode_ver_doc(row, s): self._json(404, {'error': 'Não encontrado'}); return
             tags = _tags_map(conn, [did]).get(did, [])
             sig = conn.execute(
                 'SELECT cod FROM signatures WHERE documento_id=? ORDER BY id DESC LIMIT 1', (did,)
@@ -1017,13 +1040,14 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             numero = int(data['numero']) if data.get('numero') not in (None, '') else proximo_numero(conn, tipo, ano)
             try:
                 cur = conn.execute(
-                    'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,criado_por,atualizado_por)'
-                    ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,sigiloso,criado_por,atualizado_por)'
+                    ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     (tipo, numero, ano, data_d, ementa,
                      data.get('partes') or '', data.get('observacoes') or '',
                      data.get('assunto') or 'Outros',
                      data.get('processo_pa') or '', data.get('processo_tipo') or '', data.get('processo_ref') or '',
                      data.get('ato_tipo') or '', data.get('cargo') or '',
+                     int(bool(data.get('sigiloso'))),
                      s['user_id'], s['user_id'])
                 )
                 # captura o rowid ANTES de bump_contador — que pode fazer seu próprio
@@ -1044,17 +1068,28 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
     def _update_doc(self, did, body, s):
         data = json.loads(body) if body else {}
         with get_db() as conn:
-            row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+            row = conn.execute(
+                '''SELECT d.*, u.departamento criado_por_departamento
+                   FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
+                   WHERE d.id=?''', (did,)
+            ).fetchone()
             if not row: self._json(404, {'error': 'Não encontrado'}); return
+            if not pode_editar_doc(row, s): self._json(403, {'error': 'Sem permissão para editar este documento'}); return
             fields = {'atualizado_por': s['user_id'], 'atualizado_em': time.strftime('%Y-%m-%dT%H:%M:%S')}
             for f in ('ementa', 'partes', 'observacoes', 'data', 'assunto', 'processo_pa', 'processo_tipo', 'processo_ref', 'ato_tipo', 'cargo'):
                 if f in data: fields[f] = data[f]
+            # sigiloso é sensível: mesmo quem só tem permissão de edição por
+            # departamento não pode alterar a confidencialidade de um documento
+            # que não criou — só o criador ou admin.
+            if 'sigiloso' in data and (s['admin'] or row['criado_por'] == s['user_id']):
+                fields['sigiloso'] = int(bool(data['sigiloso']))
             if 'numero' in data: fields['numero'] = int(data['numero'])
             if 'ano'    in data: fields['ano']    = int(data['ano'])
             try:
+                snapshot = dict(row); snapshot.pop('criado_por_departamento', None)
                 conn.execute(
                     'INSERT INTO documento_revisoes (documento_id, dados_json, editado_por) VALUES (?,?,?)',
-                    (did, json.dumps(dict(row)), s['user_id'])
+                    (did, json.dumps(snapshot), s['user_id'])
                 )
                 conn.execute(f"UPDATE documentos SET {', '.join(f'{k}=?' for k in fields)} WHERE id=?",
                              list(fields.values()) + [did])
@@ -1175,8 +1210,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
     def _delete_doc(self, did, s):
         with get_db() as conn:
-            row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+            row = conn.execute(
+                '''SELECT d.*, u.departamento criado_por_departamento
+                   FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
+                   WHERE d.id=?''', (did,)
+            ).fetchone()
             if not row: self._json(404, {'error': 'Não encontrado'}); return
+            if not pode_editar_doc(row, s): self._json(403, {'error': 'Sem permissão para excluir este documento'}); return
             audit(conn, s['user_id'], s['nome'], 'excluir', did, f"{row['tipo']} nº {row['numero']}/{row['ano']} (enviado à lixeira)")
             conn.execute("UPDATE documentos SET excluido_em=? WHERE id=?",
                          (time.strftime('%Y-%m-%dT%H:%M:%S'), did))
@@ -1229,37 +1269,41 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
     # ── Relatório ─────────────────────────────────────────────────────────────
 
-    def _relatorio(self, qs):
+    def _relatorio(self, qs, s):
         def qp(k, d=None): v = qs.get(k); return v[0] if v else d
         de  = qp('de',  '1900-01-01')
         ate = qp('ate', '2999-12-31')
+        vis = '' if s['admin'] else 'AND (sigiloso=0 OR criado_por=?)'
+        vp  = [] if s['admin'] else [s['user_id']]
         with get_db() as conn:
             total = conn.execute(
-                'SELECT COUNT(*) FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL', (de, ate)).fetchone()[0]
+                f'SELECT COUNT(*) FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL {vis}', (de, ate, *vp)).fetchone()[0]
             por_tipo = [dict(r) for r in conn.execute(
-                'SELECT tipo, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL GROUP BY tipo ORDER BY n DESC',
-                (de, ate)).fetchall()]
+                f'SELECT tipo, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL {vis} GROUP BY tipo ORDER BY n DESC',
+                (de, ate, *vp)).fetchall()]
             por_assunto = [dict(r) for r in conn.execute(
-                'SELECT assunto, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL GROUP BY assunto ORDER BY n DESC',
-                (de, ate)).fetchall()]
+                f'SELECT assunto, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL {vis} GROUP BY assunto ORDER BY n DESC',
+                (de, ate, *vp)).fetchall()]
             por_mes = [dict(r) for r in conn.execute(
-                "SELECT strftime('%Y-%m', data) mes, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL GROUP BY mes ORDER BY mes",
-                (de, ate)).fetchall()]
+                f"SELECT strftime('%Y-%m', data) mes, COUNT(*) n FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL {vis} GROUP BY mes ORDER BY mes",
+                (de, ate, *vp)).fetchall()]
             docs = [dict(r) for r in conn.execute(
-                'SELECT id,tipo,numero,ano,data,ementa,assunto FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL ORDER BY data DESC, id DESC LIMIT 200',
-                (de, ate)).fetchall()]
+                f'SELECT id,tipo,numero,ano,data,ementa,assunto FROM documentos WHERE data BETWEEN ? AND ? AND excluido_em IS NULL {vis} ORDER BY data DESC, id DESC LIMIT 200',
+                (de, ate, *vp)).fetchall()]
         self._json(200, {'total': total, 'por_tipo': por_tipo, 'por_assunto': por_assunto, 'por_mes': por_mes, 'documentos': docs})
 
-    def _relatorio_export_csv(self, qs):
+    def _relatorio_export_csv(self, qs, s):
         import csv, io
         def qp(k, d=None): v = qs.get(k); return v[0] if v else d
         de  = qp('de',  '1900-01-01')
         ate = qp('ate', '2999-12-31')
+        vis = '' if s['admin'] else 'AND (sigiloso=0 OR criado_por=?)'
+        vp  = [] if s['admin'] else [s['user_id']]
         with get_db() as conn:
             docs = conn.execute(
-                '''SELECT tipo,numero,ano,data,ementa,partes,observacoes,assunto FROM documentos
-                   WHERE data BETWEEN ? AND ? AND excluido_em IS NULL ORDER BY data DESC, id DESC''',
-                (de, ate)).fetchall()
+                f'''SELECT tipo,numero,ano,data,ementa,partes,observacoes,assunto FROM documentos
+                   WHERE data BETWEEN ? AND ? AND excluido_em IS NULL {vis} ORDER BY data DESC, id DESC''',
+                (de, ate, *vp)).fetchall()
         buf = io.StringIO()
         w = csv.writer(buf)
         w.writerow(['Tipo', 'Número', 'Ano', 'Data', 'Ementa', 'Partes', 'Observações', 'Assunto'])
@@ -1536,8 +1580,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if not filename or filedata is None: self._json(400, {'error': 'Arquivo não encontrado'}); return
         if not filename.lower().endswith('.pdf'): self._json(400, {'error': 'Apenas PDFs aceitos'}); return
         with get_db() as conn:
-            doc = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+            doc = conn.execute(
+                '''SELECT d.*, u.departamento criado_por_departamento
+                   FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
+                   WHERE d.id=?''', (did,)
+            ).fetchone()
             if not doc: self._json(404, {'error': 'Documento não encontrado'}); return
+            if not pode_editar_doc(doc, s): self._json(403, {'error': 'Sem permissão para este documento'}); return
             if doc['arquivo_id']:
                 old = conn.execute('SELECT * FROM arquivos WHERE id=?', (doc['arquivo_id'],)).fetchone()
                 if old:
@@ -1577,8 +1626,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._json(400, {'error': 'Certificado (.pfx) e senha são obrigatórios'}); return
 
         with get_db() as conn:
-            doc = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+            doc = conn.execute(
+                '''SELECT d.*, u.departamento criado_por_departamento
+                   FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
+                   WHERE d.id=?''', (did,)
+            ).fetchone()
             if not doc: self._json(404, {'error': 'Documento não encontrado'}); return
+            if not pode_editar_doc(doc, s): self._json(403, {'error': 'Sem permissão para este documento'}); return
             nome_original = 'documento.pdf'
             if pdf_novo:
                 pdf_bytes = pdf_novo
@@ -1636,9 +1690,14 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
     def _remove_arquivo(self, did, s):
         with get_db() as conn:
-            doc = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+            doc = conn.execute(
+                '''SELECT d.*, u.departamento criado_por_departamento
+                   FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
+                   WHERE d.id=?''', (did,)
+            ).fetchone()
             if not doc or not doc['arquivo_id']:
                 self._json(404, {'error': 'Sem arquivo para remover'}); return
+            if not pode_editar_doc(doc, s): self._json(403, {'error': 'Sem permissão para este documento'}); return
             arq = conn.execute('SELECT * FROM arquivos WHERE id=?', (doc['arquivo_id'],)).fetchone()
             if arq:
                 p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
@@ -1708,10 +1767,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def _download_arquivo(self, aid, qs):
+    def _download_arquivo(self, aid, qs, s):
         with get_db() as conn:
             arq = conn.execute('SELECT * FROM arquivos WHERE id=?', (aid,)).fetchone()
+            doc = conn.execute('SELECT * FROM documentos WHERE arquivo_id=?', (aid,)).fetchone()
         if not arq: self._json(404, {'error': 'Não encontrado'}); return
+        if doc and not pode_ver_doc(doc, s): self._json(404, {'error': 'Não encontrado'}); return
         filepath = os.path.join(UPLOADS_DIR, arq['nome_disco'])
         if not os.path.isfile(filepath): self._json(404, {'error': 'Arquivo não encontrado no disco'}); return
         with open(filepath, 'rb') as f:
@@ -1750,23 +1811,25 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {'tipo': tipo, 'ano': ano, 'proximo': proximo_numero(conn, tipo, ano)}); return
             self._json(200, {t: proximo_numero(conn, t, ano) for t in TIPOS})
 
-    def _dashboard(self):
+    def _dashboard(self, s):
         ano = time.localtime().tm_year
+        vis = '' if s['admin'] else 'AND (sigiloso=0 OR criado_por=?)'
+        vp  = [] if s['admin'] else [s['user_id']]
         with get_db() as conn:
-            totais   = {t: conn.execute('SELECT COUNT(*) FROM documentos WHERE tipo=? AND excluido_em IS NULL', (t,)).fetchone()[0] for t in TIPOS}
-            ano_atual = {t: conn.execute('SELECT COUNT(*) FROM documentos WHERE tipo=? AND ano=? AND excluido_em IS NULL', (t, ano)).fetchone()[0] for t in TIPOS}
+            totais   = {t: conn.execute(f'SELECT COUNT(*) FROM documentos WHERE tipo=? AND excluido_em IS NULL {vis}', (t, *vp)).fetchone()[0] for t in TIPOS}
+            ano_atual = {t: conn.execute(f'SELECT COUNT(*) FROM documentos WHERE tipo=? AND ano=? AND excluido_em IS NULL {vis}', (t, ano, *vp)).fetchone()[0] for t in TIPOS}
             recentes = conn.execute(
-                '''SELECT d.id, d.tipo, d.numero, d.ano, d.data, d.ementa, d.arquivo_id, u.nome criado_por_nome
+                f'''SELECT d.id, d.tipo, d.numero, d.ano, d.data, d.ementa, d.arquivo_id, u.nome criado_por_nome
                    FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
-                   WHERE d.excluido_em IS NULL
-                   ORDER BY d.criado_em DESC LIMIT 10'''
+                   WHERE d.excluido_em IS NULL {vis}
+                   ORDER BY d.criado_em DESC LIMIT 10''', vp
             ).fetchall()
             ultimos = {}
             for t in TIPOS:
                 row = conn.execute(
-                    '''SELECT id, numero, ano FROM documentos
-                       WHERE tipo=? AND excluido_em IS NULL
-                       ORDER BY ano DESC, numero DESC LIMIT 1''', (t,)).fetchone()
+                    f'''SELECT id, numero, ano FROM documentos
+                       WHERE tipo=? AND excluido_em IS NULL {vis}
+                       ORDER BY ano DESC, numero DESC LIMIT 1''', (t, *vp)).fetchone()
                 ultimos[t] = dict(row) if row else None
         self._json(200, {'totais': totais, 'ano_atual': ano_atual, 'recentes': [dict(r) for r in recentes], 'ultimos': ultimos})
 
@@ -1781,16 +1844,20 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._json(400, {'error': 'username, nome e senha são obrigatórios'}); return
         if len(senha) < 6:
             self._json(400, {'error': 'Senha mínima: 6 caracteres'}); return
+        departamento = data.get('departamento') or DEPARTAMENTOS[0]
+        if departamento not in DEPARTAMENTOS:
+            self._json(400, {'error': 'Departamento inválido'}); return
         try:
             with get_db() as conn:
-                conn.execute('INSERT INTO usuarios (username,nome,senha_hash,admin,email,cpf,cargo,matricula) VALUES (?,?,?,?,?,?,?,?)',
+                conn.execute('INSERT INTO usuarios (username,nome,senha_hash,admin,email,cpf,cargo,matricula,departamento) VALUES (?,?,?,?,?,?,?,?,?)',
                              (username, nome, _hash_password(senha), int(bool(data.get('admin'))),
                               (data.get('email') or '').strip(), (data.get('cpf') or '').strip(),
-                              (data.get('cargo') or '').strip(), (data.get('matricula') or '').strip()))
+                              (data.get('cargo') or '').strip(), (data.get('matricula') or '').strip(),
+                              departamento))
                 uid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
                 audit(conn, s['user_id'], s['nome'], 'criar_usuario', detalhes=f"@{username} ({nome})")
                 conn.commit()
-            self._json(201, {'id': uid, 'username': username, 'nome': nome, 'admin': bool(data.get('admin'))})
+            self._json(201, {'id': uid, 'username': username, 'nome': nome, 'admin': bool(data.get('admin')), 'departamento': departamento})
         except sqlite3.IntegrityError:
             self._json(409, {'error': f'Usuário "{username}" já existe'})
 
@@ -1802,6 +1869,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if 'cpf'   in data: fields['cpf']   = data['cpf'].strip()
         if 'cargo' in data: fields['cargo'] = data['cargo'].strip()
         if 'matricula' in data: fields['matricula'] = data['matricula'].strip()
+        if 'departamento' in data:
+            if data['departamento'] not in DEPARTAMENTOS:
+                self._json(400, {'error': 'Departamento inválido'}); return
+            fields['departamento'] = data['departamento']
         if 'admin' in data: fields['admin'] = int(bool(data['admin']))
         if 'ativo' in data: fields['ativo'] = int(bool(data['ativo']))
         if data.get('senha'):
@@ -1914,7 +1985,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with get_db() as conn:
             docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
             users = [dict(r) for r in conn.execute(
-                'SELECT id,username,nome,senha_hash,admin,ativo,criado_em FROM usuarios').fetchall()]
+                'SELECT id,username,nome,senha_hash,admin,ativo,departamento,criado_em FROM usuarios').fetchall()]
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
             auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
             signatures = [dict(r) for r in conn.execute('SELECT * FROM signatures').fetchall()]
@@ -1959,16 +2030,17 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             for doc in backup.get('documentos', []):
                 conn.execute(
                     'INSERT OR REPLACE INTO documentos '
-                    '(id,tipo,numero,ano,data,ementa,partes,observacoes,arquivo_id,criado_por,atualizado_por,criado_em,atualizado_em)'
-                    ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    '(id,tipo,numero,ano,data,ementa,partes,observacoes,arquivo_id,sigiloso,criado_por,atualizado_por,criado_em,atualizado_em)'
+                    ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     (doc['id'],doc['tipo'],doc['numero'],doc['ano'],doc['data'],doc['ementa'],
-                     doc.get('partes'),doc.get('observacoes'),doc.get('arquivo_id'),
+                     doc.get('partes'),doc.get('observacoes'),doc.get('arquivo_id'),int(bool(doc.get('sigiloso'))),
                      doc.get('criado_por'),doc.get('atualizado_por'),doc.get('criado_em'),doc.get('atualizado_em')))
             for c in backup.get('contadores', []):
                 conn.execute('INSERT OR REPLACE INTO contadores VALUES (?,?,?)', (c['tipo'],c['ano'],c['ultimo']))
             for u in backup.get('usuarios', []):
-                conn.execute('INSERT OR REPLACE INTO usuarios (id,username,nome,senha_hash,admin,ativo,criado_em) VALUES (?,?,?,?,?,?,?)',
-                             (u['id'],u['username'],u['nome'],u['senha_hash'],u['admin'],u.get('ativo',1),u.get('criado_em')))
+                conn.execute('INSERT OR REPLACE INTO usuarios (id,username,nome,senha_hash,admin,ativo,departamento,criado_em) VALUES (?,?,?,?,?,?,?,?)',
+                             (u['id'],u['username'],u['nome'],u['senha_hash'],u['admin'],u.get('ativo',1),
+                              u.get('departamento') or DEPARTAMENTOS[0],u.get('criado_em')))
             for sig in backup.get('signatures', []):
                 conn.execute(
                     '''INSERT OR REPLACE INTO signatures
@@ -2065,12 +2137,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 try:
                     conn.execute(
                         'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,'
-                        'processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,criado_por,atualizado_por)'
-                        ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                        'processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,sigiloso,criado_por,atualizado_por)'
+                        ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                         (doc['tipo'], doc['numero'], doc['ano'], doc['data'], doc['ementa'],
                          doc.get('partes') or '', doc.get('observacoes') or '', doc.get('assunto') or 'Outros',
                          doc.get('processo_pa') or '', doc.get('processo_tipo') or '', doc.get('processo_ref') or '',
-                         doc.get('ato_tipo') or '', doc.get('cargo') or '', s['user_id'], s['user_id'])
+                         doc.get('ato_tipo') or '', doc.get('cargo') or '', int(bool(doc.get('sigiloso'))),
+                         s['user_id'], s['user_id'])
                     )
                     did = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
                     bump_contador(conn, doc['tipo'], doc['ano'], doc['numero'])
@@ -2168,7 +2241,7 @@ def _do_json_backup(cfg=None):
         with get_db() as conn:
             docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
             users = [dict(r) for r in conn.execute(
-                'SELECT id,username,nome,senha_hash,admin,ativo,criado_em FROM usuarios').fetchall()]
+                'SELECT id,username,nome,senha_hash,admin,ativo,departamento,criado_em FROM usuarios').fetchall()]
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
             settings = {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()}
             auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
