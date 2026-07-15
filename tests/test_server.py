@@ -2,6 +2,7 @@
 # banco/uploads/backups temporários e bate nos endpoints REST via http.client.
 # python -m unittest discover -s tests   (ou: python tests/test_server.py)
 import http.client
+import itertools
 import json
 import os
 import shutil
@@ -73,6 +74,32 @@ class SGDPTestCase(unittest.TestCase):
         status, data = self.request('POST', '/api/auth/login', {'username': username, 'password': password})
         self.assertEqual(status, 200, data)
         return data['token']
+
+    def criar_usuario(self, username, nome=None, senha='senha123', departamento=None, admin=False, admin_token=None):
+        token = admin_token or self.login()
+        body = {'username': username, 'nome': nome or username, 'senha': senha, 'admin': admin}
+        if departamento:
+            body['departamento'] = departamento
+        status, created = self.request('POST', '/api/usuarios', body, token=token)
+        self.assertEqual(status, 201, created)
+        return created
+
+    def upload_pdf(self, token, did, content=b'%PDF-1.4 conteudo de teste', filename='teste.pdf'):
+        boundary = 'sgdp-test-boundary'
+        body = (
+            f'--{boundary}\r\n'
+            f'Content-Disposition: form-data; name="pdf"; filename="{filename}"\r\n'
+            f'Content-Type: application/pdf\r\n\r\n'
+        ).encode('utf-8') + content + f'\r\n--{boundary}--\r\n'.encode('utf-8')
+        conn = http.client.HTTPConnection('127.0.0.1', PORT, timeout=5)
+        headers = {'Content-Type': f'multipart/form-data; boundary={boundary}', 'Content-Length': str(len(body))}
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
+        conn.request('POST', f'/api/documentos/{did}/arquivo', body=body, headers=headers)
+        resp = conn.getresponse()
+        data = resp.read()
+        conn.close()
+        return resp.status, (json.loads(data) if data else None)
 
 
 class TestAuth(SGDPTestCase):
@@ -229,6 +256,507 @@ class TestBackup(SGDPTestCase):
         self.assertEqual(preview['novos'], 1)
         self.assertEqual(len(preview['conflitos']), 1)
         self.assertEqual(preview['conflitos'][0]['local']['id'], created['id'])
+
+
+class TestUsuarios(SGDPTestCase):
+
+    def test_criar_usuario_sem_departamento_usa_padrao(self):
+        created = self.criar_usuario('u_dep_default')
+        self.assertEqual(created['departamento'], 'Procuradoria-Geral')
+
+    def test_criar_usuario_com_departamento_explicito(self):
+        created = self.criar_usuario('u_dep_gabinete', departamento='Gabinete')
+        self.assertEqual(created['departamento'], 'Gabinete')
+
+    def test_criar_usuario_com_departamento_invalido_retorna_400(self):
+        token = self.login()
+        status, data = self.request('POST', '/api/usuarios', {
+            'username': 'u_dep_invalido', 'nome': 'Invalido', 'senha': 'senha123', 'departamento': 'Financeiro'
+        }, token=token)
+        self.assertEqual(status, 400)
+
+    def test_endpoint_departamentos_lista_os_dois_fixos(self):
+        token = self.login()
+        status, data = self.request('GET', '/api/departamentos', token=token)
+        self.assertEqual(status, 200)
+        self.assertEqual(set(data), {'Procuradoria-Geral', 'Gabinete'})
+
+    def test_criar_usuario_requer_admin(self):
+        admin_token = self.login()
+        created = self.criar_usuario('u_comum_criar', admin_token=admin_token)
+        token_comum = self.login('u_comum_criar', 'senha123')
+        status, data = self.request('POST', '/api/usuarios', {
+            'username': 'u_nao_deveria_existir', 'nome': 'X', 'senha': 'senha123'
+        }, token=token_comum)
+        self.assertEqual(status, 403)
+
+    def test_atualizar_usuario_com_departamento_invalido_retorna_400(self):
+        admin_token = self.login()
+        created = self.criar_usuario('u_dep_update', admin_token=admin_token)
+        status, data = self.request('PUT', f"/api/usuarios/{created['id']}", {'departamento': 'Financeiro'}, token=admin_token)
+        self.assertEqual(status, 400)
+
+    def test_nao_pode_excluir_o_proprio_usuario(self):
+        token = self.login()
+        status, data = self.request('GET', '/api/auth/me', token=token)
+        status, data = self.request('DELETE', f"/api/usuarios/{data['id']}", token=token)
+        self.assertEqual(status, 400)
+
+    def test_excluir_usuario_sem_historico_funciona(self):
+        admin_token = self.login()
+        created = self.criar_usuario('u_sem_historico', admin_token=admin_token)
+        status, data = self.request('DELETE', f"/api/usuarios/{created['id']}", token=admin_token)
+        self.assertEqual(status, 200, data)
+
+    def test_excluir_usuario_com_documento_retorna_409_em_vez_de_500(self):
+        # Regressão: excluir um usuário que já criou um documento violava a
+        # FK de documentos.criado_por (PRAGMA foreign_keys=ON, ligado pelo
+        # esqueleto compartilhado) e derrubava um 500 genérico. Deve devolver
+        # um 409 explicando o motivo, e o usuário deve continuar existindo
+        # (nada de exclusão parcial).
+        admin_token = self.login()
+        created = self.criar_usuario('u_com_documento', admin_token=admin_token)
+        token_novo = self.login('u_com_documento', 'senha123')
+        status, doc = self.request('POST', '/api/documentos', {
+            'tipo': 'oficio', 'data': '2026-01-01', 'ementa': 'Documento que impede exclusão', 'assunto': 'Outros'
+        }, token=token_novo)
+        self.assertEqual(status, 201, doc)
+
+        status, data = self.request('DELETE', f"/api/usuarios/{created['id']}", token=admin_token)
+        self.assertEqual(status, 409, data)
+        self.assertIn('Desativar', data['error'])
+
+        # usuário não foi apagado pela metade — ainda aparece na listagem
+        status, listagem = self.request('GET', '/api/usuarios', token=admin_token)
+        self.assertTrue(any(u['id'] == created['id'] for u in listagem))
+
+        # a alternativa sugerida (desativar) funciona
+        status, data = self.request('PUT', f"/api/usuarios/{created['id']}", {'ativo': False}, token=admin_token)
+        self.assertEqual(status, 200, data)
+
+
+class TestDocumentosSigilosos(SGDPTestCase):
+    """Cobre pode_ver_doc()/pode_editar_doc() — a regra de departamento e sigilo."""
+
+    _contador = itertools.count()
+
+    def setUp(self):
+        # setUp roda uma vez por teste, mas todos os testes da classe dividem o
+        # mesmo servidor/banco (ver setUpModule) — nomes de usuário são únicos
+        # no banco, então cada teste precisa do seu próprio conjunto de usernames.
+        suf = next(self._contador)
+        self.admin_token = self.login()
+        self.user_pg1 = self.criar_usuario(f'pg1_{suf}', departamento='Procuradoria-Geral', admin_token=self.admin_token)
+        self.user_pg2 = self.criar_usuario(f'pg2_{suf}', departamento='Procuradoria-Geral', admin_token=self.admin_token)
+        self.user_gab = self.criar_usuario(f'gab_{suf}', departamento='Gabinete', admin_token=self.admin_token)
+        self.token_pg1 = self.login(f'pg1_{suf}', 'senha123')
+        self.token_pg2 = self.login(f'pg2_{suf}', 'senha123')
+        self.token_gab = self.login(f'gab_{suf}', 'senha123')
+
+    def _criar_doc(self, token, ementa, sigiloso=False, tipo='oficio'):
+        status, doc = self.request('POST', '/api/documentos', {
+            'tipo': tipo, 'data': '2026-01-01', 'ementa': ementa, 'assunto': 'Outros', 'sigiloso': sigiloso
+        }, token=token)
+        self.assertEqual(status, 201, doc)
+        return doc
+
+    def test_documento_traz_departamento_de_quem_criou(self):
+        doc = self._criar_doc(self.token_gab, 'Doc do Gabinete')
+        status, single = self.request('GET', f"/api/documentos/{doc['id']}", token=self.admin_token)
+        self.assertEqual(status, 200)
+        self.assertEqual(single['criado_por_departamento'], 'Gabinete')
+
+    def test_documento_sigiloso_invisivel_na_listagem_para_outro_usuario(self):
+        self._criar_doc(self.token_pg1, 'Sigiloso do PG1', sigiloso=True)
+        status, listado = self.request('GET', '/api/documentos?tipo=oficio', token=self.token_pg2)
+        self.assertEqual(status, 200)
+        self.assertFalse(any(d['ementa'] == 'Sigiloso do PG1' for d in listado['items']))
+
+    def test_documento_sigiloso_visivel_na_listagem_para_quem_criou(self):
+        self._criar_doc(self.token_pg1, 'Sigiloso visivel pro criador', sigiloso=True)
+        status, listado = self.request('GET', '/api/documentos?tipo=oficio', token=self.token_pg1)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(d['ementa'] == 'Sigiloso visivel pro criador' for d in listado['items']))
+
+    def test_documento_sigiloso_visivel_para_admin(self):
+        doc = self._criar_doc(self.token_pg1, 'Sigiloso visivel pro admin', sigiloso=True)
+        status, single = self.request('GET', f"/api/documentos/{doc['id']}", token=self.admin_token)
+        self.assertEqual(status, 200)
+        self.assertEqual(single['ementa'], 'Sigiloso visivel pro admin')
+
+    def test_documento_sigiloso_retorna_404_para_quem_nao_pode_ver(self):
+        # 404, não 403 — de propósito, pra não revelar nem que o documento existe.
+        doc = self._criar_doc(self.token_pg1, 'Sigiloso 404', sigiloso=True)
+        status, data = self.request('GET', f"/api/documentos/{doc['id']}", token=self.token_pg2)
+        self.assertEqual(status, 404)
+
+    def test_documento_nao_sigiloso_editavel_por_mesmo_departamento(self):
+        doc = self._criar_doc(self.token_pg1, 'Nao sigiloso mesmo depto')
+        status, data = self.request('PUT', f"/api/documentos/{doc['id']}", {'ementa': 'Editado pelo PG2'}, token=self.token_pg2)
+        self.assertEqual(status, 200, data)
+
+    def test_documento_nao_sigiloso_nao_editavel_por_outro_departamento(self):
+        doc = self._criar_doc(self.token_pg1, 'Nao sigiloso outro depto')
+        status, data = self.request('PUT', f"/api/documentos/{doc['id']}", {'ementa': 'Editado pelo Gabinete'}, token=self.token_gab)
+        self.assertEqual(status, 403, data)
+
+    def test_documento_sigiloso_nao_editavel_nem_por_mesmo_departamento(self):
+        doc = self._criar_doc(self.token_pg1, 'Sigiloso mesmo depto', sigiloso=True)
+        status, data = self.request('PUT', f"/api/documentos/{doc['id']}", {'ementa': 'Tentativa PG2'}, token=self.token_pg2)
+        self.assertEqual(status, 403, data)
+
+    def test_documento_sigiloso_editavel_por_admin(self):
+        doc = self._criar_doc(self.token_pg1, 'Sigiloso editado por admin', sigiloso=True)
+        status, data = self.request('PUT', f"/api/documentos/{doc['id']}", {'ementa': 'Editado por admin'}, token=self.admin_token)
+        self.assertEqual(status, 200, data)
+
+    def test_colega_de_departamento_nao_pode_marcar_documento_como_sigiloso(self):
+        doc = self._criar_doc(self.token_pg1, 'Tentativa de marcar sigilo')
+        status, data = self.request('PUT', f"/api/documentos/{doc['id']}",
+                                     {'ementa': 'Editado', 'sigiloso': True}, token=self.token_pg2)
+        self.assertEqual(status, 200, data)  # edição normal passa...
+        status, single = self.request('GET', f"/api/documentos/{doc['id']}", token=self.token_pg1)
+        self.assertEqual(single['sigiloso'], 0)  # ...mas sigiloso é ignorado, não vira 1
+
+    def test_criador_pode_marcar_seu_proprio_documento_como_sigiloso(self):
+        doc = self._criar_doc(self.token_pg1, 'Marcado como sigiloso pelo criador')
+        status, data = self.request('PUT', f"/api/documentos/{doc['id']}", {'sigiloso': True}, token=self.token_pg1)
+        self.assertEqual(status, 200, data)
+        status, single = self.request('GET', f"/api/documentos/{doc['id']}", token=self.token_pg1)
+        self.assertEqual(single['sigiloso'], 1)
+
+    def test_dashboard_exclui_sigiloso_de_outro_usuario(self):
+        self._criar_doc(self.token_pg1, 'Sigiloso fora do dashboard alheio', sigiloso=True)
+        status, dash = self.request('GET', '/api/dashboard', token=self.token_pg2)
+        self.assertEqual(status, 200)
+        self.assertFalse(any(d['ementa'] == 'Sigiloso fora do dashboard alheio' for d in dash['recentes']))
+
+    def test_dashboard_inclui_sigiloso_para_quem_criou(self):
+        self._criar_doc(self.token_pg1, 'Sigiloso dentro do dashboard do criador', sigiloso=True)
+        status, dash = self.request('GET', '/api/dashboard', token=self.token_pg1)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(d['ementa'] == 'Sigiloso dentro do dashboard do criador' for d in dash['recentes']))
+
+
+class TestVinculos(SGDPTestCase):
+
+    def test_criar_listar_e_excluir_vinculo(self):
+        token = self.login()
+        status, origem = self.request('POST', '/api/documentos',
+                                       {'tipo': 'lei', 'data': '2026-01-01', 'ementa': 'Lei original', 'assunto': 'Outros'}, token=token)
+        status, destino = self.request('POST', '/api/documentos',
+                                        {'tipo': 'lei', 'data': '2026-06-01', 'ementa': 'Lei que revoga', 'assunto': 'Outros'}, token=token)
+
+        status, listado = self.request('POST', f"/api/documentos/{origem['id']}/vinculos",
+                                        {'tipo': 'revoga', 'destino_id': destino['id']}, token=token)
+        self.assertEqual(status, 200, listado)
+        self.assertEqual(len(listado['items']), 1)
+        vid = listado['items'][0]['id']
+        self.assertEqual(listado['items'][0]['direcao'], 'direto')
+        self.assertEqual(listado['items'][0]['label'], 'Revoga')
+
+        # visto do lado do destino, o vínculo aparece invertido
+        status, inverso = self.request('GET', f"/api/documentos/{destino['id']}/vinculos", token=token)
+        self.assertEqual(status, 200)
+        self.assertEqual(inverso['items'][0]['direcao'], 'inverso')
+        self.assertEqual(inverso['items'][0]['label'], 'Revogado por')
+
+        status, _ = self.request('DELETE', f'/api/vinculos/{vid}', token=token)
+        self.assertEqual(status, 200)
+        status, vazio = self.request('GET', f"/api/documentos/{origem['id']}/vinculos", token=token)
+        self.assertEqual(len(vazio['items']), 0)
+
+    def test_vinculo_com_tipo_invalido_retorna_400(self):
+        token = self.login()
+        status, doc = self.request('POST', '/api/documentos',
+                                    {'tipo': 'lei', 'data': '2026-01-01', 'ementa': 'Lei X', 'assunto': 'Outros'}, token=token)
+        status, data = self.request('POST', f"/api/documentos/{doc['id']}/vinculos",
+                                     {'tipo': 'inexistente', 'destino_id': doc['id']}, token=token)
+        self.assertEqual(status, 400)
+
+    def test_vinculo_com_destino_inexistente_retorna_404(self):
+        token = self.login()
+        status, doc = self.request('POST', '/api/documentos',
+                                    {'tipo': 'lei', 'data': '2026-01-01', 'ementa': 'Lei Y', 'assunto': 'Outros'}, token=token)
+        status, data = self.request('POST', f"/api/documentos/{doc['id']}/vinculos",
+                                     {'tipo': 'revoga', 'destino_id': 999999}, token=token)
+        self.assertEqual(status, 404)
+
+    def test_cadeia_normativa_percorre_vinculos_em_cadeia(self):
+        token = self.login()
+        status, a = self.request('POST', '/api/documentos', {'tipo': 'lei', 'data': '2026-01-01', 'ementa': 'A', 'assunto': 'Outros'}, token=token)
+        status, b = self.request('POST', '/api/documentos', {'tipo': 'lei', 'data': '2026-02-01', 'ementa': 'B', 'assunto': 'Outros'}, token=token)
+        status, c = self.request('POST', '/api/documentos', {'tipo': 'lei', 'data': '2026-03-01', 'ementa': 'C', 'assunto': 'Outros'}, token=token)
+        self.request('POST', f"/api/documentos/{a['id']}/vinculos", {'tipo': 'altera', 'destino_id': b['id']}, token=token)
+        self.request('POST', f"/api/documentos/{b['id']}/vinculos", {'tipo': 'altera', 'destino_id': c['id']}, token=token)
+
+        status, cadeia = self.request('GET', f"/api/documentos/{a['id']}/cadeia", token=token)
+        self.assertEqual(status, 200, cadeia)
+        ids_na_cadeia = {d['id'] for d in cadeia['docs']}
+        self.assertEqual(ids_na_cadeia, {a['id'], b['id'], c['id']})
+        self.assertEqual(len(cadeia['arestas']), 2)  # sem duplicar arestas
+
+
+class TestTagsERevisoes(SGDPTestCase):
+
+    def test_tags_do_documento_aparecem_no_endpoint_global(self):
+        token = self.login()
+        status, doc = self.request('POST', '/api/documentos', {
+            'tipo': 'oficio', 'data': '2026-01-01', 'ementa': 'Doc com tags', 'assunto': 'Outros',
+            'tags': ['urgente-teste', 'financeiro-teste'],
+        }, token=token)
+        self.assertEqual(status, 201, doc)
+        self.assertEqual(set(doc['tags']), {'urgente-teste', 'financeiro-teste'})
+
+        status, tags = self.request('GET', '/api/tags', token=token)
+        self.assertEqual(status, 200)
+        self.assertIn('urgente-teste', tags['items'])
+
+    def test_editar_documento_gera_entrada_no_historico_de_revisoes(self):
+        token = self.login()
+        status, doc = self.request('POST', '/api/documentos',
+                                    {'tipo': 'oficio', 'data': '2026-01-01', 'ementa': 'Ementa original', 'assunto': 'Outros'}, token=token)
+        self.request('PUT', f"/api/documentos/{doc['id']}", {'ementa': 'Ementa editada'}, token=token)
+
+        status, revisoes = self.request('GET', f"/api/documentos/{doc['id']}/revisoes", token=token)
+        self.assertEqual(status, 200)
+        self.assertEqual(len(revisoes['items']), 1)
+        self.assertEqual(revisoes['items'][0]['dados']['ementa'], 'Ementa original')
+
+
+class TestImportacaoCsv(SGDPTestCase):
+
+    def test_importa_linhas_validas(self):
+        token = self.login()
+        status, data = self.request('POST', '/api/import/csv', {'rows': [
+            {'tipo': 'oficio', 'data': '2026-01-01', 'ementa': 'CSV linha 1', 'assunto': 'Outros'},
+            {'tipo': 'oficio', 'data': '2026-01-02', 'ementa': 'CSV linha 2', 'assunto': 'Outros'},
+        ]}, token=token)
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data['importados'], 2)
+        self.assertEqual(data['erros'], [])
+
+    def test_linha_com_tipo_invalido_vira_erro_sem_derrubar_as_outras(self):
+        token = self.login()
+        status, data = self.request('POST', '/api/import/csv', {'rows': [
+            {'tipo': 'invalido', 'data': '2026-01-01', 'ementa': 'Linha ruim', 'assunto': 'Outros'},
+            {'tipo': 'oficio', 'data': '2026-01-03', 'ementa': 'CSV linha boa', 'assunto': 'Outros'},
+        ]}, token=token)
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data['importados'], 1)
+        self.assertEqual(len(data['erros']), 1)
+
+    def test_sem_linhas_retorna_400(self):
+        token = self.login()
+        status, data = self.request('POST', '/api/import/csv', {'rows': []}, token=token)
+        self.assertEqual(status, 400)
+
+
+class TestArquivos(SGDPTestCase):
+
+    def test_upload_e_download_de_pdf(self):
+        token = self.login()
+        status, doc = self.request('POST', '/api/documentos',
+                                    {'tipo': 'oficio', 'data': '2026-01-01', 'ementa': 'Doc com PDF', 'assunto': 'Outros'}, token=token)
+        status, up = self.upload_pdf(token, doc['id'], content=b'%PDF-1.4 conteudo unico de teste')
+        self.assertEqual(status, 200, up)
+        aid = up['arquivo_id']
+
+        status, single = self.request('GET', f"/api/documentos/{doc['id']}", token=token)
+        self.assertEqual(single['arquivo_id'], aid)
+
+        status, baixado = self.request('GET', f'/api/arquivos/{aid}', token=token)
+        self.assertEqual(status, 200)
+        self.assertIn(b'conteudo unico de teste', baixado)
+
+    def test_download_de_pdf_de_documento_sigiloso_bloqueado_para_outro_usuario(self):
+        admin_token = self.login()
+        suf = 'arqsig1'
+        self.criar_usuario(f'a_{suf}', departamento='Procuradoria-Geral', admin_token=admin_token)
+        self.criar_usuario(f'b_{suf}', departamento='Gabinete', admin_token=admin_token)
+        token_a = self.login(f'a_{suf}', 'senha123')
+        token_b = self.login(f'b_{suf}', 'senha123')
+
+        status, doc = self.request('POST', '/api/documentos', {
+            'tipo': 'oficio', 'data': '2026-01-01', 'ementa': 'Doc sigiloso com PDF', 'assunto': 'Outros', 'sigiloso': True,
+        }, token=token_a)
+        status, up = self.upload_pdf(token_a, doc['id'])
+        aid = up['arquivo_id']
+
+        status, _ = self.request('GET', f'/api/arquivos/{aid}', token=token_b)
+        self.assertEqual(status, 404)  # mesma regra de pode_ver_doc: não revela nem que existe
+
+        status, data = self.request('GET', f'/api/arquivos/{aid}', token=token_a)
+        self.assertEqual(status, 200)
+
+    def test_upload_requer_permissao_de_edicao_do_documento(self):
+        admin_token = self.login()
+        suf = 'arqperm1'
+        self.criar_usuario(f'a_{suf}', departamento='Procuradoria-Geral', admin_token=admin_token)
+        self.criar_usuario(f'b_{suf}', departamento='Gabinete', admin_token=admin_token)
+        token_a = self.login(f'a_{suf}', 'senha123')
+        token_b = self.login(f'b_{suf}', 'senha123')
+
+        status, doc = self.request('POST', '/api/documentos',
+                                    {'tipo': 'oficio', 'data': '2026-01-01', 'ementa': 'Doc de A', 'assunto': 'Outros'}, token=token_a)
+        status, up = self.upload_pdf(token_b, doc['id'])
+        self.assertEqual(status, 403, up)
+
+
+class TestRelatorios(SGDPTestCase):
+
+    def test_relatorio_geral_soma_documentos_do_periodo(self):
+        token = self.login()
+        self.request('POST', '/api/documentos',
+                      {'tipo': 'lei', 'data': '2026-05-15', 'ementa': 'Para relatorio', 'assunto': 'Outros'}, token=token)
+        status, data = self.request('GET', '/api/relatorio?de=2026-05-01&ate=2026-05-31', token=token)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(d['ementa'] == 'Para relatorio' for d in data['documentos']))
+
+    def test_relatorio_exclui_sigiloso_de_outro_usuario(self):
+        admin_token = self.login()
+        suf = 'relsig1'
+        self.criar_usuario(f'a_{suf}', admin_token=admin_token)
+        self.criar_usuario(f'b_{suf}', admin_token=admin_token)
+        token_a = self.login(f'a_{suf}', 'senha123')
+        token_b = self.login(f'b_{suf}', 'senha123')
+        self.request('POST', '/api/documentos', {
+            'tipo': 'lei', 'data': '2026-05-20', 'ementa': 'Sigiloso fora do relatorio', 'assunto': 'Outros', 'sigiloso': True,
+        }, token=token_a)
+        status, data = self.request('GET', '/api/relatorio?de=2026-05-01&ate=2026-05-31', token=token_b)
+        self.assertFalse(any(d['ementa'] == 'Sigiloso fora do relatorio' for d in data['documentos']))
+
+    def test_relatorio_export_csv_retorna_content_type_csv(self):
+        token = self.login()
+        status, data = self.request('GET', '/api/relatorio/export.csv?de=2026-01-01&ate=2026-12-31', token=token)
+        self.assertEqual(status, 200)
+        self.assertIn(b'Tipo,N', data if isinstance(data, bytes) else data.encode())
+
+    def test_relatorio_etiquetas_agrupa_por_tag(self):
+        token = self.login()
+        self.request('POST', '/api/documentos', {
+            'tipo': 'oficio', 'data': '2026-01-01', 'ementa': 'Doc etiquetado', 'assunto': 'Outros', 'tags': ['relatorio-teste'],
+        }, token=token)
+        status, data = self.request('GET', '/api/relatorio/etiquetas', token=token)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(item['nome'] == 'relatorio-teste' and item['total'] >= 1 for item in data['items']))
+
+    def test_relatorio_integridade_e_admin_only(self):
+        admin_token = self.login()
+        comum = self.criar_usuario('u_rel_integridade', admin_token=admin_token)
+        token_comum = self.login('u_rel_integridade', 'senha123')
+
+        status, data = self.request('GET', '/api/relatorio/integridade', token=token_comum)
+        self.assertEqual(status, 403)
+
+        status, data = self.request('GET', '/api/relatorio/integridade', token=admin_token)
+        self.assertEqual(status, 200)
+        self.assertIn('contagens', data)
+        self.assertIn('documentos', data['contagens'])
+
+    def test_contadores_reflete_proximo_numero_disponivel(self):
+        token = self.login()
+        status, d1 = self.request('POST', '/api/documentos',
+                                   {'tipo': 'decreto', 'data': '2026-01-01', 'ementa': 'X', 'ano': 2077}, token=token)
+        status, contadores = self.request('GET', '/api/contadores?tipo=decreto&ano=2077', token=token)
+        self.assertEqual(status, 200)
+        self.assertEqual(contadores['proximo'], d1['numero'] + 1)
+
+
+class TestConfig(SGDPTestCase):
+
+    def test_atualizar_e_ler_config(self):
+        admin_token = self.login()
+        status, _ = self.request('PUT', '/api/config', {'orgao_nome': 'Procuradoria de Teste'}, token=admin_token)
+        self.assertEqual(status, 200)
+        status, data = self.request('GET', '/api/config', token=admin_token)
+        self.assertEqual(status, 200)
+        self.assertEqual(data['orgao_nome'], 'Procuradoria de Teste')
+
+    def test_atualizar_config_requer_admin(self):
+        admin_token = self.login()
+        self.criar_usuario('u_cfg_comum', admin_token=admin_token)
+        token_comum = self.login('u_cfg_comum', 'senha123')
+        status, _ = self.request('PUT', '/api/config', {'orgao_nome': 'Nao deveria'}, token=token_comum)
+        self.assertEqual(status, 403)
+
+
+class TestBackupsDb(SGDPTestCase):
+
+    def test_backup_db_manual_aparece_na_listagem(self):
+        admin_token = self.login()
+        status, criado = self.request('POST', '/api/backups/db/now', token=admin_token)
+        self.assertEqual(status, 200, criado)
+        self.assertTrue(criado['ok'])
+
+        status, listagem = self.request('GET', '/api/backups/db', token=admin_token)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(item['name'] == criado['name'] for item in listagem['items']))
+
+
+class TestRestoreESincronizacao(SGDPTestCase):
+    """Endpoints destrutivos (substituem documentos/arquivos/contadores/signatures
+    ou zeram tudo) — cada teste monta seu próprio payload e confere só o que
+    escreveu, sem depender de estado deixado por outras classes."""
+
+    def _backup_minimo(self, documentos):
+        return {
+            'sgdp_version': '1.0.0-teste', 'exported_at': '2026-07-15T00:00:00',
+            'documentos': documentos, 'usuarios': [], 'contadores': [], 'arquivos': [], 'signatures': [],
+        }
+
+    def test_restore_substitui_completamente_os_documentos(self):
+        admin_token = self.login()
+        backup = self._backup_minimo([
+            {'id': 555001, 'tipo': 'lei', 'numero': 1, 'ano': 2088, 'data': '2088-01-01',
+             'ementa': 'Restaurado do backup', 'assunto': 'Outros', 'sigiloso': 0,
+             'criado_por': None, 'atualizado_por': None, 'criado_em': '2088-01-01T00:00:00', 'atualizado_em': '2088-01-01T00:00:00'},
+        ])
+        status, resultado = self.request('POST', '/api/backup/restore', backup, token=admin_token)
+        self.assertEqual(status, 200, resultado)
+        self.assertEqual(resultado['documentos'], 1)
+
+        status, listado = self.request('GET', '/api/documentos?tipo=lei&ano=2088', token=admin_token)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(d['ementa'] == 'Restaurado do backup' for d in listado['items']))
+
+        # o que não estava no backup não existe mais
+        status, outro_tipo = self.request('GET', '/api/documentos?tipo=oficio', token=admin_token)
+        self.assertEqual(outro_tipo['total'], 0)
+
+    def test_restore_requer_admin(self):
+        admin_token = self.login()
+        self.criar_usuario('u_restore_comum', admin_token=admin_token)
+        token_comum = self.login('u_restore_comum', 'senha123')
+        status, _ = self.request('POST', '/api/backup/restore', self._backup_minimo([]), token=token_comum)
+        self.assertEqual(status, 403)
+
+    def test_sync_apply_insere_documentos_novos_do_backup(self):
+        admin_token = self.login()
+        backup = self._backup_minimo([
+            {'id': 555002, 'tipo': 'decreto', 'numero': 42, 'ano': 2089, 'data': '2089-02-01',
+             'ementa': 'Novo via sync-apply', 'assunto': 'Outros', 'atualizado_em': '2089-02-01T00:00:00'},
+        ])
+        status, resultado = self.request('POST', '/api/backup/sync-apply', {'backup': backup, 'aceitar': []}, token=admin_token)
+        self.assertEqual(status, 200, resultado)
+
+        status, listado = self.request('GET', '/api/documentos?tipo=decreto&ano=2089', token=admin_token)
+        self.assertTrue(any(d['ementa'] == 'Novo via sync-apply' for d in listado['items']))
+
+    def test_factory_reset_zera_documentos_mas_preserva_usuarios(self):
+        admin_token = self.login()
+        self.request('POST', '/api/documentos',
+                      {'tipo': 'oficio', 'data': '2026-01-01', 'ementa': 'Sera apagado pelo reset', 'assunto': 'Outros'}, token=admin_token)
+
+        status, resultado = self.request('POST', '/api/factory-reset', token=admin_token)
+        self.assertEqual(status, 200, resultado)
+
+        status, listado = self.request('GET', '/api/documentos', token=admin_token)
+        self.assertEqual(listado['total'], 0)
+
+        # admin sobrevive ao reset — login continua funcionando
+        status, data = self.request('POST', '/api/auth/login', {'username': 'admin', 'password': 'admin123'})
+        self.assertEqual(status, 200, data)
 
 
 class TestHealth(SGDPTestCase):

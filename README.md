@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.33.1-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/versão-v1.33.2-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
 
 ## Descrição
 
@@ -175,7 +175,7 @@ npm install   # uma vez, instala apenas o ESLint (ferramenta de dev, não é usa
 npm run lint
 ```
 
-Há também uma suíte de testes automatizados do backend (`server.py`), usando só `unittest` da stdlib — sobe o servidor real contra um banco e uploads temporários e testa os endpoints REST (login, documentos, lembretes, auditoria, backup e sincronização):
+Há também uma suíte de testes automatizados do backend (`server.py`), usando só `unittest` da stdlib — sobe o servidor real contra um banco e uploads temporários e testa os endpoints REST (login, documentos, departamento/sigiloso, usuários, vínculos, tags, revisões, importação CSV, arquivos, relatórios, lembretes, auditoria, config, backup/restore e sincronização):
 
 ```bash
 python -m unittest discover -s tests -v

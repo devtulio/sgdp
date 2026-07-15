@@ -5,6 +5,16 @@
 
 ---
 
+## [1.33.2] — 2026-07-15
+
+### Adicionado
+- **Cobertura de testes de departamento/sigiloso e áreas sem nenhum teste automatizado** — suíte foi de 15 para 62 testes (`tests/test_server.py`), sem mudança de comportamento do sistema:
+  - `pode_ver_doc()`/`pode_editar_doc()`: sigiloso invisível/bloqueado pra quem não pode ver (inclusive download de PDF, que usa a mesma regra), editável por colega de departamento só quando não-sigiloso, e a regra mais fina de que só o criador ou admin pode alterar a própria marcação de sigilo
+  - CRUD de usuário/departamento, incluindo o teste de regressão do bug corrigido na v1.33.1 (excluir usuário com histórico → 409, não 500)
+  - Vínculos entre documentos e cadeia normativa (sem duplicar aresta), histórico de revisões, tags, importação CSV, upload/download de PDF, relatórios (incl. filtro de sigiloso), config, backup manual do banco
+  - Restore de backup JSON, sync-apply e factory-reset — cada teste monta e confere só o próprio payload, sem depender de estado de outra classe, já que esses endpoints substituem/zeram tabelas inteiras
+  - Deliberadamente fora da suíte automatizada: assinatura ICP-Brasil (precisa de certificado real), envio de e-mail (precisa de SMTP real) e restore de `.db` bruto (troca o arquivo físico do banco inteiro — risco alto demais pra rodar dentro do banco compartilhado da suíte). Essas três, mais o restante, foram validadas manualmente contra o servidor e banco reais nesta mesma sessão (incluindo um certificado autoassinado de verdade pro fluxo de assinatura, e um ciclo completo de backup→restore de `.db` bruto)
+
 ## [1.33.1] — 2026-07-15
 
 ### Corrigido

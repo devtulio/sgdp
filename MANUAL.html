@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.33.1</title>
+<title>Manual Operacional — SGDP v1.33.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.33.1 — Manual Operacional";
+        content: "SGDP v1.33.2 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -676,6 +676,12 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.33.2 — 15/07/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Cobertura de testes automatizados</strong> — suíte foi de 15 para 62 testes, sem mudança de comportamento do sistema. Cobre agora a regra de departamento/sigiloso (incluindo download de PDF e a exclusividade do criador/admin pra marcar sigilo), o fix de exclusão de usuário da versão anterior, vínculos, cadeia normativa, tags, revisões, importação CSV, relatórios, config e restore de backup. Assinatura digital, envio de e-mail e restore de banco `.db` bruto foram validados manualmente contra o sistema real nesta mesma sessão, em vez de entrarem na suíte automatizada</li>
+  </ul>
 
   <h3>v1.33.1 — 15/07/2026</h3>
   <p><strong>Corrigido</strong></p>
