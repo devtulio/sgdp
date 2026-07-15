@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.33.0</title>
+<title>Manual Operacional — SGDP v1.33.1</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.33.0 — Manual Operacional";
+        content: "SGDP v1.33.1 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -436,7 +436,7 @@
     <li><strong>Criar usuário:</strong> clique em <em>+ Novo Usuário</em>; informe nome completo, nome de login (sem espaços), senha (mínimo 6 caracteres) e se é administrador.</li>
     <li><strong>Editar:</strong> altere nome, senha ou perfil. O nome de login não pode ser alterado após a criação.</li>
     <li><strong>Desativar:</strong> desmarque "Conta ativa" para bloquear o acesso sem excluir o histórico do usuário.</li>
-    <li><strong>Excluir:</strong> remove o cadastro permanentemente. Não é possível excluir seu próprio usuário.</li>
+    <li><strong>Excluir:</strong> remove o cadastro permanentemente. Não é possível excluir seu próprio usuário, nem um usuário que já criou, editou ou assinou algum documento (ou tem qualquer outra ação registrada na auditoria) — nesses casos, use <strong>Desativar</strong> para preservar o histórico.</li>
   </ul>
 
   <div class="aviso">
@@ -676,6 +676,12 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.33.1 — 15/07/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Excluir usuário com histórico causava erro no servidor</strong> — usuários que já criaram, editaram ou assinaram algum documento (ou têm qualquer ação registrada na auditoria) não podem mais ser excluídos por engano com um erro genérico; o sistema agora explica o motivo e sugere Desativar em vez de Excluir</li>
+  </ul>
 
   <h3>v1.33.0 — 14/07/2026</h3>
   <p><strong>Adicionado</strong></p>

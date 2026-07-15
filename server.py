@@ -1,4 +1,4 @@
-# SGDP v1.33.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.33.1 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -1896,7 +1896,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._json(400, {'error': 'Não pode excluir seu próprio usuário'}); return
         with get_db() as conn:
             row = conn.execute('SELECT nome, username FROM usuarios WHERE id=?', (uid,)).fetchone()
-            conn.execute('DELETE FROM usuarios WHERE id=?', (uid,))
+            try:
+                conn.execute('DELETE FROM usuarios WHERE id=?', (uid,))
+            except sqlite3.IntegrityError:
+                self._json(409, {'error': 'Não é possível excluir: este usuário já criou, editou, assinou ou tem alguma outra ação registrada no sistema (documentos, auditoria, lembretes). Use "Desativar" em vez de excluir, para preservar o histórico.'})
+                return
             if row:
                 audit(conn, s['user_id'], s['nome'], 'excluir_usuario', detalhes=f"@{row['username']} ({row['nome']})")
             conn.commit()

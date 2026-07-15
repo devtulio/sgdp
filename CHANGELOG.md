@@ -5,6 +5,11 @@
 
 ---
 
+## [1.33.1] — 2026-07-15
+
+### Corrigido
+- **Excluir usuário com histórico causava erro 500** — `documentos.criado_por/atualizado_por/assinado_por`, `auditoria`, `lembretes` e `signatures` referenciam `usuarios(id)` sem `ON DELETE CASCADE`/`SET NULL`; o esqueleto compartilhado liga `PRAGMA foreign_keys=ON` em toda conexão, então excluir qualquer usuário já referenciado em algum desses lugares (ou seja, com praticamente qualquer histórico de uso) violava a constraint. Não é regressão da feature de departamento/sigiloso — sempre foi assim, só que antes o SQLite não aplicava a regra, e a exclusão "funcionava" deixando registros com `criado_por` órfão (corrupção silenciosa). `_delete_usuario` agora captura a falha e devolve 409 com mensagem explicando que o usuário tem histórico e sugerindo "Desativar" em vez de excluir (mecanismo que já existia, via `ativo=0`), em vez do 500 genérico
+
 ## [1.33.0] — 2026-07-14
 
 ### Adicionado
