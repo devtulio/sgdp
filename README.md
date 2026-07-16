@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.33.2-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/versão-v1.33.3-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
 
 ## Descrição
 
@@ -70,8 +70,8 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 
 1. Copie a pasta `SGDP/` para o computador que atuará como servidor
 2. Clique duas vezes em **`Iniciar SGDP.bat`**
-3. Selecione o modo de operação no menu que aparecer
-4. Faça login com as credenciais iniciais abaixo e **altere a senha imediatamente**
+3. No menu que aparecer no terminal, escolha **[2] Iniciar Servidor** (ou aguarde — é a opção padrão)
+4. Faça login com as credenciais iniciais abaixo — o sistema **exige a troca de senha** no primeiro acesso
 
 > ⚠️ **Importante:** abrir o `SGDP.html` diretamente pelo navegador (sem o servidor) impede o funcionamento do sistema. Use sempre o `Iniciar SGDP.bat`.
 
@@ -82,13 +82,16 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 | Usuário | `admin`     |
 | Senha   | `admin123`  |
 
-### Modo de operação
+### Menu de inicialização
+
+O `Iniciar SGDP.bat` abre um menu simples no terminal:
 
 | Opção | Descrição |
 |-------|-----------|
-| **[1] Pessoal** | Uso individual — abre o navegador automaticamente e encerra ao sair |
-| **[2] Servidor** | Máquina central em rede — fica rodando continuamente (Ctrl+C para parar) |
-| **[3] Diagnóstico** | Verifica rede, porta e firewall |
+| **[1] Diagnóstico** | Verifica IP local, porta 3001, firewall e acessibilidade pela rede — sem iniciar o servidor |
+| **[2] Iniciar Servidor** | Sobe o servidor e mantém rodando continuamente (Ctrl+C para parar) |
+
+O servidor não encerra sozinho por inatividade nem ao fechar o navegador — só ao interromper o processo (Ctrl+C ou fechando a janela do terminal).
 
 ### Acesso em rede local
 

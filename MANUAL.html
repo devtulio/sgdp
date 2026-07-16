@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.33.2</title>
+<title>Manual Operacional — SGDP v1.33.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.33.2 — Manual Operacional";
+        content: "SGDP v1.33.3 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -112,7 +112,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.32.5</div>
+    <div class="cover-version">Versão 1.33.3</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -125,7 +125,7 @@
     <div class="cover-legal" style="border-top:none;margin-top:6pt;padding-top:0">
       Este sistema é distribuído sob a licença <strong>MIT</strong> — software livre, de código aberto, que pode ser usado, copiado, modificado e redistribuído livremente, inclusive para fins comerciais, desde que mantido o aviso de copyright original. Veja o arquivo <code>LICENSE</code> no repositório para o texto completo.
     </div>
-    <div class="cover-date">Junho de 2026</div>
+    <div class="cover-date">Julho de 2026</div>
   </div>
 </div>
 
@@ -149,6 +149,8 @@
     <div class="toc-item h3"><a href="#s4-4">4.4 Assunto e campos específicos por tipo</a></div>
     <div class="toc-item h3"><a href="#s4-5">4.5 Importação em lote via CSV</a></div>
     <div class="toc-item h3"><a href="#s4-6">4.6 Documentos sigilosos e departamentos</a></div>
+    <div class="toc-item h3"><a href="#s4-7">4.7 Assinatura digital, verificação e histórico</a></div>
+    <div class="toc-item h3"><a href="#s4-8">4.8 Etiquetas e vínculos entre documentos</a></div>
     <div class="toc-item h2"><a href="#s5">5. Busca e Filtros</a></div>
     <div class="toc-item h2"><a href="#s6">6. Administração</a></div>
     <div class="toc-item h3"><a href="#s6-1">6.1 Gestão de usuários</a></div>
@@ -201,9 +203,10 @@
   </p>
 
   <div class="nota">
-    <strong>Nota:</strong> O servidor encerra automaticamente quando todas as janelas do navegador
-    são fechadas (após 60 segundos). Para manter o sistema disponível durante o expediente,
-    mantenha ao menos uma janela aberta no computador servidor.
+    <strong>Nota:</strong> O servidor <em>não</em> encerra sozinho ao fechar as janelas do navegador —
+    ele continua rodando até ser interrompido manualmente (Ctrl+C na janela do terminal, ou fechando
+    essa janela) ou o computador ser desligado. Assim que a última sessão ativa termina, o sistema
+    apenas dispara um backup automático em segundo plano, sem encerrar.
   </div>
 
   <h2 id="s2">2. Instalação e Inicialização</h2>
@@ -220,9 +223,10 @@
   <ol>
     <li>Copie a pasta <code>SGDP/</code> para o computador que atuará como servidor (preferencialmente um computador sempre ligado durante o expediente)</li>
     <li>Clique duas vezes em <strong><code>Iniciar SGDP.bat</code></strong></li>
+    <li>Um menu aparece no terminal com duas opções: <strong>[1] Diagnóstico</strong> ou <strong>[2] Iniciar Servidor</strong> — escolha <strong>2</strong> (ou apenas aguarde: o padrão é iniciar o servidor)</li>
     <li>O navegador abrirá automaticamente na tela de login</li>
     <li>Use as credenciais iniciais: usuário <code>admin</code> / senha <code>admin123</code></li>
-    <li><strong>Altere a senha imediatamente</strong> em Usuários → Editar</li>
+    <li>O sistema <strong>exige a troca de senha</strong> no primeiro acesso — não é possível continuar sem definir uma senha nova</li>
     <li>Cadastre os demais procuradores na tela de Usuários</li>
   </ol>
 
@@ -244,7 +248,7 @@
   <p><strong>Nos computadores dos procuradores:</strong> basta abrir o navegador (Chrome ou Edge) no endereço do servidor — cada um faz login com sua própria conta, e todos trabalham sobre os mesmos dados.</p>
 
   <div class="dica">
-    <strong>Conexão não funciona?</strong> Execute o <code>Diagnostico SGDP.bat</code> (ou a opção <strong>[3]</strong> do <code>Iniciar SGDP.bat</code>) na máquina servidora: ele descobre o IP, verifica a porta 3001, as regras de firewall e a acessibilidade pela rede, com instruções de correção item a item.
+    <strong>Conexão não funciona?</strong> Execute o <code>Diagnostico SGDP.bat</code> (ou escolha a opção <strong>[1] Diagnóstico</strong> no menu que aparece ao abrir o <code>Iniciar SGDP.bat</code>) na máquina servidora: ele descobre o IP, verifica a porta 3001, as regras de firewall e a acessibilidade pela rede, com instruções de correção item a item.
   </div>
 
   <div class="dica">
@@ -409,6 +413,64 @@
     <strong>Nota:</strong> um administrador sempre vê e pode editar todos os documentos,
     sigilosos ou não, de qualquer departamento.
   </div>
+
+  <h3 id="s4-7">4.7 Assinatura digital, verificação e histórico</h3>
+  <p>
+    Além de anexar um PDF já assinado externamente (ver 4.3), o SGDP pode <strong>assinar
+    digitalmente dentro do próprio sistema</strong>, usando um certificado ICP-Brasil A1
+    (arquivo <code>.pfx</code>):
+  </p>
+  <ol>
+    <li>Na listagem do documento, clique no ícone <strong>🔏</strong> (disponível para quem pode editar o documento — ver 4.6)</li>
+    <li>Selecione o arquivo do certificado (<code>.pfx</code>) e informe a senha</li>
+    <li>Opcionalmente, envie um PDF novo para assinar — se nenhum for enviado, o sistema assina o PDF já anexado ao documento</li>
+    <li>Confirme — o PDF assinado substitui o anexo do documento</li>
+  </ol>
+  <div class="nota">
+    <strong>Requisito:</strong> a assinatura ICP-Brasil depende do módulo opcional <code>pyhanko</code>
+    (ver Requisitos, 2.1). Se não estiver instalado, o botão exibe uma mensagem orientando a instalação.
+  </div>
+  <p>
+    Toda assinatura feita pelo sistema gera um <strong>código de verificação</strong> curto
+    (ex: <code>65C9-CA87</code>), consultável sem login em <code>/verificar/&lt;código&gt;</code> —
+    a página mostra o documento, o signatário, os dados do certificado e a data, permitindo que
+    qualquer pessoa (ex: outro órgão, um cidadão) confirme a autenticidade sem precisar acessar o SGDP.
+    Documentos assinados pelo sistema mostram o ícone 🔏 como link direto para essa página.
+  </p>
+  <p>
+    Toda edição de um documento também fica registrada em seu <strong>histórico de revisões</strong>,
+    acessível pelo ícone <strong>🕘</strong> na listagem — mostra os campos como estavam antes de
+    cada alteração, com autor e data/hora.
+  </p>
+
+  <h3 id="s4-8">4.8 Etiquetas e vínculos entre documentos</h3>
+  <p>
+    <strong>Etiquetas (tags):</strong> no campo <em>Etiquetas</em> do formulário de documento, informe
+    uma ou mais palavras separadas por vírgula (ex: <code>urgente, folha de pagamento</code>) — o campo
+    sugere etiquetas já usadas anteriormente. Clique em uma etiqueta na listagem para filtrar por ela.
+    O <strong>Relatório de Etiquetas</strong> (ver Seção 7) agrupa todos os documentos por etiqueta.
+  </p>
+  <p>
+    <strong>Vínculos entre documentos:</strong> pelo ícone <strong>🔗</strong> na listagem, é possível
+    relacionar dois documentos com um tipo de vínculo:
+  </p>
+  <table>
+    <thead><tr><th>Tipo</th><th>Sentido inverso exibido no outro documento</th></tr></thead>
+    <tbody>
+      <tr><td>Revoga</td><td>Revogado por</td></tr>
+      <tr><td>Altera</td><td>Alterado por</td></tr>
+      <tr><td>Complementa</td><td>Complementado por</td></tr>
+      <tr><td>Referencia</td><td>Referenciado por</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Cada vínculo aparece nos dois documentos envolvidos, com o rótulo correspondente ao sentido
+    (ex: a Lei que revoga mostra "Revoga", a Lei revogada mostra "Revogado por"). A partir do modal
+    de Vínculos, o botão <strong>Gerar Cadeia Normativa</strong> monta uma árvore com todos os
+    documentos conectados direta ou indiretamente ao documento atual (revogações, alterações,
+    complementos e referências em cadeia), útil para entender rapidamente todo o histórico
+    normativo de um tema.
+  </p>
 </div>
 
 <!-- ── SEÇÃO 5–6 ───────────────────────────────────────────────────────────────── -->
@@ -418,14 +480,19 @@
     Em cada tela de listagem (Leis, Decretos etc.) há uma barra de ferramentas com:
   </p>
   <ul>
-    <li><strong>Campo de busca:</strong> pesquisa simultânea por número, ementa e partes envolvidas. Pressione Enter ou clique em <em>Filtrar</em> para aplicar.</li>
-    <li><strong>Filtro por ano:</strong> exibe apenas documentos do ano selecionado.</li>
+    <li><strong>Campo de busca:</strong> pesquisa por número, ementa e partes envolvidas. A busca em ementa/partes é <strong>por palavra</strong> (não apenas por trecho exato) — encontra o documento mesmo que as palavras buscadas não estejam juntas ou na mesma ordem do texto. Pressione Enter ou clique em <em>Filtrar</em> para aplicar.</li>
+    <li><strong>Filtro por ano</strong> e <strong>filtro por etiqueta</strong> (ao clicar numa etiqueta de um documento): exibem apenas os documentos correspondentes.</li>
     <li><strong>Paginação:</strong> 50 documentos por página; navegue pelas setas ou números.</li>
   </ul>
   <div class="nota">
     <strong>Exemplo:</strong> para localizar um parecer que menciona "João da Silva", acesse
     <em>Pareceres</em>, digite "João" no campo de busca e pressione Enter.
   </div>
+  <p>
+    Além da busca por tela, o atalho <strong>Ctrl+K</strong> (ou o ícone de lupa na barra lateral)
+    abre uma <strong>busca global</strong> que pesquisa em todos os tipos de documento ao mesmo tempo,
+    de qualquer tela do sistema.
+  </p>
 
   <h2 id="s6">6. Administração</h2>
   <p>As telas de administração são visíveis apenas para usuários com perfil <strong>Administrador</strong>.</p>
@@ -433,8 +500,8 @@
   <h3 id="s6-1">6.1 Gestão de usuários</h3>
   <p>Acesse <strong>Usuários</strong> na barra lateral para:</p>
   <ul>
-    <li><strong>Criar usuário:</strong> clique em <em>+ Novo Usuário</em>; informe nome completo, nome de login (sem espaços), senha (mínimo 6 caracteres) e se é administrador.</li>
-    <li><strong>Editar:</strong> altere nome, senha ou perfil. O nome de login não pode ser alterado após a criação.</li>
+    <li><strong>Criar usuário:</strong> clique em <em>+ Novo Usuário</em>; informe nome completo, nome de login (sem espaços), senha (mínimo 6 caracteres), <strong>departamento</strong> (Procuradoria-Geral ou Gabinete — ver 4.6) e se é administrador. CPF, e-mail, cargo e matrícula são opcionais.</li>
+    <li><strong>Editar:</strong> altere qualquer campo, inclusive senha, departamento e perfil. O nome de login não pode ser alterado após a criação.</li>
     <li><strong>Desativar:</strong> desmarque "Conta ativa" para bloquear o acesso sem excluir o histórico do usuário.</li>
     <li><strong>Excluir:</strong> remove o cadastro permanentemente. Não é possível excluir seu próprio usuário, nem um usuário que já criou, editou ou assinou algum documento (ou tem qualquer outra ação registrada na auditoria) — nesses casos, use <strong>Desativar</strong> para preservar o histórico.</li>
   </ul>
@@ -448,49 +515,68 @@
   <h3 id="s6-2">6.2 Auditoria</h3>
   <p>
     A tela de <strong>Auditoria</strong> exibe um histórico completo de todas as ações realizadas no
-    sistema, com data/hora, usuário responsável, tipo de ação e detalhes. As ações registradas são:
+    sistema, com data/hora, usuário responsável, tipo de ação e detalhes. É possível filtrar por
+    usuário, tipo de ação e período, e <strong>exportar o resultado filtrado em CSV</strong> pelo botão
+    correspondente na própria tela. As ações registradas são:
   </p>
   <table>
     <thead><tr><th>Ação</th><th>Descrição</th></tr></thead>
     <tbody>
-      <tr><td><code>criar</code></td><td>Novo documento cadastrado</td></tr>
-      <tr><td><code>editar</code></td><td>Documento alterado</td></tr>
-      <tr><td><code>excluir</code></td><td>Documento removido permanentemente</td></tr>
-      <tr><td><code>upload</code></td><td>PDF anexado ao documento</td></tr>
-      <tr><td><code>remover_arquivo</code></td><td>PDF removido do documento</td></tr>
+      <tr><td>Login / Logout</td><td>Entrada e saída de sessão</td></tr>
+      <tr><td>Criar / Editar documento</td><td>Cadastro ou alteração de um documento</td></tr>
+      <tr><td>Excluir documento</td><td>Documento enviado à Lixeira (exclusão reversível, ver Seção 9)</td></tr>
+      <tr><td>Restaurar da lixeira</td><td>Documento devolvido à listagem normal</td></tr>
+      <tr><td>Excluir permanente</td><td>Remoção definitiva, seja pela Lixeira ou pela purga automática após 30 dias</td></tr>
+      <tr><td>Upload PDF / Remover PDF</td><td>Anexação ou remoção do PDF de um documento</td></tr>
+      <tr><td>Assinar (ICP-Brasil)</td><td>Assinatura digital do PDF anexado com certificado A1 (ver 4.7)</td></tr>
+      <tr><td>Criar/Remover vínculo</td><td>Vínculo criado ou removido entre dois documentos (ver 4.8)</td></tr>
+      <tr><td>Importar CSV</td><td>Importação em lote de documentos</td></tr>
+      <tr><td>Enviar e-mail</td><td>PDF assinado enviado por e-mail a partir de um documento</td></tr>
+      <tr><td>Criar/Editar/Excluir usuário</td><td>Alteração no cadastro de usuários</td></tr>
+      <tr><td>Alterar senha</td><td>Troca de senha (própria ou redefinida por um administrador)</td></tr>
+      <tr><td>Criar lembrete</td><td>Novo lembrete cadastrado na Agenda</td></tr>
+      <tr><td>Alterar config. / brasão / SMTP</td><td>Mudança nas Configurações do sistema (Organização, brasão do município ou servidor de e-mail)</td></tr>
+      <tr><td>Sincronizar / Restaurar backup</td><td>Sincronização com outra instalação ou restauração de um backup <code>.json</code> (ver 6.3 e 6.4)</td></tr>
+      <tr><td>Restaurar banco</td><td>Restauração a partir de um backup <code>.db</code> bruto (apenas administradores)</td></tr>
+      <tr><td>Factory Reset</td><td>Apagamento total de documentos, arquivos e histórico (apenas administradores) — os usuários cadastrados <em>não</em> são apagados</td></tr>
     </tbody>
   </table>
 
   <h3 id="s6-3">6.3 Backup e restauração</h3>
   <p>
-    Acesse <strong>Backup</strong> na barra lateral. O backup é um arquivo <code>.json</code> que contém
-    todos os documentos, os PDFs (codificados em base64) e os usuários. É a única forma de
-    recuperar dados em caso de falha no computador.
+    Acesse a aba <strong>Dados</strong> em Configurações. O sistema mantém dois tipos de backup,
+    lado a lado, guardados na mesma pasta (configurável pelo botão <em>Selecionar pasta</em>):
+  </p>
+  <table>
+    <thead><tr><th>Tipo</th><th>Arquivo</th><th>Conteúdo</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Sistema (JSON)</strong></td><td><code>SIS_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS.json</code></td><td>Documentos, usuários, contadores e PDFs (codificados em base64) — legível, usado também para <a href="#s6-4">sincronizar entre instalações</a> (6.4)</td></tr>
+      <tr><td><strong>Banco de dados (.db)</strong></td><td><code>DB_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS.db</code></td><td>Cópia binária completa do banco SQLite — restauração mais direta, mas só entre instalações do mesmo sistema</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Os dois são gerados <strong>automaticamente</strong> (ao final de cada sessão de uso e periodicamente
+    em segundo plano) e também podem ser gerados <strong>manualmente</strong> a qualquer momento, pelos
+    botões <em>Exportar backup</em> de cada card. Para restaurar, use o botão <em>Restaurar backup</em>
+    correspondente e selecione o arquivo (<code>.json</code> ou <code>.db</code>).
+  </p>
+  <p>
+    O botão <strong>📊 Relatório de Backup e Integridade</strong> (apenas administradores) mostra um
+    resumo do estado atual: quantos backups existem, tamanhos em disco, data do último backup e
+    contagens gerais do sistema.
   </p>
 
-  <p><strong>Exportar backup:</strong></p>
-  <ol>
-    <li>Clique em <em>Exportar backup completo</em></li>
-    <li>O arquivo <code>sgdp_backup_AAAAMMDD.json</code> será baixado automaticamente</li>
-    <li>Guarde em local externo: servidor de rede, OneDrive/Google Drive institucional ou pendrive</li>
-  </ol>
-
-  <p><strong>Restaurar backup:</strong></p>
-  <ol>
-    <li>Clique em <em>Restaurar a partir de backup</em></li>
-    <li>Selecione o arquivo <code>.json</code> previamente exportado</li>
-    <li>Confirme a operação — todos os dados atuais serão substituídos</li>
-  </ol>
-
   <div class="aviso">
-    <strong>Atenção:</strong> a restauração apaga <em>todos</em> os dados atuais e os substitui
-    pelos do backup. Execute essa operação apenas em caso de necessidade e sempre exporte um
-    backup do estado atual antes de restaurar.
+    <strong>Atenção:</strong> restaurar <em>qualquer</em> um dos dois tipos de backup apaga os dados
+    atuais e os substitui pelos do arquivo escolhido. Execute essa operação apenas em caso de
+    necessidade — o sistema cria automaticamente um backup do estado atual antes de restaurar, mas
+    ainda assim é uma operação sem volta fácil.
   </div>
 
   <div class="dica">
-    <strong>Recomendação:</strong> realize o backup ao menos semanalmente, sempre ao final do
-    expediente de sexta-feira, e armazene em local externo ao computador servidor.
+    <strong>Recomendação:</strong> além dos backups automáticos, exporte uma cópia manual periodicamente
+    e armazene em local externo ao computador servidor — servidor de rede, nuvem institucional ou
+    mídia externa.
   </div>
 
   <h3 id="s6-4">6.4 Sincronização de backup entre agentes</h3>
@@ -512,13 +598,16 @@
     de forma independente.
   </div>
 
-  <h3 id="s6-5">6.5 Personalização (tema, fonte, brasão, sons)</h3>
+  <h3 id="s6-5">6.5 Personalização (tema, fonte, cor, brasão, sons)</h3>
   <p>Na aba <strong>Interface</strong> de Configurações:</p>
   <ul>
     <li><strong>Tema de aparência:</strong> claro ou escuro, aplicado imediatamente</li>
+    <li><strong>Largura do conteúdo:</strong> compacta (margens laterais confortáveis) ou expandida (aproveita toda a tela útil)</li>
+    <li><strong>Cor de destaque:</strong> institucional (padrão), azul, verde ou roxo — muda a cor de botões, links e destaques em todo o sistema</li>
     <li><strong>Tamanho da fonte:</strong> afeta todo o sistema; útil para monitores menores ou acessibilidade</li>
     <li><strong>Brasão do município:</strong> upload de imagem exibida no topo da barra lateral para todos os procuradores (armazenado no servidor, não apenas no navegador de quem enviou)</li>
   </ul>
+  <p>Essas preferências são individuais — cada procurador escolhe as suas, e ficam salvas no navegador de cada um (exceto o brasão, que é do sistema).</p>
   <p>
     O sistema também toca <strong>sons de notificação</strong> distintos para clique, sucesso, erro
     e alertas — não é configurável, mas pode ser silenciado no volume geral do sistema operacional.
@@ -533,11 +622,12 @@
 
   <h3 id="s6-7">6.7 Diagnóstico de rede</h3>
   <p>
-    A aba <strong>Diagnóstico</strong> verifica a integridade dos dados (contadores de numeração,
-    arquivos órfãos no disco ou no banco) e, para o modo Servidor, também é possível rodar o
-    diagnóstico de rede (IP local, porta 3001, regras de firewall) pela opção <strong>[3] Diagnóstico</strong>
-    no menu de inicialização, ou executando <code>Diagnostico SGDP.bat</code> diretamente — útil quando
-    outro computador não consegue acessar o sistema pela rede.
+    A aba <strong>Diagnóstico</strong> em Configurações verifica a integridade dos dados (contagem de
+    documentos, arquivos órfãos no disco ou no banco, consistência dos contadores de numeração,
+    total de usuários e último backup). Para diagnosticar problemas de <em>rede</em> (IP local, porta
+    3001, regras de firewall), execute <code>Diagnostico SGDP.bat</code> diretamente, ou escolha a
+    opção <strong>[1] Diagnóstico</strong> no menu que aparece ao abrir o <code>Iniciar SGDP.bat</code> —
+    útil quando outro computador não consegue acessar o sistema pela rede.
   </p>
 </div>
 
@@ -592,6 +682,13 @@
     Marque a caixa de seleção ao lado do lembrete para indicá-lo como concluído. A barra lateral
     exibe um contador com a quantidade de lembretes pendentes já vencidos.
   </p>
+  <div class="nota">
+    <strong>Notificação por e-mail</strong> (requer SMTP configurado — ver 6.6): quando um lembrete
+    vence, o sistema envia um e-mail automático para quem o criou (ou para o e-mail padrão, se o
+    criador não tiver e-mail cadastrado). Além disso, um <strong>resumo diário</strong> com todos os
+    lembretes vencidos e a vencer em breve é enviado uma vez por dia para o e-mail padrão — mesmo
+    que ninguém esteja logado no momento.
+  </div>
 </div>
 
 <!-- ── SEÇÃO 9 — LIXEIRA ─────────────────────────────────────────────────────────── -->
@@ -653,11 +750,12 @@
     informando uma nova senha no campo correspondente (deixar em branco mantém a senha atual).
   </p>
 
-  <h3>O servidor encerrou sozinho enquanto trabalhava</h3>
+  <h3>Fechei sem querer a janela do servidor</h3>
   <p>
-    O servidor encerra automaticamente 60 segundos após todas as janelas do navegador serem fechadas.
-    Se o navegador travar ou fechar inesperadamente, o servidor também encerrará. Basta clicar
-    novamente em <code>Iniciar SGDP.bat</code> para reiniciar — todos os dados são preservados.
+    O servidor só encerra se a janela do terminal for fechada (ou com Ctrl+C) — fechar o navegador
+    não afeta o servidor. Se a janela do terminal foi fechada por engano, basta clicar novamente em
+    <code>Iniciar SGDP.bat</code> para reiniciar — todos os dados são preservados, já que ficam
+    salvos em disco (<code>sgdp.db</code>), não na memória do processo.
   </p>
 
   <h3>Como faço para acessar o sistema fora da rede municipal?</h3>
@@ -676,6 +774,16 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.33.3 — 15/07/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Revisão geral deste Manual</strong> — capa presa em versão antiga, descrição de auto-encerramento do servidor (comportamento removido há algumas versões), menu de inicialização desatualizado, tabela de ações de auditoria incompleta e com uma descrição trocada, e nome de arquivo de backup errado</li>
+  </ul>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Seções novas cobrindo funcionalidades que só apareciam neste Histórico, nunca no corpo do Manual</strong> — assinatura digital dentro do sistema e verificação pública, etiquetas e vínculos entre documentos (4.7, 4.8), busca full-text e busca global (5), campos completos de usuário (6.1), os dois formatos de backup lado a lado (6.3), cor de destaque (6.5) e notificação de lembrete por e-mail (8)</li>
+  </ul>
 
   <h3>v1.33.2 — 15/07/2026</h3>
   <p><strong>Adicionado</strong></p>

@@ -5,6 +5,20 @@
 
 ---
 
+## [1.33.3] — 2026-07-15
+
+### Corrigido
+- **Revisão geral do Manual Operacional — vários pontos desatualizados desde a remoção do modo "Pessoal" e outras mudanças recentes**:
+  - Versão da capa presa em v1.32.5 (duas versões atrás do título/rodapé)
+  - Descrevia o servidor encerrando sozinho 60s após fechar o navegador — esse comportamento foi removido há algumas versões (`_check_shutdown` só dispara backup, nunca mais `os._exit`); o servidor só para com Ctrl+C
+  - Referenciava uma opção "[3] Diagnóstico" no menu de inicialização; o menu atual (`_selecionar_modo()`) só tem duas opções: `[1] Diagnóstico` / `[2] Iniciar Servidor` — sem "modo Pessoal"
+  - Tabela de ações de auditoria descrevia `excluir` como remoção permanente; na verdade `excluir` é o envio à lixeira (reversível) — a remoção definitiva é uma ação separada (`excluir_permanente`), agora listada corretamente junto com as ~15 outras ações que a tabela não cobria (login/logout, usuários, vínculos, CSV, e-mail, sincronização, restaurar banco, factory reset)
+  - Nome de arquivo de backup errado (`sgdp_backup_AAAAMMDD.json`); o nome real é `SIS_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS.json`
+  - README.md tinha a mesma tabela desatualizada do menu de inicialização — corrigida junto
+
+### Adicionado
+- **Seções novas no Manual cobrindo funcionalidades que só existiam no Histórico de Versões, nunca no corpo instrutivo**: 4.7 (assinatura digital ICP-Brasil feita dentro do próprio sistema, verificação pública de assinatura, histórico de revisões) e 4.8 (etiquetas e vínculos entre documentos, incl. Cadeia Normativa). Também passaram a ser descritas: busca full-text por palavra e busca global (Ctrl+K) na Seção 5; departamento/CPF/e-mail/cargo/matrícula no cadastro de usuário (6.1); backup automático e manual em dois formatos, JSON e `.db` bruto, lado a lado (6.3, reescrita); cor de destaque e largura do conteúdo (6.5); notificação de lembrete por e-mail e resumo diário (Seção 8)
+
 ## [1.33.2] — 2026-07-15
 
 ### Adicionado
