@@ -1205,7 +1205,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.33.7';
+const SGDP_VERSION = '1.33.8';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1379,8 +1379,11 @@ function mostrarApp() {
   document.getElementById('user-nome').textContent = S.user.nome;
   document.getElementById('user-cargo').textContent = S.user.admin ? 'Administrador' : 'Procurador';
   document.getElementById('user-avatar').textContent = S.user.nome[0].toUpperCase();
+  // Admin: remove a classe (elemento volta ao display natural — nav-item flex,
+  // botão/div block); não-admin: mantém a classe (.admin-only{display:none} do base.css).
+  // Setar style.display='' não funcionava: caía na regra CSS e escondia mesmo p/ admin.
   document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = S.user.admin ? '' : 'none';
+    el.classList.toggle('admin-only', !S.user.admin);
   });
   if (S.config) {
     const el = document.getElementById('muni-nome');
