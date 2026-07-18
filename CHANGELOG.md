@@ -5,6 +5,11 @@
 
 ---
 
+## [1.33.5] — 2026-07-17
+
+### Alterado
+- **Modo escuro unificado ao padrão neutro da família.** O tema escuro do SGDP usava uma paleta azul-navy (`#1a1f2e`/`#1e2436`/`#2a3040`) que destoava dos sistemas irmãos (SGCD/SGCA/SGEA, todos em cinza-neutro). Agora o SGDP herda a paleta neutra canônica do estilo compartilhado (`base.css`): fundo `#1a1a1a`, cards `#2a2a2a`, texto `#f0ece8`. Os tokens `--gray-*` e sombras deixaram de ser redefinidos localmente (eram redundantes/divergentes); só o token `--white` (superfície de card usada no JS) permanece remapeado, agora para o neutro. Nenhuma mudança no modo claro.
+
 ## [1.33.4] — 2026-07-17
 
 ### Alterado

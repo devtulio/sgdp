@@ -84,22 +84,19 @@ html.tema-roxo {
 
 /* ── Tema escuro ─────────────────────────────────────────────────────────── */
 body.dark {
-  --gray-50:  #1a1f2e; --gray-100: #1e2436; --gray-200: #2a3040;
-  --gray-300: #3a4255; --gray-400: #6b7a99; --gray-500: #8896b0;
-  --gray-600: #a8b4c8; --gray-700: #c8d0de; --gray-800: #dde3ec;
-  --gray-900: #f0f4f9;
-  --white:     #1e2436;
-  --shadow:    0 1px 4px rgba(0,0,0,.4);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.5);
+  /* Paleta neutra canônica (--gray-*, --bg-card, sombras) vem do base.css;
+     aqui só remapeamos --white (surface de card usada no JS) que o base.css
+     não define. Ver _esqueleto/DESIGN.md → colors-dark-mode. */
+  --white: #2a2a2a;
 }
-body.dark #main        { background: #131722; }
-body.dark .table-wrap  { background: #1e2436; }
-body.dark th           { background: #252d40; }
-body.dark td           { border-color: #2a3040; }
-body.dark tr:hover td  { background: #252d40; }
-body.dark .btn-outline { background: #1e2436; color: var(--gray-700); border-color: var(--gray-300); }
+body.dark #main        { background: var(--gray-50); }
+body.dark .table-wrap  { background: var(--bg-card); }
+body.dark th           { background: #323232; }
+body.dark td           { border-color: #383838; }
+body.dark tr:hover td  { background: #323232; }
+body.dark .btn-outline { background: var(--bg-card); color: var(--gray-700); border-color: var(--gray-300); }
 body.dark input, body.dark select, body.dark textarea {
-  background: #252d40 !important; color: var(--gray-800) !important; border-color: var(--gray-300) !important;
+  background: #323232 !important; color: var(--gray-800) !important; border-color: var(--gray-300) !important;
 }
 body.dark .dash-card,
 body.dark .pag-btn,
@@ -107,9 +104,9 @@ body.dark .gsearch-box,
 body.dark #notif-panel,
 body.dark .skeleton,
 body.dark .skeleton-stat,
-body.dark .skeleton-card { background: #1e2436; }
-body.dark .upload-zone { background: #1e2436; border-color: var(--gray-300); }
-body.dark .modal > div { background: #1e2436; }
+body.dark .skeleton-card { background: var(--bg-card); }
+body.dark .upload-zone { background: var(--bg-card); border-color: var(--gray-300); }
+body.dark .modal > div { background: var(--bg-card); }
 body.dark .cfg-tabs    { border-color: var(--gray-200); }
 body.dark fieldset     { border-color: var(--gray-200) !important; }
 
@@ -1239,7 +1236,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.33.4';
+const SGDP_VERSION = '1.33.5';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
