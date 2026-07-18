@@ -389,12 +389,8 @@ tr:hover td { background: var(--gray-50); }
 .arquivo-info .arq-nome { flex: 1; font-size: 0.8125rem; font-weight: 500; color: var(--green); word-break: break-all; }
 .arquivo-info .arq-size { font-size: 0.6875rem; color: var(--green); opacity: .7; white-space: nowrap; }
 
-
 /* ── Auditoria ───────────────────────────────────────────────────────────── */
 .audit-table td { font-size: 0.75rem; }
-.audit-acao { font-family: monospace; font-size: 0.6875rem; background: var(--gray-100);
-  padding: 2px 6px; border-radius: 4px; }
-
 /* ── Toasts ──────────────────────────────────────────────────────────────── */
 #toast { position: fixed; bottom: 24px; right: 24px; z-index: 300;
   display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
@@ -430,9 +426,7 @@ tr:hover td { background: var(--gray-50); }
 .section-title { font-size: 0.8125rem; font-weight: 700; color: var(--gray-700);
   margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .loading { text-align: center; padding: 48px; color: var(--gray-400); font-size: 0.8125rem; }
-.num-doc { font-family: monospace; font-weight: 700; color: var(--tc, var(--gray-700)); font-size: 0.8125rem; }
-.action-row { display: flex; align-items: center; gap: 8px; }
-</style>
+.num-doc { font-family: monospace; font-weight: 700; color: var(--tc, var(--gray-700)); font-size: 0.8125rem; }</style>
 </head>
 <body>
 
@@ -1236,7 +1230,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.33.5';
+const SGDP_VERSION = '1.33.6';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -4314,7 +4308,6 @@ async function alterarSenha() {
   document.getElementById('cfg-senha-conf').value  = '';
   show('Senha alterada com sucesso!', true);
 }
-
 
 // ── Modais ────────────────────────────────────────────────────────────────────
 // FOCUSABLE_SEL já vem declarada (const) pelo base.js — redeclarar aqui seria

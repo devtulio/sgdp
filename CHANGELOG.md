@@ -5,6 +5,11 @@
 
 ---
 
+## [1.33.6] — 2026-07-17
+
+### Removido
+- **Limpeza de CSS morto** — removidas 2 regras de estilo que definiam classes nunca usadas no HTML/JS (`action-row`, `audit-acao`). Sem qualquer efeito visual. Verificado com lint, testes unitários e E2E.
+
 ## [1.33.5] — 2026-07-17
 
 ### Alterado
