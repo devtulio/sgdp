@@ -617,50 +617,46 @@ tr:hover td { background: var(--gray-50); }
     <nav class="sidebar-nav">
       <div class="nav-section">Principal</div>
       <div class="nav-item active" data-view="dashboard" role="button" tabindex="0" onclick="navegar('dashboard')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg></span> Dashboard
+        <span class="nav-ico">📊</span> Dashboard
       </div>
       <div class="nav-section">Documentos</div>
       <div class="nav-item tipo-lei"      data-view="lei"      role="button" tabindex="0" onclick="navegar('lei')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><text x="12" y="18" font-size="7.5" text-anchor="middle" stroke="none" fill="currentColor" font-family="serif" font-weight="bold">§</text></svg></span> Leis
+        <span class="nav-ico">⚖️</span> Leis
         <span class="nav-badge" id="badge-lei">—</span>
       </div>
       <div class="nav-item tipo-decreto"  data-view="decreto"  role="button" tabindex="0" onclick="navegar('decreto')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><line x1="5" y1="7" x2="19" y2="7"/><path d="M5 7 Q5 13 9 13"/><line x1="5" y1="13" x2="13" y2="13"/><path d="M19 7 Q19 11 15 11"/><line x1="11" y1="11" x2="19" y2="11"/><rect x="9" y="19" width="6" height="2" rx="0.5" fill="currentColor" stroke="none"/></svg></span> Decretos
+        <span class="nav-ico">📜</span> Decretos
         <span class="nav-badge" id="badge-decreto">—</span>
       </div>
       <div class="nav-item tipo-portaria" data-view="portaria" role="button" tabindex="0" onclick="navegar('portaria')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/><circle cx="16" cy="17" r="2.5"/></svg></span> Portarias
+        <span class="nav-ico">📋</span> Portarias
         <span class="nav-badge" id="badge-portaria">—</span>
       </div>
       <div class="nav-item tipo-parecer"  data-view="parecer"  role="button" tabindex="0" onclick="navegar('parecer')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><text x="12" y="18" font-size="9" text-anchor="middle" stroke="none" fill="currentColor" font-family="serif">"</text></svg></span> Pareceres
+        <span class="nav-ico">📝</span> Pareceres
         <span class="nav-badge" id="badge-parecer">—</span>
       </div>
       <div class="nav-item tipo-oficio"   data-view="oficio"   role="button" tabindex="0" onclick="navegar('oficio')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="1.5"/><polyline points="2,6 12,14 22,6"/><circle cx="17" cy="11" r="2" fill="currentColor" stroke="none" opacity=".7"/></svg></span> Ofícios
+        <span class="nav-ico">✉️</span> Ofícios
         <span class="nav-badge" id="badge-oficio">—</span>
       </div>
       <div class="nav-section">Gestão</div>
       <div class="nav-item" data-view="relatorio" role="button" tabindex="0" onclick="navegar('relatorio')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><rect x="3" y="2" width="18" height="20" rx="1.5" fill="none" stroke="none"/></svg></span> Relatório
+        <span class="nav-ico">📈</span> Relatório
       </div>
       <div class="nav-item" data-view="agenda" role="button" tabindex="0" onclick="navegar('agenda')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Agenda
+        <span class="nav-ico">📅</span> Agenda
         <span class="nav-badge" id="badge-agenda" style="display:none">0</span>
       </div>
       <div class="nav-item" data-view="lixeira" role="button" tabindex="0" onclick="navegar('lixeira')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></span> Lixeira
-      </div>
-      <div class="nav-item" id="btn-notif" role="button" tabindex="0" onclick="toggleNotificacoes()">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span> Notificações
-        <span class="nav-badge" id="notif-count" style="display:none">0</span>
+        <span class="nav-ico">🗑️</span> Lixeira
       </div>
       <div class="nav-section admin-only" id="nav-admin">Administração</div>
       <div class="nav-item admin-only" data-view="auditoria" role="button" tabindex="0" onclick="navegar('auditoria')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="13" height="16" rx="1.5"/><line x1="7" y1="8" x2="12" y2="8"/><line x1="7" y1="11" x2="12" y2="11"/><line x1="7" y1="14" x2="10" y2="14"/><circle cx="17" cy="17" r="3.5"/><line x1="19.5" y1="19.5" x2="22" y2="22"/></svg></span> Auditoria
+        <span class="nav-ico">🕘</span> Auditoria
       </div>
       <div class="nav-item" data-view="configuracoes" role="button" tabindex="0" onclick="navegar('configuracoes')">
-        <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Configurações
+        <span class="nav-ico">⚙️</span> Configurações
       </div>
     </nav>
     <div class="sidebar-user">
@@ -669,9 +665,10 @@ tr:hover td { background: var(--gray-50); }
         <div class="user-nome" id="user-nome">—</div>
         <div class="user-cargo" id="user-cargo">Procurador</div>
       </div>
-      <button class="btn-sair" onclick="sair()" title="Sair (trocar usuário)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <button class="btn-sair" id="btn-notif" onclick="toggleNotificacoes()" title="Notificações" style="position:relative">
+        🔔<span class="nav-badge danger" id="notif-count" style="display:none;position:absolute;top:-2px;right:-4px">0</span>
       </button>
+      <button class="btn-sair" onclick="sair()" title="Sair (trocar usuário)">⏻</button>
     </div>
   </aside>
 
@@ -1242,7 +1239,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.33.3';
+const SGDP_VERSION = '1.33.4';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
