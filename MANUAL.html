@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.34.0</title>
+<title>Manual Operacional — SGDP v1.35.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.34.0 — Manual Operacional";
+        content: "SGDP v1.35.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -112,7 +112,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.34.0</div>
+    <div class="cover-version">Versão 1.35.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -319,7 +319,7 @@
       <tr><td>Assunto</td><td>Sim</td><td>Categoria do documento, selecionada em lista pré-definida (ver 4.4)</td></tr>
       <tr><td>Partes / Envolvidos</td><td>Não</td><td>Nomes das partes, requerentes, destinatários ou interessados</td></tr>
       <tr><td>Observações</td><td>Não</td><td>Informações internas adicionais; não aparecem em relatórios</td></tr>
-      <tr><td>🔒 Sigiloso</td><td>Não</td><td>Restringe a visibilidade do documento apenas a quem o criou e a administradores (ver 4.6)</td></tr>
+      <tr><td>🔒 Sigiloso</td><td>Não</td><td>Só aparece pra Parecer, Portaria e Ofício. Restringe a visibilidade do documento apenas a quem o criou e a administradores (ver 4.6)</td></tr>
       <tr><td>🏢 Ofício Interno</td><td>Não</td><td>Só aparece para o tipo Ofício. Marca o documento como um ofício interno (endereçado a outro setor da prefeitura), com numeração própria e separada da sequência normal de Ofício, e sufixo automático do departamento de quem criou (ex: "nº 001/2026 PG") — ver 4.2</td></tr>
       <tr><td>PDF Assinado</td><td>Não</td><td>Arquivo PDF do documento já assinado digitalmente</td></tr>
     </tbody>
@@ -375,6 +375,14 @@
     (imprime ou salva uma cópia do documento exibido) e <strong>✉ Enviar por e-mail</strong>
     (envia o PDF assinado como anexo — requer SMTP configurado, ver 6.6).
   </p>
+  <div class="nota">
+    <strong>Nota:</strong> todo botão de exportar/baixar arquivo no sistema (PDF de documento,
+    CSVs de relatório e auditoria, backups) abre o diálogo nativo "Salvar Como" do Windows,
+    deixando escolher a pasta de destino — na máquina que roda o servidor (acesso por
+    <code>localhost</code>). Ao acessar pela rede local por outro computador (endereço IP), o
+    navegador não permite esse diálogo por segurança; nesses casos o arquivo é salvo direto na
+    pasta padrão de Downloads, como antes.
+  </div>
   <div class="dica">
     <strong>Dica:</strong> você também pode arrastar o arquivo PDF diretamente para a área de upload
     em vez de clicar para selecionar.
@@ -427,7 +435,13 @@
     departamento de quem criou o documento — útil pra identificar rapidamente se um Ofício, por
     exemplo, veio da Procuradoria-Geral ou do Gabinete.
   </p>
-  <p>Regras de acesso a um documento:</p>
+  <div class="nota">
+    <strong>Nota:</strong> o checkbox 🔒 Sigiloso só aparece no formulário para <strong>Parecer,
+    Portaria e Ofício</strong>. Lei e Decreto nunca podem ser marcados sigilosos — são atos
+    normativos que só têm validade jurídica se publicados no Diário Oficial, então a
+    confidencialidade não se aplica a eles.
+  </div>
+  <p>Regras de acesso a um documento (Parecer, Portaria ou Ofício):</p>
   <ul>
     <li><strong>Edição/exclusão (documento não-sigiloso):</strong> qualquer usuário do <em>mesmo departamento</em> de quem criou pode editar, excluir ou assinar — além do administrador</li>
     <li><strong>Marcado como 🔒 Sigiloso:</strong> aparece na listagem, no dashboard, na busca e nos relatórios apenas para quem o criou e para administradores — mesmo colegas do mesmo departamento não veem</li>
@@ -798,6 +812,16 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.35.0 — 18/07/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Exportar/baixar arquivos com diálogo "Salvar Como"</strong> — PDF de documento, CSVs de relatório e auditoria, e backups agora abrem o explorador nativo do Windows pra escolher onde salvar (na máquina servidora, via <code>localhost</code>); continua caindo na pasta padrão de Downloads ao acessar por outro computador na rede.</li>
+  </ul>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Sigiloso restrito a Parecer, Portaria e Ofício.</strong> Lei e Decreto não podem mais ser marcados sigilosos — são atos normativos que só valem se publicados no Diário Oficial, então a confidencialidade nunca fazia sentido pra esses dois tipos.</li>
+  </ul>
 
   <h3>v1.34.0 — 18/07/2026</h3>
   <p><strong>Adicionado</strong></p>

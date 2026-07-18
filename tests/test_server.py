@@ -483,6 +483,21 @@ class TestDocumentosSigilosos(SGDPTestCase):
         self.assertEqual(status, 200)
         self.assertTrue(any(d['ementa'] == 'Sigiloso dentro do dashboard do criador' for d in dash['recentes']))
 
+    def test_lei_e_decreto_nunca_ficam_sigilosos_mesmo_pedindo(self):
+        # Ato normativo só vale se publicado — sigiloso é forçado a 0 na criação...
+        for tipo in ('lei', 'decreto'):
+            doc = self._criar_doc(self.token_pg1, f'{tipo} tentando sigilo', sigiloso=True, tipo=tipo)
+            self.assertEqual(doc['sigiloso'], 0, doc)
+            # ...e continua bloqueado na edição, mesmo pelo próprio criador.
+            status, atualizado = self.request('PUT', f"/api/documentos/{doc['id']}", {'sigiloso': True}, token=self.token_pg1)
+            self.assertEqual(status, 200, atualizado)
+            self.assertEqual(atualizado['sigiloso'], 0, atualizado)
+
+    def test_parecer_portaria_oficio_podem_ser_sigilosos(self):
+        for tipo in ('parecer', 'portaria', 'oficio'):
+            doc = self._criar_doc(self.token_pg1, f'{tipo} sigiloso permitido', sigiloso=True, tipo=tipo)
+            self.assertEqual(doc['sigiloso'], 1, doc)
+
 
 class TestVinculos(SGDPTestCase):
 
@@ -884,7 +899,7 @@ class TestRelatorios(SGDPTestCase):
         token_a = self.login(f'a_{suf}', 'senha123')
         token_b = self.login(f'b_{suf}', 'senha123')
         self.request('POST', '/api/documentos', {
-            'tipo': 'lei', 'data': '2026-05-20', 'ementa': 'Sigiloso fora do relatorio', 'assunto': 'Outros', 'sigiloso': True,
+            'tipo': 'oficio', 'data': '2026-05-20', 'ementa': 'Sigiloso fora do relatorio', 'assunto': 'Outros', 'sigiloso': True,
         }, token=token_a)
         status, data = self.request('GET', '/api/relatorio?de=2026-05-01&ate=2026-05-31', token=token_b)
         self.assertFalse(any(d['ementa'] == 'Sigiloso fora do relatorio' for d in data['documentos']))

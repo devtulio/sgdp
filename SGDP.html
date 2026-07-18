@@ -855,7 +855,7 @@ tr:hover td { background: var(--gray-50); }
           <datalist id="tags-datalist"></datalist>
         </div>
       </div>
-      <div class="form-row">
+      <div class="form-row" id="f-sigiloso-row" style="display:none">
         <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
           <input id="f-sigiloso" type="checkbox" style="width:auto">
           <label for="f-sigiloso" style="text-transform:none;font-weight:600;font-size:.85rem;color:inherit;cursor:pointer">🔒 Sigiloso — visível apenas para quem criou (e administradores)</label>
@@ -899,7 +899,7 @@ tr:hover td { background: var(--gray-50); }
       <h2 id="pdf-titulo">Visualizar PDF</h2>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-outline btn-sm" onclick="imprimirPdf()">🖨 Imprimir / Salvar PDF</button>
-        <a id="pdf-download" href="#" class="btn btn-outline btn-sm" download>⬇ Baixar</a>
+        <button id="pdf-download" class="btn btn-outline btn-sm" onclick="baixarPdfAtual()">⬇ Baixar</button>
         <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-pdf')">✕</button>
       </div>
     </div>
@@ -1211,7 +1211,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.34.0';
+const SGDP_VERSION = '1.35.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -2186,11 +2186,8 @@ async function exportarRelatorioCsv(de, ate) {
   const r = await API.get(`/api/relatorio/export.csv?de=${de}&ate=${ate}`);
   if (!r || !r.ok) { toast('Erro ao exportar CSV.', 'error'); return; }
   const blob = await r.blob();
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `relatorio_sgdp_${de}_a_${ate}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  await salvarArquivo(blob, `relatorio_sgdp_${de}_a_${ate}.csv`,
+    [{ description: 'CSV', accept: { 'text/csv': ['.csv'] } }]);
 }
 
 async function renderRelatorio(periodo, de, ate) {
@@ -2470,7 +2467,7 @@ async function renderDocumentosLista(page = 1) {
       <td>${doc.arquivo_id
         ? `<span style="display:flex;gap:4px;align-items:center">
             <button class="btn btn-outline btn-sm btn-icon" onclick="verPdf(${doc.arquivo_id},'${esc(doc.arquivo_nome || 'Documento')}')" title="Visualizar PDF">👁</button>
-            <a href="/api/arquivos/${doc.arquivo_id}" download class="btn btn-outline btn-sm btn-icon" title="Baixar PDF">⬇</a>
+            <button class="btn btn-outline btn-sm btn-icon" onclick="baixarPdfDoc(${doc.arquivo_id},'${esc(doc.arquivo_nome || 'documento.pdf')}')" title="Baixar PDF">⬇</button>
             ${doc.assinado_em ? (doc.cod_verificacao
               ? `<a href="/verificar/${doc.cod_verificacao}" target="_blank" rel="noopener" title="Assinado digitalmente em ${fmtDataHora(doc.assinado_em)}${doc.assinatura_cert ? ' — ' + esc(doc.assinatura_cert) : ''}. Clique para verificar (cód. ${doc.cod_verificacao})" style="font-size:14px;text-decoration:none">🔏</a>`
               : `<span title="Assinado digitalmente em ${fmtDataHora(doc.assinado_em)}${doc.assinatura_cert ? ' — ' + esc(doc.assinatura_cert) : ''}" style="font-size:14px">🔏</span>`) : ''}
@@ -2646,6 +2643,10 @@ function onTipoChange() {
     (tipo === 'parecer' && ASSUNTOS_LICITACAO.has(document.getElementById('f-assunto').value)) ? '' : 'none';
   document.getElementById('f-portaria-row').style.display = tipo === 'portaria' ? '' : 'none';
   document.getElementById('f-oficio-interno-row').style.display = tipo === 'oficio' ? '' : 'none';
+  // Lei/Decreto nunca podem ser sigilosos (atos normativos só valem se publicados)
+  const podeSigiloso = tipo === 'parecer' || tipo === 'portaria' || tipo === 'oficio';
+  document.getElementById('f-sigiloso-row').style.display = podeSigiloso ? '' : 'none';
+  if (!podeSigiloso) document.getElementById('f-sigiloso').checked = false;
 }
 
 async function salvarDocumento() {
@@ -3132,6 +3133,7 @@ async function removerArquivoDoc(did) {
 }
 
 // ── PDF viewer ────────────────────────────────────────────────────────────────
+let _pdfAtual = null; // { blob, nome } do PDF aberto no visualizador, pro botão Baixar
 function verPdf(aid, nome) {
   const token = S.token;
   document.getElementById('pdf-titulo').textContent = nome || 'Documento';
@@ -3140,12 +3142,24 @@ function verPdf(aid, nome) {
   fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
     .then(r => r.blob())
     .then(blob => {
-      const burl = URL.createObjectURL(blob);
-      document.getElementById('pdf-frame').src = burl;
-      document.getElementById('pdf-download').href = burl;
-      document.getElementById('pdf-download').download = nome || 'documento.pdf';
+      document.getElementById('pdf-frame').src = URL.createObjectURL(blob);
+      _pdfAtual = { blob, nome: nome || 'documento.pdf' };
     });
   abrirModal('modal-pdf');
+}
+
+async function baixarPdfAtual() {
+  if (!_pdfAtual) return;
+  await salvarArquivo(_pdfAtual.blob, _pdfAtual.nome,
+    [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }]);
+}
+
+async function baixarPdfDoc(aid, nome) {
+  const r = await fetch(`/api/arquivos/${aid}`, { headers: { 'Authorization': `Bearer ${S.token}` } });
+  if (!r.ok) { toast('Erro ao baixar PDF.', 'error'); return; }
+  const blob = await r.blob();
+  await salvarArquivo(blob, nome || 'documento.pdf',
+    [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }]);
 }
 
 function imprimirPdf() {
@@ -3435,11 +3449,8 @@ async function exportarAuditoriaCSV() {
 
   const csv = '﻿' + linhas.join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `SGDP_auditoria_${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  await salvarArquivo(blob, `SGDP_auditoria_${new Date().toISOString().slice(0, 10)}.csv`,
+    [{ description: 'CSV', accept: { 'text/csv': ['.csv'] } }]);
   toast(`${lista.length} registro(s) exportado(s).`, 'success');
 }
 
@@ -3571,13 +3582,11 @@ async function exportBackup() {
   const r = await fetch('/api/backup', { headers: { Authorization: `Bearer ${S.token}` } });
   if (!r.ok) { toast('Erro ao exportar backup.', 'error'); return; }
   const blob = await r.blob();
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
   const _now = new Date();
   const _ds  = _now.toISOString().slice(0,10);
   const _ts  = _now.toTimeString().slice(0,8).replace(/:/g,'-');
-  a.download = `SIS_SGDP_BACKUP_${_ds}_${_ts}.json`;
-  a.click(); URL.revokeObjectURL(a.href);
+  await salvarArquivo(blob, `SIS_SGDP_BACKUP_${_ds}_${_ts}.json`,
+    [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]);
   toast('Backup exportado com sucesso.', 'success');
 }
 
@@ -3695,10 +3704,8 @@ async function exportarBackupDB() {
   const dl = await fetch(`/api/backups/db/download?name=${encodeURIComponent(d.name)}`,
     { headers: { Authorization: `Bearer ${S.token}` } });
   const blob = await dl.blob();
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = d.name;
-  a.click(); URL.revokeObjectURL(a.href);
+  await salvarArquivo(blob, d.name,
+    [{ description: 'Banco de dados SQLite', accept: { 'application/octet-stream': ['.db'] } }]);
   toast('Backup do banco exportado.', 'success');
   document.getElementById('bkp-auto-last').textContent = new Date().toLocaleString('pt-BR');
 }
@@ -4408,6 +4415,34 @@ function toast(msg, type = 'info') {
 // ── Utilitários ───────────────────────────────────────────────────────────────
 function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Salva um arquivo escolhendo o destino via diálogo nativo do explorador
+// (File System Access API — Chrome/Edge). `origem` pode ser um Blob já pronto
+// ou uma URL pra buscar via fetch(). Exige contexto seguro (https ou
+// localhost) — em acesso pela rede local via IP (http://192.168.x.x, sem
+// certificado, arquitetura do SGDP) o navegador não expõe a API, então cai
+// automaticamente no download tradicional pra pasta padrão (mesmo
+// comportamento de antes), sem quebrar nada.
+async function salvarArquivo(origem, nomeSugerido, tipos) {
+  const blob = origem instanceof Blob ? origem : await (await fetch(origem)).blob();
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({ suggestedName: nomeSugerido, types: tipos });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return; // usuário cancelou o diálogo
+      // qualquer outro erro (ex: API indisponível no contexto atual) cai no fallback abaixo
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nomeSugerido;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
 }
 
 const DEPARTAMENTO_SIGLA = { 'Procuradoria-Geral': 'PG', 'Gabinete': 'GAB' };

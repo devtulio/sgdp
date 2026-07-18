@@ -5,6 +5,14 @@
 
 ---
 
+## [1.35.0] — 2026-07-18
+
+### Adicionado
+- **Exportar/baixar arquivos com diálogo "Salvar Como".** Os 5 pontos de exportação do sistema (PDF de documento, CSV do Relatório Gerencial, CSV da Trilha de Auditoria, backup JSON, backup do banco `.db`) agora usam a File System Access API (`showSaveFilePicker`) pra abrir o explorador nativo do Windows e deixar escolher a pasta de destino, em vez de salvar direto na pasta padrão de Downloads. Só funciona em contexto seguro — na prática, quando acessado pela própria máquina servidora via `localhost`; ao acessar pela rede local por IP (`http://192.168.x.x`, sem certificado), o navegador não expõe a API por segurança e o sistema cai automaticamente no download tradicional (comportamento de antes), sem quebrar nada.
+
+### Corrigido
+- **Documento sigiloso restrito a Parecer, Portaria e Ofício.** Lei e Decreto deixam de oferecer a opção "🔒 Sigiloso" — tanto o checkbox some do formulário para esses dois tipos quanto o backend passa a forçar `sigiloso=0` mesmo que a flag seja enviada diretamente à API. Lei e Decreto são atos normativos que só têm validade jurídica se publicados no Diário Oficial, então a confidencialidade era uma opção sem sentido prático para eles.
+
 ## [1.34.0] — 2026-07-18
 
 ### Adicionado

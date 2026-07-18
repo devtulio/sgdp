@@ -1,4 +1,4 @@
-# SGDP v1.34.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.35.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -65,6 +65,10 @@ DEPARTAMENTO_SIGLA = {'Procuradoria-Geral': 'PG', 'Gabinete': 'GAB'}
 # Lei e Decreto usam numeração histórica contínua (nunca reinicia por ano),
 # diferente de Portaria/Parecer/Ofício — ver proximo_numero()/bump_contador().
 TIPOS_NUMERACAO_CONTINUA = ('lei', 'decreto')
+# Lei e Decreto são atos normativos que só têm validade se publicados no Diário
+# Oficial — "sigiloso" é uma contradição em termos pra esses dois. Só Parecer,
+# Portaria e Ofício podem ser marcados sigilosos.
+TIPOS_PERMITEM_SIGILOSO = ('parecer', 'portaria', 'oficio')
 TIPOS_LABELS_CSV = {'lei': 'Lei', 'decreto': 'Decreto', 'portaria': 'Portaria', 'parecer': 'Parecer', 'oficio': 'Ofício'}
 
 # tipo de vínculo -> (label no sentido origem->destino, label no sentido inverso)
@@ -1147,6 +1151,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if not ementa:          self._json(400, {'error': 'Ementa obrigatória'}); return
         if not data_d:          self._json(400, {'error': 'Data obrigatória'}); return
         ano = int(data.get('ano') or data_d[:4])
+        # Lei/Decreto nunca podem ser sigilosos — ver TIPOS_PERMITEM_SIGILOSO.
+        sigiloso = int(bool(data.get('sigiloso'))) if tipo in TIPOS_PERMITEM_SIGILOSO else 0
         # Ofício Interno tem numeração própria por departamento (do criador), separada
         # da sequência normal de Ofício — só se aplica a tipo='oficio'.
         oficio_interno = int(bool(data.get('oficio_interno'))) if tipo == 'oficio' else 0
@@ -1166,7 +1172,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                      data.get('assunto') or 'Outros',
                      data.get('processo_pa') or '', data.get('processo_tipo') or '', data.get('processo_ref') or '',
                      data.get('ato_tipo') or '', data.get('cargo') or '',
-                     int(bool(data.get('sigiloso'))), oficio_interno, oficio_interno_departamento,
+                     sigiloso, oficio_interno, oficio_interno_departamento,
                      s['user_id'], s['user_id'])
                 )
                 # captura o rowid ANTES de bump_contador — que pode fazer seu próprio
@@ -1199,8 +1205,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 if f in data: fields[f] = data[f]
             # sigiloso é sensível: mesmo quem só tem permissão de edição por
             # departamento não pode alterar a confidencialidade de um documento
-            # que não criou — só o criador ou admin.
-            if 'sigiloso' in data and (s['admin'] or row['criado_por'] == s['user_id']):
+            # que não criou — só o criador ou admin. Lei/Decreto nunca podem ser
+            # sigilosos (ver TIPOS_PERMITEM_SIGILOSO) — tipo não muda na edição,
+            # então basta checar o tipo já gravado do documento.
+            if ('sigiloso' in data and (s['admin'] or row['criado_por'] == s['user_id'])
+                    and row['tipo'] in TIPOS_PERMITEM_SIGILOSO):
                 fields['sigiloso'] = int(bool(data['sigiloso']))
             if 'oficio_interno' in data and row['tipo'] == 'oficio':
                 fields['oficio_interno'] = int(bool(data['oficio_interno']))
