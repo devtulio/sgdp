@@ -5,6 +5,18 @@
 
 ---
 
+## [1.34.0] — 2026-07-18
+
+### Adicionado
+- **Numeração histórica contínua para Lei e Decreto.** Esses dois tipos deixam de reiniciar do 1 a cada ano (comportamento antigo, ainda válido para Portaria/Parecer/Ofício) e passam a usar uma sequência contínua que nunca reinicia, batendo com a numeração real usada pelo município (ex.: "Decreto nº 1.933 de 13/10/2025", "Lei nº 1.956 de 18/07/2026"). Implementado sem migração de schema: `contadores` já tinha `tipo` como texto livre, então lei/decreto usam um "ano sentinela" (`0`, que nunca ocorre de verdade) representando a série toda — encapsulado inteiramente em `proximo_numero()`/`bump_contador()`, nenhum outro ponto do código precisou mudar. Exibição com separador de milhar brasileiro (`nº 1.933/2025`) via `Number.toLocaleString('pt-BR')`.
+- **Ofício Interno**, com numeração própria e separada da sequência normal de Ofício. Cada departamento (Procuradoria-Geral ou Gabinete) tem sua própria contagem independente, sem colidir entre si nem com os Ofícios normais de mesmo número/ano — o número exibido ganha automaticamente o sufixo do departamento de quem criou o documento (ex.: "nº 001/2026 PG", "nº 001/2026 GAB"), sem precisar digitá-lo. Novo checkbox "🏢 Ofício Interno" no formulário, visível só para o tipo Ofício.
+
+### Corrigido
+- **Indexação de busca full-text (FTS5) na inicialização, ao adicionar suporte a busca full-text a um banco pré-existente e já populado.** A checagem que decidia se o índice precisava ser populado (`COUNT(*)` na tabela virtual `documentos_fts`) fazia *passthrough* para a contagem de linhas da tabela de conteúdo (`documentos`) em vez de refletir se o índice de termos já existia — nunca era 0 nesse cenário, então o backfill inicial era pulado e documentos cadastrados antes da funcionalidade existir ficavam permanentemente de fora da busca (embora documentos novos, indexados via trigger, continuassem funcionando normalmente). Corrigido decidindo o backfill por "a tabela virtual já existia antes deste `CREATE`?" em vez de por contagem. Adicionado teste de regressão dedicado (`TestFTSBackfill`).
+
+### Técnico
+- Migração de schema (`oficio_interno` + troca de `UNIQUE(tipo,numero,ano)` por `UNIQUE(tipo,numero,ano,oficio_interno,oficio_interno_departamento)`) segue o procedimento oficial do SQLite para recriar uma tabela referenciada por FK de outras tabelas: cria a tabela nova sob nome temporário, copia os dados preservando `id`, dropa a tabela original (sem renomeá-la antes) e só então renomeia a nova para o nome final — nessa ordem, as cláusulas `REFERENCES documentos` de outras tabelas (`lembretes`, `documento_vinculos`, `documento_tags`, `documento_revisoes`, `signatures`) nunca são reescritas pelo SQLite e continuam válidas depois da migração. (Uma primeira tentativa, na ordem inversa — renomear a tabela original antes de criar a nova — deixava essas FKs permanentemente órfãs, apontando para um nome de tabela que deixava de existir; capturado e corrigido antes de qualquer release, com teste de migração dedicado simulando um banco antigo com filhos nas 3 tabelas.) Verificação de integridade (`PRAGMA foreign_key_check`) após a migração, como rede de segurança adicional.
+
 ## [1.33.8] — 2026-07-18
 
 ### Corrigido

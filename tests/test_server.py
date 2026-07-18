@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import socketserver
+import sqlite3
 import sys
 import tempfile
 import threading
@@ -100,6 +101,51 @@ class SGDPTestCase(unittest.TestCase):
         data = resp.read()
         conn.close()
         return resp.status, (json.loads(data) if data else None)
+
+
+class TestFTSBackfill(unittest.TestCase):
+    """Regressão: init_db() precisa indexar documentos pré-existentes na 1ª
+    criação de documentos_fts (upgrade de um banco sem FTS5). COUNT(*) numa
+    fts5 external-content faz passthrough pra `documentos` e nunca é 0, então
+    o backfill não pode depender de COUNT — ver server.py init_db()."""
+
+    def test_documento_preexistente_fica_pesquisavel_apos_init_db(self):
+        tmpdir = tempfile.mkdtemp(prefix='sgdp_fts_test_')
+        db_path = os.path.join(tmpdir, 'sgdp.db')
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            conn.execute('''
+                CREATE TABLE documentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT NOT NULL,
+                    numero INTEGER NOT NULL, ano INTEGER NOT NULL, data TEXT NOT NULL,
+                    ementa TEXT NOT NULL, partes TEXT, observacoes TEXT,
+                    arquivo_id INTEGER, criado_por INTEGER, atualizado_por INTEGER,
+                    criado_em TEXT, atualizado_em TEXT
+                )
+            ''')
+            conn.execute(
+                "INSERT INTO documentos (tipo, numero, ano, data, ementa, partes, observacoes) "
+                "VALUES ('lei', 1, 2020, '2020-01-01', 'ementa pesquisavel unica', '', '')"
+            )
+            conn.commit()
+            conn.close()
+
+            old_db_path = server.DB_PATH
+            server.DB_PATH = db_path
+            try:
+                server.init_db()
+            finally:
+                server.DB_PATH = old_db_path
+
+            conn = sqlite3.connect(db_path)
+            rows = conn.execute(
+                "SELECT rowid FROM documentos_fts WHERE documentos_fts MATCH 'pesquisavel'"
+            ).fetchall()
+            conn.close()
+            self.assertEqual(rows, [(1,)])
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 class TestAuth(SGDPTestCase):
@@ -495,6 +541,223 @@ class TestVinculos(SGDPTestCase):
         ids_na_cadeia = {d['id'] for d in cadeia['docs']}
         self.assertEqual(ids_na_cadeia, {a['id'], b['id'], c['id']})
         self.assertEqual(len(cadeia['arestas']), 2)  # sem duplicar arestas
+
+
+class TestNumeracaoContinua(SGDPTestCase):
+    """Lei/Decreto usam contador histórico contínuo (ano sentinela 0 em
+    contadores) — não reseta ao mudar de ano, diferente dos outros tipos."""
+
+    _contador = itertools.count()
+
+    def _anos(self):
+        # anos exclusivos por teste — evita colisão com contagem absoluta de
+        # outros testes que também criam 'oficio' no mesmo banco compartilhado.
+        base = 2500 + next(self._contador) * 10
+        return base, base + 2
+
+    def test_lei_nao_reinicia_numeracao_ao_mudar_de_ano(self):
+        token = self.login()
+        ano_a, ano_b = self._anos()
+        status, d1 = self.request('POST', '/api/documentos',
+                                   {'tipo': 'lei', 'data': f'{ano_a}-01-01', 'ementa': 'Lei ano A', 'ano': ano_a}, token=token)
+        self.assertEqual(status, 201, d1)
+        status, d2 = self.request('POST', '/api/documentos',
+                                   {'tipo': 'lei', 'data': f'{ano_b}-01-01', 'ementa': 'Lei ano B', 'ano': ano_b}, token=token)
+        self.assertEqual(status, 201, d2)
+        self.assertEqual(d2['numero'], d1['numero'] + 1)
+
+    def test_decreto_nao_reinicia_numeracao_ao_mudar_de_ano(self):
+        token = self.login()
+        ano_a, ano_b = self._anos()
+        status, d1 = self.request('POST', '/api/documentos',
+                                   {'tipo': 'decreto', 'data': f'{ano_a}-01-01', 'ementa': 'Decreto ano A', 'ano': ano_a}, token=token)
+        status, d2 = self.request('POST', '/api/documentos',
+                                   {'tipo': 'decreto', 'data': f'{ano_b}-01-01', 'ementa': 'Decreto ano B', 'ano': ano_b}, token=token)
+        self.assertEqual(status, 201, d2)
+        self.assertEqual(d2['numero'], d1['numero'] + 1)
+
+    def test_oficio_continua_reiniciando_por_ano_normalmente(self):
+        # Contraste com lei/decreto: ofício não é numeração contínua — precisa
+        # de um ano exclusivo (não só relativo) pra confirmar que reinicia do 1.
+        token = self.login()
+        ano_a, ano_b = self._anos()
+        self.request('POST', '/api/documentos',
+                      {'tipo': 'oficio', 'data': f'{ano_a}-01-01', 'ementa': 'Oficio ano A', 'ano': ano_a}, token=token)
+        status, d2 = self.request('POST', '/api/documentos',
+                                   {'tipo': 'oficio', 'data': f'{ano_b}-01-01', 'ementa': 'Oficio ano B', 'ano': ano_b}, token=token)
+        self.assertEqual(status, 201, d2)
+        self.assertEqual(d2['numero'], 1)  # reinicia — não encadeia com o do ano A
+
+    def test_numero_editado_manualmente_recalibra_o_contador(self):
+        token = self.login()
+        ano_a, ano_b = self._anos()
+        numero_alto = 100000 + next(self._contador)
+        status, d1 = self.request('POST', '/api/documentos',
+                                   {'tipo': 'lei', 'data': f'{ano_a}-01-01', 'ementa': 'Lei numero manual',
+                                    'ano': ano_a, 'numero': numero_alto}, token=token)
+        self.assertEqual(status, 201, d1)
+        self.assertEqual(d1['numero'], numero_alto)
+        status, d2 = self.request('POST', '/api/documentos',
+                                   {'tipo': 'lei', 'data': f'{ano_b}-01-01', 'ementa': 'Lei proxima automatica', 'ano': ano_b}, token=token)
+        self.assertEqual(status, 201, d2)
+        self.assertEqual(d2['numero'], numero_alto + 1)
+
+
+class TestMigracaoOficioInterno(unittest.TestCase):
+    """Regressão dedicada da migração de schema que adiciona `oficio_interno`
+    (server.py init_db(), branch 'oficio_interno' not in cols): monta um banco
+    no formato antigo (documentos sem a coluna, UNIQUE(tipo,numero,ano) só,
+    com filhos em tabelas com FK pra documentos) e confere que init_db()
+    preserva tudo, sem cascatear DELETE nos filhos nem deixar nenhuma FK de
+    outra tabela apontando pra um nome de tabela que deixou de existir."""
+
+    def _montar_banco_antigo(self, db_path):
+        conn = sqlite3.connect(db_path)
+        conn.execute('PRAGMA foreign_keys=ON')
+        conn.executescript('''
+            CREATE TABLE usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                nome TEXT NOT NULL, senha_hash TEXT NOT NULL, admin INTEGER DEFAULT 0, ativo INTEGER DEFAULT 1,
+                criado_em TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
+            CREATE TABLE documentos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT NOT NULL, numero INTEGER NOT NULL,
+                ano INTEGER NOT NULL, data TEXT NOT NULL, ementa TEXT NOT NULL, partes TEXT, observacoes TEXT,
+                arquivo_id INTEGER, criado_por INTEGER, atualizado_por INTEGER, criado_em TEXT, atualizado_em TEXT,
+                UNIQUE(tipo,numero,ano)
+            );
+            CREATE TABLE lembretes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, titulo TEXT NOT NULL, data_prazo TEXT NOT NULL,
+                documento_id INTEGER REFERENCES documentos(id) ON DELETE SET NULL, concluido INTEGER DEFAULT 0,
+                criado_por INTEGER REFERENCES usuarios(id), criado_em TEXT, notificado_em TEXT
+            );
+            CREATE TABLE documento_vinculos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                origem_id INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+                destino_id INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+                tipo TEXT NOT NULL, criado_por INTEGER, criado_em TEXT,
+                UNIQUE(origem_id,destino_id,tipo)
+            );
+            CREATE TABLE tags (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL UNIQUE COLLATE NOCASE);
+            CREATE TABLE documento_tags (
+                documento_id INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+                tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+                PRIMARY KEY (documento_id, tag_id)
+            );
+        ''')
+        conn.execute("INSERT INTO usuarios (id,username,nome,senha_hash) VALUES (1,'admin','Admin','x')")
+        conn.execute("INSERT INTO documentos (id,tipo,numero,ano,data,ementa,criado_por) VALUES (5,'lei',10,2024,'2024-01-01','Lei A',1)")
+        conn.execute("INSERT INTO documentos (id,tipo,numero,ano,data,ementa,criado_por) VALUES (7,'lei',11,2024,'2024-02-01','Lei B',1)")
+        conn.execute("INSERT INTO documentos (id,tipo,numero,ano,data,ementa,criado_por) VALUES (9,'oficio',1,2026,'2026-01-05','Oficio antigo',1)")
+        conn.execute("INSERT INTO documento_vinculos (origem_id,destino_id,tipo,criado_por) VALUES (5,7,'altera',1)")
+        conn.execute("INSERT INTO lembretes (titulo,data_prazo,documento_id,criado_por) VALUES ('lembrete antigo','2026-02-01',9,1)")
+        conn.execute("INSERT INTO tags (id,nome) VALUES (1,'urgente')")
+        conn.execute("INSERT INTO documento_tags (documento_id,tag_id) VALUES (5,1)")
+        conn.commit()
+        conn.close()
+
+    def test_migracao_preserva_filhos_e_permite_oficio_interno_coexistir(self):
+        tmpdir = tempfile.mkdtemp(prefix='sgdp_migracao_test_')
+        db_path = os.path.join(tmpdir, 'sgdp.db')
+        old_db_path = server.DB_PATH
+        try:
+            self._montar_banco_antigo(db_path)
+            server.DB_PATH = db_path
+            server.init_db()
+        finally:
+            server.DB_PATH = old_db_path
+
+        try:
+            conn = sqlite3.connect(db_path)
+            conn.execute('PRAGMA foreign_keys=ON')
+
+            # dados antigos preservados com o mesmo id, oficio_interno=0 por padrão
+            docs = {r[0]: r[1] for r in conn.execute('SELECT id, oficio_interno FROM documentos').fetchall()}
+            self.assertEqual(docs.get(5), 0)
+            self.assertEqual(docs.get(7), 0)
+            self.assertEqual(docs.get(9), 0)
+
+            # filhos com FK não foram apagados
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM documento_vinculos').fetchone()[0], 1)
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM lembretes').fetchone()[0], 1)
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM documento_tags').fetchone()[0], 1)
+
+            # nenhuma tabela ficou com FK órfã apontando pra um nome que não existe mais
+            for nome in ('lembretes', 'documento_vinculos', 'documento_tags'):
+                sql = conn.execute('SELECT sql FROM sqlite_master WHERE name=?', (nome,)).fetchone()[0]
+                self.assertNotIn('documentos_old', sql)
+                self.assertNotIn('documentos_new', sql)
+            self.assertEqual(conn.execute('PRAGMA foreign_key_check').fetchall(), [])
+
+            # inserir um filho novo referenciando um doc antigo funciona com FK ligada
+            conn.execute("INSERT INTO lembretes (titulo,data_prazo,documento_id,criado_por) VALUES ('novo','2026-05-01',9,1)")
+            conn.commit()
+
+            # Ofício Interno pode coexistir com o Ofício normal de mesmo número/ano
+            conn.execute(
+                "INSERT INTO documentos (tipo,numero,ano,data,ementa,criado_por,oficio_interno) "
+                "VALUES ('oficio',1,2026,'2026-03-01','Oficio interno mesmo numero',1,1)")
+            conn.commit()
+
+            # documentos antigos continuam pesquisáveis via FTS5 após a migração
+            achados = conn.execute("SELECT rowid FROM documentos_fts WHERE documentos_fts MATCH 'antigo'").fetchall()
+            self.assertEqual({r[0] for r in achados}, {9})
+            conn.close()
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+class TestOficioInterno(SGDPTestCase):
+    """Ofício Interno tem contador próprio por departamento (do criador),
+    com sufixo dinâmico, sem colidir com a sequência normal de Ofício."""
+
+    _contador = itertools.count()
+
+    def setUp(self):
+        suf = next(self._contador)
+        self.admin_token = self.login()
+        self.criar_usuario(f'oi_pg_{suf}', departamento='Procuradoria-Geral', admin_token=self.admin_token)
+        self.criar_usuario(f'oi_gab_{suf}', departamento='Gabinete', admin_token=self.admin_token)
+        self.token_pg = self.login(f'oi_pg_{suf}', 'senha123')
+        self.token_gab = self.login(f'oi_gab_{suf}', 'senha123')
+        self.ano = 2070 + suf  # ano exclusivo por teste evita interferência entre contadores
+
+    def _criar_oficio(self, token, ementa, oficio_interno=False):
+        status, doc = self.request('POST', '/api/documentos', {
+            'tipo': 'oficio', 'data': f'{self.ano}-01-01', 'ementa': ementa,
+            'ano': self.ano, 'oficio_interno': oficio_interno,
+        }, token=token)
+        self.assertEqual(status, 201, doc)
+        return doc
+
+    def test_oficio_interno_tem_contador_separado_do_oficio_normal(self):
+        normal = self._criar_oficio(self.token_pg, 'Oficio normal', oficio_interno=False)
+        interno = self._criar_oficio(self.token_pg, 'Oficio interno', oficio_interno=True)
+        # ambos começam do 1 na própria sequência — não colidem (UNIQUE inclui oficio_interno)
+        self.assertEqual(normal['numero'], 1)
+        self.assertEqual(interno['numero'], 1)
+
+    def test_departamentos_diferentes_tem_contadores_de_oficio_interno_independentes(self):
+        pg1 = self._criar_oficio(self.token_pg, 'Interno PG 1', oficio_interno=True)
+        gab1 = self._criar_oficio(self.token_gab, 'Interno GAB 1', oficio_interno=True)
+        pg2 = self._criar_oficio(self.token_pg, 'Interno PG 2', oficio_interno=True)
+        self.assertEqual(pg1['numero'], 1)
+        self.assertEqual(gab1['numero'], 1)  # departamento diferente, contador próprio
+        self.assertEqual(pg2['numero'], 2)   # mesmo departamento, incrementa
+
+    def test_listagem_traz_departamento_do_criador_para_sufixo_no_frontend(self):
+        doc = self._criar_oficio(self.token_pg, 'Interno com sufixo', oficio_interno=True)
+        status, single = self.request('GET', f"/api/documentos/{doc['id']}", token=self.admin_token)
+        self.assertEqual(status, 200)
+        self.assertEqual(single['oficio_interno'], 1)
+        self.assertEqual(single['criado_por_departamento'], 'Procuradoria-Geral')
+
+    def test_oficio_interno_editavel_recalibra_contador_do_departamento_do_criador(self):
+        doc = self._criar_oficio(self.token_pg, 'Interno numero manual', oficio_interno=True)
+        status, atualizado = self.request('PUT', f"/api/documentos/{doc['id']}", {'numero': 50}, token=self.token_pg)
+        self.assertEqual(status, 200, atualizado)
+        proximo = self._criar_oficio(self.token_pg, 'Interno proximo automatico', oficio_interno=True)
+        self.assertEqual(proximo['numero'], 51)
 
 
 class TestTagsERevisoes(SGDPTestCase):

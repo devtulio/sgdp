@@ -861,6 +861,12 @@ tr:hover td { background: var(--gray-50); }
           <label for="f-sigiloso" style="text-transform:none;font-weight:600;font-size:.85rem;color:inherit;cursor:pointer">🔒 Sigiloso — visível apenas para quem criou (e administradores)</label>
         </div>
       </div>
+      <div class="form-row" id="f-oficio-interno-row" style="display:none">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
+          <input id="f-oficio-interno" type="checkbox" style="width:auto">
+          <label for="f-oficio-interno" style="text-transform:none;font-weight:600;font-size:.85rem;color:inherit;cursor:pointer">🏢 Ofício Interno — numeração própria do departamento (sufixo automático)</label>
+        </div>
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label>PDF Assinado</label>
@@ -1205,7 +1211,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.33.8';
+const SGDP_VERSION = '1.34.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1805,14 +1811,14 @@ async function gerarRelatorioPendencias() {
   const linhaLembrete = l => `<tr>
     <td>${esc(l.titulo)}</td>
     <td>${fmtData(l.data_prazo)}</td>
-    <td>${l.doc_tipo ? `${TIPOS_LABELS[l.doc_tipo]} ${fmtNum(l.doc_numero, l.doc_ano)}` : '—'}</td>
+    <td>${l.doc_tipo ? `${TIPOS_LABELS[l.doc_tipo]} ${fmtNum(l.doc_numero, l.doc_ano, l.doc_tipo)}` : '—'}</td>
   </tr>`;
 
   const tabelaLembretes = (titulo, itens) => !itens.length ? '' : `
     <tr class="group-header"><td colspan="3">${titulo} (${itens.length})</td></tr>
     ${itens.map(linhaLembrete).join('')}`;
 
-  const linhaSemPdf = d => `<tr><td>${TIPOS_LABELS[d.tipo]}</td><td>${fmtNum(d.numero, d.ano)}</td><td>${fmtData(d.data)}</td><td>${esc(d.ementa)}</td></tr>`;
+  const linhaSemPdf = d => `<tr><td>${TIPOS_LABELS[d.tipo]}</td><td>${fmtNum(d.numero, d.ano, d.tipo)}</td><td>${fmtData(d.data)}</td><td>${esc(d.ementa)}</td></tr>`;
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -1887,7 +1893,7 @@ ${_footerOficial()}
 // na exportação em lote — só muda como o resultado é embrulhado no final.
 async function _blocoCertidao(doc, cfg) {
   const [{ html: cab }, rRev, rVinc] = await Promise.all([
-    _cabecalhoOficial('Certidão de Documento', `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}`, cfg),
+    _cabecalhoOficial('Certidão de Documento', `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano, doc.tipo)}`, cfg),
     API.get(`/api/documentos/${doc.id}/revisoes`),
     API.get(`/api/documentos/${doc.id}/vinculos`),
   ]);
@@ -1896,7 +1902,7 @@ async function _blocoCertidao(doc, cfg) {
 
   const camposFicha = [
     ['Tipo', TIPOS_LABELS[doc.tipo]],
-    ['Número/Ano', fmtNum(doc.numero, doc.ano)],
+    ['Número/Ano', fmtNum(doc.numero, doc.ano, doc.tipo)],
     ['Data', fmtData(doc.data)],
     ['Assunto', doc.assunto],
     ['Ementa', doc.ementa],
@@ -1909,7 +1915,7 @@ async function _blocoCertidao(doc, cfg) {
 
   const linhasVinculos = vinculos.length
     ? `<ul style="margin:8pt 0 0 18pt;font-size:10pt">${vinculos.map(v =>
-        `<li><strong>${esc(v.label)}:</strong> ${TIPOS_LABELS[v.doc_tipo]} ${fmtNum(v.doc_numero, v.doc_ano)} — ${esc(v.doc_ementa)}</li>`).join('')}</ul>`
+        `<li><strong>${esc(v.label)}:</strong> ${TIPOS_LABELS[v.doc_tipo]} ${fmtNum(v.doc_numero, v.doc_ano, v.doc_tipo)} — ${esc(v.doc_ementa)}</li>`).join('')}</ul>`
     : '<p style="font-size:10pt;color:#666">Nenhum vínculo registrado.</p>';
 
   const linhasRevisoes = revisoes.length
@@ -1951,7 +1957,7 @@ async function gerarCertidaoDocumento(docId) {
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><title>Certidão — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</title>
+<head><meta charset="UTF-8"><title>Certidão — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano, doc.tipo)}</title>
 <style>${SGDP_DOC_CSS}</style></head>
 <body>
 <button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
@@ -1959,7 +1965,7 @@ async function gerarCertidaoDocumento(docId) {
 ${corpo}
 </body></html>`;
 
-  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, `Certidão — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}`);
+  _gerarDocumentoOficial(window.open('', '_blank', 'width=900,height=700'), html, `Certidão — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano, doc.tipo)}`);
 }
 
 // ── Certidões em lote ────────────────────────────────────────────────────────
@@ -2010,9 +2016,9 @@ async function gerarRelatorioCadeiaNormativa(docId) {
   const raiz = d.raiz, arestas = d.arestas;
   const docsMap = Object.fromEntries((d.docs || []).map(doc => [doc.id, doc]));
 
-  const { html: cab, cfg } = await _cabecalhoOficial('Cadeia Normativa', `${TIPOS_LABELS[raiz.tipo]} ${fmtNum(raiz.numero, raiz.ano)}`);
+  const { html: cab, cfg } = await _cabecalhoOficial('Cadeia Normativa', `${TIPOS_LABELS[raiz.tipo]} ${fmtNum(raiz.numero, raiz.ano, raiz.tipo)}`);
 
-  const nomeDoc = doc => `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)} — ${esc(doc.ementa)}`;
+  const nomeDoc = doc => `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano, doc.tipo)} — ${esc(doc.ementa)}`;
   const linhas = arestas.map(a => {
     const de = docsMap[a.de], para = docsMap[a.para];
     return `<tr>
@@ -2024,7 +2030,7 @@ async function gerarRelatorioCadeiaNormativa(docId) {
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><title>Cadeia Normativa — ${TIPOS_LABELS[raiz.tipo]} ${fmtNum(raiz.numero, raiz.ano)}</title>
+<head><meta charset="UTF-8"><title>Cadeia Normativa — ${TIPOS_LABELS[raiz.tipo]} ${fmtNum(raiz.numero, raiz.ano, raiz.tipo)}</title>
 <style>${SGDP_DOC_CSS}</style></head>
 <body>
 <button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
@@ -2055,12 +2061,12 @@ async function gerarCertidaoNegativaPendencias(docId) {
 
   const { html: cab, cfg } = await _cabecalhoOficial(
     negativa ? 'Certidão Negativa de Pendências' : 'Certidão de Pendências',
-    `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}`
+    `${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano, doc.tipo)}`
   );
 
   const corpo = negativa
-    ? `<p style="line-height:1.8;text-align:justify;margin:16pt 0">Certifico, para os devidos fins, que o documento <strong>${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</strong> — "${esc(doc.ementa)}" — <strong>não possui pendências registradas</strong> no Sistema de Gestão de Documentos da Procuradoria (SGDP) na data de emissão desta certidão, possuindo PDF assinado anexado e nenhum lembrete pendente vinculado.</p>`
-    : `<p style="line-height:1.8;text-align:justify;margin:16pt 0">Certifico que o documento <strong>${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</strong> — "${esc(doc.ementa)}" — possui as seguintes pendências registradas no Sistema de Gestão de Documentos da Procuradoria (SGDP) na data de emissão desta certidão:</p>
+    ? `<p style="line-height:1.8;text-align:justify;margin:16pt 0">Certifico, para os devidos fins, que o documento <strong>${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano, doc.tipo)}</strong> — "${esc(doc.ementa)}" — <strong>não possui pendências registradas</strong> no Sistema de Gestão de Documentos da Procuradoria (SGDP) na data de emissão desta certidão, possuindo PDF assinado anexado e nenhum lembrete pendente vinculado.</p>`
+    : `<p style="line-height:1.8;text-align:justify;margin:16pt 0">Certifico que o documento <strong>${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano, doc.tipo)}</strong> — "${esc(doc.ementa)}" — possui as seguintes pendências registradas no Sistema de Gestão de Documentos da Procuradoria (SGDP) na data de emissão desta certidão:</p>
        <ul style="margin:0 0 16pt 20pt;font-size:10.5pt;line-height:1.8">
          ${semPdf ? '<li>Documento sem PDF assinado anexado.</li>' : ''}
          ${pendencias.map(l => `<li>Lembrete "${esc(l.titulo)}" com prazo em ${fmtData(l.data_prazo)}.</li>`).join('')}
@@ -2068,7 +2074,7 @@ async function gerarCertidaoNegativaPendencias(docId) {
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><title>${negativa ? 'Certidão Negativa' : 'Certidão'} de Pendências — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)}</title>
+<head><meta charset="UTF-8"><title>${negativa ? 'Certidão Negativa' : 'Certidão'} de Pendências — ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano, doc.tipo)}</title>
 <style>${SGDP_DOC_CSS}</style></head>
 <body>
 <button class="btn-print no-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
@@ -2158,7 +2164,7 @@ async function gerarRelatorioEtiquetas() {
     <h4 style="font-size:11pt;margin:16pt 0 4pt">${esc(t.nome)} <span style="font-weight:400;color:#666;font-size:9.5pt">(${t.total} documento${t.total!==1?'s':''})</span></h4>
     <table class="rel">
       <thead><tr><th style="width:70pt">Tipo</th><th style="width:80pt">Número</th><th>Ementa</th></tr></thead>
-      <tbody>${t.documentos.map(doc => `<tr><td>${TIPOS_LABELS[doc.tipo]}</td><td>${fmtNum(doc.numero, doc.ano)}</td><td>${esc(doc.ementa)}</td></tr>`).join('')}</tbody>
+      <tbody>${t.documentos.map(doc => `<tr><td>${TIPOS_LABELS[doc.tipo]}</td><td>${fmtNum(doc.numero, doc.ano, doc.tipo)}</td><td>${esc(doc.ementa)}</td></tr>`).join('')}</tbody>
     </table>`;
 
   const html = `<!DOCTYPE html>
@@ -2260,7 +2266,7 @@ async function renderRelatorio(periodo, de, ate) {
   const docRows = d.documentos.slice(0, 100).map(doc =>
     `<tr>
       <td><span class="badge-tipo badge-${doc.tipo}">${TIPOS_LABELS_REL[doc.tipo]}</span></td>
-      <td>${fmtNum(doc.numero, doc.ano)}</td>
+      <td>${fmtNum(doc.numero, doc.ano, doc.tipo)}</td>
       <td>${fmtData(doc.data)}</td>
       <td style="color:var(--gray-500);font-size:12px">${esc(doc.assunto || '—')}</td>
       <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(doc.ementa)}</td>
@@ -2398,14 +2404,14 @@ async function renderDashboard() {
       <div class="dc-label">${TIPOS_PLURAL[t]}</div>
       <div class="dc-total">${d.totais[t] || 0}</div>
       <div class="dc-ano">${d.ano_atual[t] || 0} em ${ANO_ATUAL}</div>
-      <div class="dc-ultimo">Último: ${d.ultimos?.[t] ? fmtNum(d.ultimos[t].numero, d.ultimos[t].ano).replace('nº ','') : '—'}</div>
+      <div class="dc-ultimo">Último: ${d.ultimos?.[t] ? fmtNum(d.ultimos[t].numero, d.ultimos[t].ano, t).replace('nº ','') : '—'}</div>
     </div>
   `).join('');
 
   const recentes = d.recentes.length ? d.recentes.map(doc => `
     <tr>
       <td><span class="badge-tipo tipo-${doc.tipo}">${TIPOS_LABELS[doc.tipo]}</span></td>
-      <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano)}</span></td>
+      <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano, doc.tipo, doc.oficio_interno ? DEPARTAMENTO_SIGLA[doc.criado_por_departamento] : '')}</span></td>
       <td>${fmtData(doc.data)}</td>
       <td class="td-ementa"><span>${esc(doc.ementa)}</span></td>
       <td style="font-size:.8rem;color:var(--gray-500)">${esc(doc.criado_por_departamento || '—')}</td>
@@ -2452,7 +2458,7 @@ async function renderDocumentosLista(page = 1) {
     const podeEditar = S.user.admin || (doc.sigiloso ? doc.criado_por === S.user.id : doc.criado_por_departamento === S.user.departamento);
     return `
     <tr>
-      <td class="tipo-${doc.tipo}"><span class="num-doc">${doc.sigiloso ? '🔒 ' : ''}${fmtNum(doc.numero, doc.ano)}</span></td>
+      <td class="tipo-${doc.tipo}"><span class="num-doc">${doc.sigiloso ? '🔒 ' : ''}${fmtNum(doc.numero, doc.ano, doc.tipo, doc.oficio_interno ? DEPARTAMENTO_SIGLA[doc.criado_por_departamento] : '')}</span></td>
       <td>${fmtData(doc.data)}</td>
       <td class="td-ementa">
         <span title="${esc(doc.ementa)}">${esc(doc.ementa)}</span>
@@ -2473,12 +2479,12 @@ async function renderDocumentosLista(page = 1) {
       <td>
         <div class="td-acoes">
           ${podeEditar ? `<button class="btn btn-outline btn-sm" onclick="abrirEditarDoc(${doc.id})">✎ Editar</button>` : ''}
-          <button class="btn btn-outline btn-sm btn-icon" onclick="abrirHistoricoDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Histórico de revisões">🕘</button>
-          <button class="btn btn-outline btn-sm btn-icon" onclick="abrirVinculosDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Vínculos com outros documentos">🔗</button>
-          ${podeEditar ? `<button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalAssinar(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Assinar digitalmente (ICP-Brasil)">🔏</button>` : ''}
+          <button class="btn btn-outline btn-sm btn-icon" onclick="abrirHistoricoDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Histórico de revisões">🕘</button>
+          <button class="btn btn-outline btn-sm btn-icon" onclick="abrirVinculosDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Vínculos com outros documentos">🔗</button>
+          ${podeEditar ? `<button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalAssinar(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Assinar digitalmente (ICP-Brasil)">🔏</button>` : ''}
           <button class="btn btn-outline btn-sm btn-icon" onclick="gerarCertidaoDocumento(${doc.id})" title="Gerar certidão deste documento">📜</button>
-          <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalEmail(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Enviar por e-mail">✉</button>
-          ${podeEditar ? `<button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')" title="Excluir" aria-label="Excluir documento">✕</button>` : ''}
+          <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalEmail(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Enviar por e-mail">✉</button>
+          ${podeEditar ? `<button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Excluir" aria-label="Excluir documento">✕</button>` : ''}
         </div>
       </td>
     </tr>
@@ -2536,6 +2542,7 @@ async function abrirNovoDoc(tipo) {
   document.getElementById('f-tags').value = '';
   document.getElementById('f-sigiloso').checked = false;
   document.getElementById('f-sigiloso').disabled = false;
+  document.getElementById('f-oficio-interno').checked = false;
   _populaAssunto(tipo, ASSUNTOS_GERAL[0]);
   onTipoChange();
   resetUpload();
@@ -2575,6 +2582,7 @@ async function abrirEditarDoc(id) {
   document.getElementById('f-tags').value = (doc.tags || []).join(', ');
   document.getElementById('f-sigiloso').checked = !!doc.sigiloso;
   document.getElementById('f-sigiloso').disabled = !(S.user.admin || doc.criado_por === S.user.id);
+  document.getElementById('f-oficio-interno').checked = !!doc.oficio_interno;
   _carregarTagsDatalist();
   onTipoChange();
   if (S.existingArq) {
@@ -2637,6 +2645,7 @@ function onTipoChange() {
   document.getElementById('f-processo-row').style.display =
     (tipo === 'parecer' && ASSUNTOS_LICITACAO.has(document.getElementById('f-assunto').value)) ? '' : 'none';
   document.getElementById('f-portaria-row').style.display = tipo === 'portaria' ? '' : 'none';
+  document.getElementById('f-oficio-interno-row').style.display = tipo === 'oficio' ? '' : 'none';
 }
 
 async function salvarDocumento() {
@@ -2656,6 +2665,7 @@ async function salvarDocumento() {
     ato_tipo:      document.getElementById('f-ato-tipo').value,
     cargo:         document.getElementById('f-cargo').value.trim(),
     sigiloso:      document.getElementById('f-sigiloso').checked,
+    oficio_interno: document.getElementById('f-oficio-interno').checked,
     data, ementa,
     partes:        document.getElementById('f-partes').value.trim(),
     observacoes:   document.getElementById('f-obs').value.trim(),
@@ -2712,14 +2722,14 @@ async function renderLixeira() {
   if (!d) return;
   const rows = d.items.length ? d.items.map(doc => `
     <tr>
-      <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano)}</span></td>
+      <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano, doc.tipo)}</span></td>
       <td>${fmtData(doc.data)}</td>
       <td class="td-ementa"><span title="${esc(doc.ementa)}">${esc(doc.ementa)}</span></td>
       <td>${fmtData(doc.excluido_em.slice(0,10))}</td>
       <td>
         <div class="td-acoes">
           <button class="btn btn-outline btn-sm" onclick="restaurarDoc(${doc.id})">↺ Restaurar</button>
-          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="purgarDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano))}')">✕ Excluir de vez</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="purgarDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')">✕ Excluir de vez</button>
         </div>
       </td>
     </tr>
@@ -2765,7 +2775,7 @@ async function renderAgenda() {
       </td>
       <td>${esc(l.titulo)}</td>
       <td style="${atrasado ? 'color:var(--red);font-weight:600' : ''}">${fmtData(l.data_prazo)}${atrasado ? ' (atrasado)' : ''}</td>
-      <td>${l.documento_id ? `<span class="badge-tipo tipo-${l.doc_tipo}">${fmtNum(l.doc_numero, l.doc_ano)}</span>` : '—'}</td>
+      <td>${l.documento_id ? `<span class="badge-tipo tipo-${l.doc_tipo}">${fmtNum(l.doc_numero, l.doc_ano, l.doc_tipo)}</span>` : '—'}</td>
       <td><button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirLembrete(${l.id})" title="Excluir" aria-label="Excluir lembrete">✕</button></td>
     </tr>`;
   }).join('') : `<tr class="empty-row"><td colspan="5">Nenhum lembrete cadastrado.</td></tr>`;
@@ -2877,7 +2887,7 @@ async function _renderVinculos() {
   }
   body.innerHTML = items.map(it => `
     <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--gray-200);border-radius:8px;padding:8px 12px;margin-bottom:8px">
-      <span style="font-size:13px"><strong>${esc(it.label)}:</strong> ${TIPOS_LABELS[it.doc_tipo]} ${fmtNum(it.doc_numero, it.doc_ano)} — ${esc(it.doc_ementa)}</span>
+      <span style="font-size:13px"><strong>${esc(it.label)}:</strong> ${TIPOS_LABELS[it.doc_tipo]} ${fmtNum(it.doc_numero, it.doc_ano, it.doc_tipo)} — ${esc(it.doc_ementa)}</span>
       ${it.direcao === 'direto' ? `<button class="btn btn-outline btn-sm btn-icon" onclick="excluirVinculo(${it.id})" title="Remover vínculo">✕</button>` : ''}
     </div>
   `).join('');
@@ -2898,7 +2908,7 @@ function _buscarVinculoDestino(q) {
       box.innerHTML = items.map(doc => `
         <div style="padding:8px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--gray-100)"
              onmousedown="_criarVinculo(${doc.id})">
-          ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano)} — ${esc(doc.ementa)}
+          ${TIPOS_LABELS[doc.tipo]} ${fmtNum(doc.numero, doc.ano, doc.tipo)} — ${esc(doc.ementa)}
         </div>
       `).join('');
     }
@@ -3635,7 +3645,7 @@ function _revisarConflitosSync(conflitos) {
       <tr>
         <td style="padding:8px 6px;border-bottom:1px solid var(--gray-100)">
           <span class="badge-tipo tipo-${c.local.tipo}">${TIPOS_LABELS[c.local.tipo] || c.local.tipo}</span>
-          ${fmtNum(c.local.numero, c.local.ano)}
+          ${fmtNum(c.local.numero, c.local.ano, c.local.tipo)}
         </td>
         <td style="padding:8px 6px;border-bottom:1px solid var(--gray-100);font-size:0.75rem">
           <div><strong>Atual:</strong> ${esc(c.local.ementa || '')}</div>
@@ -4400,8 +4410,12 @@ function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function fmtNum(numero, ano) {
-  return `nº ${String(numero).padStart(3,'0')}/${ano}`;
+const DEPARTAMENTO_SIGLA = { 'Procuradoria-Geral': 'PG', 'Gabinete': 'GAB' };
+function fmtNum(numero, ano, tipo, sufixo) {
+  const num = (tipo === 'lei' || tipo === 'decreto')
+    ? Number(numero).toLocaleString('pt-BR')
+    : String(numero).padStart(3, '0');
+  return `nº ${num}/${ano}${sufixo ? ' ' + sufixo : ''}`;
 }
 
 function fmtData(d) {

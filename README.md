@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.33.8-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/versão-v1.34.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
 
 ## Descrição
 
@@ -13,7 +13,8 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 ## Funcionalidades Principais
 
 - **Gestão de 5 tipos de documento:** Lei, Decreto, Portaria, Parecer e Ofício
-- **Numeração automática** por tipo e ano, com possibilidade de ajuste manual
+- **Numeração automática** por tipo e ano, com possibilidade de ajuste manual — Lei e Decreto usam numeração histórica contínua (nunca reinicia por ano), com separador de milhar
+- **Ofício Interno** — numeração própria e separada por departamento (Procuradoria-Geral/Gabinete), com sufixo automático (ex: "nº 001/2026 PG"), sem colidir com a sequência normal de Ofício
 - **Últimos instrumentos no Dashboard** — cada card de tipo mostra a numeração mais recente cadastrada (ex: Última Lei: 012/2026)
 - **Campo Assunto** com categorias dinâmicas: 14 gerais e 46 jurídicas específicas para Parecer
 - **Campos específicos por tipo** — Parecer: PA + Modalidade licitatória (ativados por assunto); Portaria: tipo de ato e cargo

@@ -1,4 +1,4 @@
-# SGDP v1.33.8 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.34.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -61,6 +61,10 @@ _watchdog_paused  = False   # pausa o watchdog durante diálogos bloqueantes (ex
 
 TIPOS = ('lei', 'decreto', 'portaria', 'parecer', 'oficio')
 DEPARTAMENTOS = ('Procuradoria-Geral', 'Gabinete')
+DEPARTAMENTO_SIGLA = {'Procuradoria-Geral': 'PG', 'Gabinete': 'GAB'}
+# Lei e Decreto usam numeração histórica contínua (nunca reinicia por ano),
+# diferente de Portaria/Parecer/Ofício — ver proximo_numero()/bump_contador().
+TIPOS_NUMERACAO_CONTINUA = ('lei', 'decreto')
 TIPOS_LABELS_CSV = {'lei': 'Lei', 'decreto': 'Decreto', 'portaria': 'Portaria', 'parecer': 'Parecer', 'oficio': 'Ofício'}
 
 # tipo de vínculo -> (label no sentido origem->destino, label no sentido inverso)
@@ -200,6 +204,13 @@ def init_db():
         ''')
         global FTS_AVAILABLE
         try:
+            # COUNT(*) numa fts5 external-content faz passthrough pra contagem de
+            # linhas de `documentos` (não reflete se o índice já foi populado) —
+            # por isso o backfill é decidido por "a tabela virtual já existia?",
+            # checado ANTES do CREATE, e não por COUNT depois dele.
+            fts_ja_existia = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='documentos_fts'"
+            ).fetchone() is not None
             conn.executescript('''
                 CREATE VIRTUAL TABLE IF NOT EXISTS documentos_fts USING fts5(
                     ementa, partes, observacoes, content='documentos', content_rowid='id'
@@ -219,9 +230,8 @@ def init_db():
                     VALUES (new.id, new.ementa, new.partes, new.observacoes);
                 END;
             ''')
-            if conn.execute('SELECT COUNT(*) FROM documentos_fts').fetchone()[0] == 0:
-                conn.execute('''INSERT INTO documentos_fts(rowid, ementa, partes, observacoes)
-                                 SELECT id, ementa, partes, observacoes FROM documentos''')
+            if not fts_ja_existia:
+                conn.execute("INSERT INTO documentos_fts(documentos_fts) VALUES ('rebuild')")
             FTS_AVAILABLE = True
         except sqlite3.OperationalError as e:
             # ponytail: builds do SQLite sem FTS5 (raro) caem para busca com LIKE
@@ -251,6 +261,100 @@ def init_db():
         if 'assinado_em'    not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assinado_em    TEXT DEFAULT NULL")
         if 'assinatura_cert' not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assinatura_cert TEXT DEFAULT ''")
         if 'sigiloso'       not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN sigiloso       INTEGER NOT NULL DEFAULT 0")
+        if 'oficio_interno' not in cols:
+            # Ofício Interno precisa de numeração própria por departamento, podendo coincidir
+            # com um número já usado na sequência normal de Ofício — UNIQUE(tipo,numero,ano)
+            # não permite isso. SQLite não altera uma constraint UNIQUE existente via ALTER
+            # TABLE, então a única forma robusta é recriar a tabela (procedimento padrão do
+            # próprio SQLite: https://www.sqlite.org/lang_altertable.html). Lista de colunas
+            # lida dinamicamente via PRAGMA — funciona tanto pra instalação nova (só colunas
+            # base) quanto pra upgrade de uma instalação existente (todas as colunas já
+            # migradas em execuções anteriores).
+            old_cols = [r[1] for r in conn.execute('PRAGMA table_info(documentos)').fetchall()]
+            cols_sql = ','.join(old_cols)
+            # PRAGMA foreign_keys é no-op dentro de uma transação aberta (doc oficial do
+            # SQLite) — os ALTER TABLE ADD COLUMN logo acima já deixam a conexão em
+            # transação implícita, então sem este commit o OFF abaixo não tem efeito.
+            conn.commit()
+            conn.execute('PRAGMA foreign_keys=OFF')
+            # Ordem importa: criar a tabela nova sob um nome TEMPORÁRIO, copiar os dados,
+            # dropar a `documentos` original (sem renomeá-la) e só então renomear a nova
+            # pro nome final. Fazer o RENAME da tabela original primeiro (como numa
+            # primeira tentativa) faz o SQLite reescrever, em TODAS as outras tabelas com
+            # FK pra `documentos` (lembretes, documento_vinculos, documento_tags,
+            # documento_revisoes, signatures), a cláusula REFERENCES pra apontar pro nome
+            # renomeado — e como essas tabelas nunca são recriadas, ficam permanentemente
+            # órfãs (REFERENCES documentos_old, uma tabela que deixa de existir). Nessa
+            # ordem (criar novo→copiar→dropar original→renomear novo), a tabela original
+            # é dropada ainda com o nome `documentos`, então as FKs das outras tabelas
+            # (que citam esse nome, nunca reescritas) voltam a resolver corretamente assim
+            # que o RENAME final recria uma tabela com esse nome. Ver
+            # https://www.sqlite.org/lang_altertable.html (seção sobre tabelas referenciadas
+            # por FK de outras tabelas).
+            conn.execute('''
+                CREATE TABLE documentos_new (
+                    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tipo           TEXT NOT NULL CHECK(tipo IN ('lei','decreto','portaria','parecer','oficio')),
+                    numero         INTEGER NOT NULL,
+                    ano            INTEGER NOT NULL,
+                    data           TEXT NOT NULL,
+                    ementa         TEXT NOT NULL,
+                    partes         TEXT,
+                    observacoes    TEXT,
+                    arquivo_id     INTEGER REFERENCES arquivos(id) ON DELETE SET NULL,
+                    criado_por     INTEGER REFERENCES usuarios(id),
+                    atualizado_por INTEGER REFERENCES usuarios(id),
+                    criado_em      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
+                    atualizado_em  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
+                    assunto        TEXT DEFAULT 'Outros',
+                    processo_pa    TEXT DEFAULT '',
+                    processo_tipo  TEXT DEFAULT '',
+                    processo_ref   TEXT DEFAULT '',
+                    ato_tipo       TEXT DEFAULT '',
+                    cargo          TEXT DEFAULT '',
+                    excluido_em    TEXT DEFAULT NULL,
+                    assinado_por   INTEGER REFERENCES usuarios(id),
+                    assinado_em    TEXT DEFAULT NULL,
+                    assinatura_cert TEXT DEFAULT '',
+                    sigiloso       INTEGER NOT NULL DEFAULT 0,
+                    oficio_interno INTEGER NOT NULL DEFAULT 0,
+                    oficio_interno_departamento TEXT NOT NULL DEFAULT '',
+                    UNIQUE(tipo, numero, ano, oficio_interno, oficio_interno_departamento)
+                )''')
+            conn.execute(f'INSERT INTO documentos_new ({cols_sql}) SELECT {cols_sql} FROM documentos')
+            conn.execute('DROP TABLE documentos')
+            conn.execute('ALTER TABLE documentos_new RENAME TO documentos')
+            violacoes = conn.execute('PRAGMA foreign_key_check').fetchall()
+            if violacoes:
+                raise sqlite3.IntegrityError(f'Migração oficio_interno deixou FKs quebradas: {violacoes}')
+            conn.commit()
+            conn.execute('PRAGMA foreign_keys=ON')
+            # Reanexa o índice FTS5 e os triggers de sincronização à tabela recriada —
+            # CREATE ... IF NOT EXISTS, idempotente mesmo se o bloco de FTS mais acima
+            # já tiver rodado nesta mesma inicialização (triggers não sobrevivem ao
+            # RENAME+DROP da tabela original, precisam ser recriados aqui).
+            try:
+                conn.executescript('''
+                    CREATE VIRTUAL TABLE IF NOT EXISTS documentos_fts USING fts5(
+                        ementa, partes, observacoes, content='documentos', content_rowid='id'
+                    );
+                    CREATE TRIGGER IF NOT EXISTS documentos_fts_ai AFTER INSERT ON documentos BEGIN
+                        INSERT INTO documentos_fts(rowid, ementa, partes, observacoes)
+                        VALUES (new.id, new.ementa, new.partes, new.observacoes);
+                    END;
+                    CREATE TRIGGER IF NOT EXISTS documentos_fts_ad AFTER DELETE ON documentos BEGIN
+                        INSERT INTO documentos_fts(documentos_fts, rowid, ementa, partes, observacoes)
+                        VALUES ('delete', old.id, old.ementa, old.partes, old.observacoes);
+                    END;
+                    CREATE TRIGGER IF NOT EXISTS documentos_fts_au AFTER UPDATE ON documentos BEGIN
+                        INSERT INTO documentos_fts(documentos_fts, rowid, ementa, partes, observacoes)
+                        VALUES ('delete', old.id, old.ementa, old.partes, old.observacoes);
+                        INSERT INTO documentos_fts(rowid, ementa, partes, observacoes)
+                        VALUES (new.id, new.ementa, new.partes, new.observacoes);
+                    END;
+                ''')
+            except sqlite3.OperationalError:
+                pass  # sem FTS5 nesta build do SQLite — mesma situação já tratada acima
         cols_usu = [r[1] for r in conn.execute('PRAGMA table_info(usuarios)').fetchall()]
         if 'email' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN email TEXT DEFAULT ''")
         if 'cpf'   not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN cpf   TEXT DEFAULT ''")
@@ -404,11 +508,18 @@ def _check_shutdown():
 
 # ── Helpers de domínio ────────────────────────────────────────────────────────
 
+def _ano_contador(tipo, ano):
+    # Lei/Decreto: série única pra sempre (ano sentinela 0, que nunca ocorre
+    # de verdade) em vez de um contador por ano — numeração histórica contínua.
+    return 0 if tipo in TIPOS_NUMERACAO_CONTINUA else ano
+
 def proximo_numero(conn, tipo, ano):
+    ano = _ano_contador(tipo, ano)
     row = conn.execute('SELECT ultimo FROM contadores WHERE tipo=? AND ano=?', (tipo, ano)).fetchone()
     return (row['ultimo'] + 1) if row else 1
 
 def bump_contador(conn, tipo, ano, numero):
+    ano = _ano_contador(tipo, ano)
     conn.execute(
         'INSERT INTO contadores (tipo,ano,ultimo) VALUES (?,?,?) '
         'ON CONFLICT(tipo,ano) DO UPDATE SET ultimo=MAX(ultimo,excluded.ultimo)',
@@ -1036,25 +1147,33 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if not ementa:          self._json(400, {'error': 'Ementa obrigatória'}); return
         if not data_d:          self._json(400, {'error': 'Data obrigatória'}); return
         ano = int(data.get('ano') or data_d[:4])
+        # Ofício Interno tem numeração própria por departamento (do criador), separada
+        # da sequência normal de Ofício — só se aplica a tipo='oficio'.
+        oficio_interno = int(bool(data.get('oficio_interno'))) if tipo == 'oficio' else 0
+        # departamento entra na UNIQUE(tipo,numero,ano,oficio_interno,oficio_interno_departamento)
+        # pra que a sequência interna de dois departamentos não colida entre si — só
+        # populado quando oficio_interno=1 (documentos normais mantêm '' pros dois).
+        oficio_interno_departamento = s['departamento'] if oficio_interno else ''
+        tipo_contador = f"oficio_interno_{s['departamento']}" if oficio_interno else tipo
         with get_db() as conn:
-            numero = int(data['numero']) if data.get('numero') not in (None, '') else proximo_numero(conn, tipo, ano)
+            numero = int(data['numero']) if data.get('numero') not in (None, '') else proximo_numero(conn, tipo_contador, ano)
             try:
                 cur = conn.execute(
-                    'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,sigiloso,criado_por,atualizado_por)'
-                    ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,sigiloso,oficio_interno,oficio_interno_departamento,criado_por,atualizado_por)'
+                    ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     (tipo, numero, ano, data_d, ementa,
                      data.get('partes') or '', data.get('observacoes') or '',
                      data.get('assunto') or 'Outros',
                      data.get('processo_pa') or '', data.get('processo_tipo') or '', data.get('processo_ref') or '',
                      data.get('ato_tipo') or '', data.get('cargo') or '',
-                     int(bool(data.get('sigiloso'))),
+                     int(bool(data.get('sigiloso'))), oficio_interno, oficio_interno_departamento,
                      s['user_id'], s['user_id'])
                 )
                 # captura o rowid ANTES de bump_contador — que pode fazer seu próprio
                 # INSERT em contadores na primeira vez que o tipo/ano é usado, o que
                 # sobrescreveria um last_insert_rowid() consultado depois dele
                 did = cur.lastrowid
-                bump_contador(conn, tipo, ano, numero)
+                bump_contador(conn, tipo_contador, ano, numero)
                 if 'tags' in data: _sync_tags(conn, did, data['tags'])
                 audit(conn, s['user_id'], s['nome'], 'criar', did, f"{tipo} nº {numero}/{ano}")
                 conn.commit()
@@ -1083,6 +1202,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             # que não criou — só o criador ou admin.
             if 'sigiloso' in data and (s['admin'] or row['criado_por'] == s['user_id']):
                 fields['sigiloso'] = int(bool(data['sigiloso']))
+            if 'oficio_interno' in data and row['tipo'] == 'oficio':
+                fields['oficio_interno'] = int(bool(data['oficio_interno']))
+                # departamento sempre o de quem CRIOU (dinâmico, não o de quem edita) —
+                # mesma regra do sufixo de exibição, ver fmtNum() no frontend.
+                fields['oficio_interno_departamento'] = row['criado_por_departamento'] if fields['oficio_interno'] else ''
             if 'numero' in data: fields['numero'] = int(data['numero'])
             if 'ano'    in data: fields['ano']    = int(data['ano'])
             try:
@@ -1094,7 +1218,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 conn.execute(f"UPDATE documentos SET {', '.join(f'{k}=?' for k in fields)} WHERE id=?",
                              list(fields.values()) + [did])
                 if 'numero' in fields:
-                    bump_contador(conn, row['tipo'], fields.get('ano', row['ano']), fields['numero'])
+                    # sufixo/contador de Ofício Interno é sempre do departamento de quem
+                    # CRIOU o documento (dinâmico, não do editor) — ver criado_por_departamento.
+                    oficio_interno_final = fields.get('oficio_interno', row['oficio_interno'])
+                    tipo_contador = (f"oficio_interno_{row['criado_por_departamento']}"
+                                      if row['tipo'] == 'oficio' and oficio_interno_final else row['tipo'])
+                    bump_contador(conn, tipo_contador, fields.get('ano', row['ano']), fields['numero'])
                 if 'tags' in data: _sync_tags(conn, did, data['tags'])
                 audit(conn, s['user_id'], s['nome'], 'editar', did)
                 conn.commit()
