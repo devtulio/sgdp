@@ -5,6 +5,14 @@
 
 ---
 
+## [1.33.7] — 2026-07-17
+
+### Removido
+- **Skeleton de carregamento removido** — padronização com os sistemas irmãos (que não usam skeleton). O dashboard e as listas renderizam direto. Removidos markup, CSS e as chamadas JS.
+
+### Alterado
+- **Limpezas de CSS** — removida a re-declaração local de tokens idênticos ao `base.css` (`--radius`, `--shadow`, `--shadow-md`, `--shadow-lg`, `--sidebar-w`) e uma regra órfã de ícone SVG na navegação (os ícones são emoji desde a v1.33.4).
+
 ## [1.33.6] — 2026-07-17
 
 ### Removido

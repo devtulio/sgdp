@@ -33,11 +33,7 @@ html.font-grande  { font-size: 18px; }
   --danger:  #dc2626; --danger-light:  #fee2e2;
   --warning: #d97706; --warning-light: #fef3c7;
   --white:  #fff;
-  --radius: 8px;
-  --shadow: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
-  --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
-  --shadow-lg: 0 10px 25px rgba(0,0,0,.12);
-  --sidebar-w: 220px;
+  /* --radius, --shadow*, --sidebar-w vêm do base.css (valores idênticos) */
 }
 
 /* Tipos de documento */
@@ -101,10 +97,7 @@ body.dark input, body.dark select, body.dark textarea {
 body.dark .dash-card,
 body.dark .pag-btn,
 body.dark .gsearch-box,
-body.dark #notif-panel,
-body.dark .skeleton,
-body.dark .skeleton-stat,
-body.dark .skeleton-card { background: var(--bg-card); }
+body.dark #notif-panel { background: var(--bg-card); }
 body.dark .upload-zone { background: var(--bg-card); border-color: var(--gray-300); }
 body.dark .modal > div { background: var(--bg-card); }
 body.dark .cfg-tabs    { border-color: var(--gray-200); }
@@ -184,7 +177,6 @@ body.dark #overlay-pin input {
   border-left-color: var(--accent); font-weight: 600; }
 .nav-item:focus-visible { outline: 2px solid #fff; outline-offset: -2px; background: rgba(255,255,255,.08); }
 .nav-item .nav-ico { width: 18px; height: 18px; flex-shrink: 0; opacity: .85; display: flex; align-items: center; justify-content: center; }
-.nav-item .nav-ico svg { width: 18px; height: 18px; }
 .nav-badge { margin-left: auto; background: rgba(255,255,255,.2);
   border-radius: 10px; padding: 1px 7px; font-size: 0.6875rem; font-weight: 700; }
 
@@ -286,11 +278,6 @@ tr:hover td { background: var(--gray-50); }
 }
 
 /* ── Skeleton loading ────────────────────────────────────────────────────── */
-.skeleton-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 20px; }
-.skeleton-stat { background: #fff; border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); border-left: 4px solid var(--gray-200); display: flex; flex-direction: column; gap: 10px; }
-.skeleton-card { background: #fff; border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); margin-bottom: 10px; height: 90px; }
-.skeleton { background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius); }
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* ── Busca Global ────────────────────────────────────────────────────────── */
 #global-search-overlay {
@@ -667,19 +654,7 @@ tr:hover td { background: var(--gray-50); }
   <main id="main">
     <div id="view-dashboard" class="view active">
       <div class="dash-top"><h2>Dashboard</h2></div>
-      <div id="dashboard-conteudo">
-        <div class="skeleton-stats">
-          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
-          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
-          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
-          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
-          <div class="skeleton-stat"><div class="skeleton" style="height:10px;width:50%"></div><div class="skeleton" style="height:28px;width:40%"></div><div class="skeleton" style="height:8px;width:70%"></div></div>
-        </div>
-        <div class="skeleton skeleton-card"></div>
-        <div class="skeleton skeleton-card"></div>
-        <div class="skeleton skeleton-card"></div>
-        <div class="skeleton skeleton-card"></div>
-      </div>
+      <div id="dashboard-conteudo"></div>
     </div>
 
     <div id="view-documentos" class="view">
@@ -1230,7 +1205,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.33.6';
+const SGDP_VERSION = '1.33.7';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -2454,7 +2429,7 @@ async function renderDocumentosLista(page = 1) {
   S.pag.tipo = tipo;
   const pc = document.getElementById('documentos-conteudo');
   if (pc && !pc.querySelector('table')) {
-    pc.innerHTML = Array(4).fill('<div class="skeleton skeleton-card"></div>').join('');
+    pc.innerHTML = '';
   }
   document.getElementById('doc-search').value = S.filtros.q;
   document.getElementById('doc-ano').value = S.filtros.ano;
@@ -2854,7 +2829,7 @@ const _REVISAO_CAMPOS = {
 async function abrirHistoricoDoc(id, label) {
   document.getElementById('hist-doc-label').textContent = label;
   const body = document.getElementById('hist-doc-body');
-  body.innerHTML = '<div class="skeleton skeleton-card"></div>';
+  body.innerHTML = '';
   abrirModal('modal-historico');
   const r = await API.get(`/api/documentos/${id}/revisoes`);
   const d = await API.json(r);
@@ -2889,7 +2864,7 @@ async function abrirVinculosDoc(id, label) {
 
 async function _renderVinculos() {
   const body = document.getElementById('vinc-lista');
-  body.innerHTML = '<div class="skeleton skeleton-card"></div>';
+  body.innerHTML = '';
   const r = await API.get(`/api/documentos/${S.vincDocId}/vinculos`);
   const d = await API.json(r);
   const items = d?.items || [];
