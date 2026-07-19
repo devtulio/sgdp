@@ -5,6 +5,11 @@
 
 ---
 
+## [1.38.0] — 2026-07-19
+
+### Corrigido
+- **Excluir lembrete apagava direto, sem passar pela Lixeira** — diferente de documentos, que já eram exclusão reversível. Lembretes ganham a coluna `excluido_em` e o mesmo ciclo de vida: `DELETE /api/lembretes/{id}` agora envia à Lixeira (30 dias antes da purga automática), com novos endpoints `POST /api/lixeira/lembretes/{id}/restaurar` e `DELETE /api/lixeira/lembretes/{id}` para restaurar ou excluir de vez. A tela de Lixeira ganhou uma seção separada para lembretes. Lembretes na lixeira são excluídos das contagens de pendentes, do loop de notificação por e-mail e do resumo diário.
+
 ## [1.37.0] — 2026-07-19
 
 ### Adicionado

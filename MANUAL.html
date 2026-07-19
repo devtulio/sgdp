@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.37.0</title>
+<title>Manual Operacional — SGDP v1.38.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.37.0 — Manual Operacional";
+        content: "SGDP v1.38.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -112,7 +112,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.37.0</div>
+    <div class="cover-version">Versão 1.38.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -544,6 +544,7 @@
     <tbody>
       <tr><td>Login / Logout</td><td>Entrada e saída de sessão</td></tr>
       <tr><td>Criar / Editar documento</td><td>Cadastro ou alteração de um documento</td></tr>
+      <tr><td>Gerar documento</td><td>Certidão ou outro documento oficial gerado a partir do sistema (impressão/PDF)</td></tr>
       <tr><td>Excluir documento</td><td>Documento enviado à Lixeira (exclusão reversível, ver Seção 9)</td></tr>
       <tr><td>Restaurar da lixeira</td><td>Documento devolvido à listagem normal</td></tr>
       <tr><td>Excluir permanente</td><td>Remoção definitiva, seja pela Lixeira ou pela purga automática após 30 dias</td></tr>
@@ -554,6 +555,7 @@
       <tr><td>Criar/Editar/Excluir usuário</td><td>Alteração no cadastro de usuários</td></tr>
       <tr><td>Alterar senha</td><td>Troca de senha (própria ou redefinida por um administrador)</td></tr>
       <tr><td>Criar lembrete</td><td>Novo lembrete cadastrado na Agenda</td></tr>
+      <tr><td>Excluir / Restaurar / Excluir lembrete (perm.)</td><td>Mesmo ciclo de Lixeira dos documentos, aplicado a lembretes (ver Seção 9)</td></tr>
       <tr><td>Alterar config. / brasão / SMTP</td><td>Mudança nas Configurações do sistema (Organização, brasão do município ou servidor de e-mail)</td></tr>
       <tr><td>Sincronizar / Restaurar backup</td><td>Sincronização com outra instalação ou restauração de um backup <code>.json</code> (ver 6.3 e 6.4)</td></tr>
       <tr><td>Restaurar banco</td><td>Restauração a partir de um backup <code>.db</code> bruto (apenas administradores)</td></tr>
@@ -699,7 +701,8 @@
   </ol>
   <p>
     Marque a caixa de seleção ao lado do lembrete para indicá-lo como concluído. A barra lateral
-    exibe um contador com a quantidade de lembretes pendentes já vencidos.
+    exibe um contador com a quantidade de lembretes pendentes já vencidos. Excluir um lembrete
+    (✕) não apaga na hora — ele vai pra Lixeira, como um documento (ver Seção 9).
   </p>
   <div class="nota">
     <strong>Notificação por e-mail</strong> (requer SMTP configurado — ver 6.6): quando um lembrete
@@ -714,13 +717,15 @@
 <div class="page">
   <h2 id="s9">9. Lixeira</h2>
   <p>
-    Ao excluir um documento na listagem, ele não é apagado imediatamente — é enviado para a
-    <strong>Lixeira</strong>, acessível pela barra lateral, onde fica disponível por
-    <strong>30 dias</strong> antes da remoção definitiva e automática.
+    Ao excluir um documento na listagem ou um lembrete na Agenda, ele não é apagado
+    imediatamente — é enviado para a <strong>Lixeira</strong>, acessível pela barra lateral, onde
+    fica disponível por <strong>30 dias</strong> antes da remoção definitiva e automática. A tela
+    mostra duas seções separadas — <strong>Documentos</strong> e <strong>Lembretes</strong> — cada
+    uma com suas próprias ações.
   </p>
   <ul>
-    <li><strong>↺ Restaurar:</strong> devolve o documento para a listagem normal, como se nunca tivesse sido excluído</li>
-    <li><strong>✕ Excluir de vez:</strong> remove o documento e o PDF anexado permanentemente, sem esperar os 30 dias — ação irreversível</li>
+    <li><strong>↺ Restaurar:</strong> devolve o documento ou lembrete pro seu lugar de origem, como se nunca tivesse sido excluído</li>
+    <li><strong>✕ Excluir de vez:</strong> remove o documento (e o PDF anexado) ou o lembrete permanentemente, sem esperar os 30 dias — ação irreversível</li>
   </ul>
   <div class="aviso">
     <strong>Atenção:</strong> a exclusão definitiva (seja pelo botão "Excluir de vez" ou pela purga
@@ -793,6 +798,12 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.38.0 — 19/07/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Excluir lembrete agora vai pra Lixeira, em vez de apagar direto.</strong> Mesmo comportamento de exclusão reversível que já existia pra documentos — 30 dias na Lixeira antes da purga automática, com restaurar e excluir de vez. A tela de Lixeira ganhou uma seção separada pra lembretes.</li>
+  </ul>
 
   <h3>v1.37.0 — 19/07/2026</h3>
   <p><strong>Adicionado</strong></p>

@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.37.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/versão-v1.38.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
 
 ## Descrição
 
@@ -33,7 +33,7 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Navegação persistente** — F5 mantém o usuário na tela atual via `location.hash`
 - **Encerramento do sistema** com tela de confirmação e desligamento do servidor
 - **Diagnóstico de rede** — verifica IP, porta 3001, regras de firewall e acessibilidade pela LAN; disponível como script independente e no menu de inicialização
-- **Lixeira** — exclusão reversível com restauração em até 30 dias
+- **Lixeira** — exclusão reversível com restauração em até 30 dias, tanto para documentos quanto para lembretes
 - **Agenda** — lembretes com prazo, vinculáveis a documentos
 - **Envio por e-mail** — anexa o PDF assinado e envia via SMTP configurável
 - **Importação em lote via CSV** — cadastro de múltiplos documentos de uma vez

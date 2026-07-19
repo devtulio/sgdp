@@ -251,6 +251,52 @@ class TestLembretes(SGDPTestCase):
         status, _ = self.request('DELETE', f'/api/lembretes/{lid}', token=token)
         self.assertEqual(status, 200)
 
+    def test_excluir_lembrete_vai_para_lixeira_em_vez_de_apagar_direto(self):
+        token = self.login()
+        status, created = self.request('POST', '/api/lembretes',
+                                        {'titulo': 'Lembrete pra lixeira', 'data_prazo': '2026-12-31'}, token=token)
+        lid = created['id']
+
+        self.request('DELETE', f'/api/lembretes/{lid}', token=token)
+
+        status, listado = self.request('GET', '/api/lembretes', token=token)
+        self.assertFalse(any(l['id'] == lid for l in listado['items']))
+
+        status, lixeira = self.request('GET', '/api/lixeira', token=token)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(l['id'] == lid for l in lixeira['lembretes']))
+
+    def test_lembrete_na_lixeira_pode_ser_restaurado(self):
+        token = self.login()
+        status, created = self.request('POST', '/api/lembretes',
+                                        {'titulo': 'Lembrete restauravel', 'data_prazo': '2026-12-31'}, token=token)
+        lid = created['id']
+        self.request('DELETE', f'/api/lembretes/{lid}', token=token)
+
+        status, _ = self.request('POST', f'/api/lixeira/lembretes/{lid}/restaurar', {}, token=token)
+        self.assertEqual(status, 200)
+
+        status, listado = self.request('GET', '/api/lembretes', token=token)
+        self.assertTrue(any(l['id'] == lid for l in listado['items']))
+        status, lixeira = self.request('GET', '/api/lixeira', token=token)
+        self.assertFalse(any(l['id'] == lid for l in lixeira['lembretes']))
+
+    def test_lembrete_na_lixeira_pode_ser_excluido_permanentemente(self):
+        token = self.login()
+        status, created = self.request('POST', '/api/lembretes',
+                                        {'titulo': 'Lembrete pra purgar', 'data_prazo': '2026-12-31'}, token=token)
+        lid = created['id']
+        self.request('DELETE', f'/api/lembretes/{lid}', token=token)
+
+        status, _ = self.request('DELETE', f'/api/lixeira/lembretes/{lid}', token=token)
+        self.assertEqual(status, 200)
+
+        status, lixeira = self.request('GET', '/api/lixeira', token=token)
+        self.assertFalse(any(l['id'] == lid for l in lixeira['lembretes']))
+        # já não está mais na lixeira — tentar de novo dá 404
+        status, _ = self.request('DELETE', f'/api/lixeira/lembretes/{lid}', token=token)
+        self.assertEqual(status, 404)
+
 
 class TestAuditoria(SGDPTestCase):
 

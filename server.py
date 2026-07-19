@@ -1,4 +1,4 @@
-# SGDP v1.37.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.38.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -358,6 +358,7 @@ def init_db():
         if 'departamento' not in cols_usu: conn.execute(f"ALTER TABLE usuarios ADD COLUMN departamento TEXT NOT NULL DEFAULT '{DEPARTAMENTOS[0]}'")
         cols_lem = [r[1] for r in conn.execute('PRAGMA table_info(lembretes)').fetchall()]
         if 'notificado_em' not in cols_lem: conn.execute("ALTER TABLE lembretes ADD COLUMN notificado_em TEXT DEFAULT NULL")
+        if 'excluido_em'   not in cols_lem: conn.execute("ALTER TABLE lembretes ADD COLUMN excluido_em   TEXT DEFAULT NULL")
         # Migração: alinha as chaves de SMTP com o padrão do SGCD (smtp_from -> smtp_from_name,
         # smtp_tls -> smtp_require_tls, notificacao_email -> smtp_to)
         old = {r['key']: r['value'] for r in conn.execute(
@@ -890,6 +891,9 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif re.fullmatch(r'/api/lixeira/\d+/restaurar', p):
             self._restaurar_doc(int(p.split('/')[3]), s)
 
+        elif re.fullmatch(r'/api/lixeira/lembretes/\d+/restaurar', p):
+            self._restaurar_lembrete(int(p.split('/')[4]), s)
+
         elif p == '/api/lembretes':
             self._create_lembrete(self._body(), s)
 
@@ -967,6 +971,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._delete_usuario(int(p.split('/')[-1]), s)
         elif re.fullmatch(r'/api/lixeira/\d+', p):
             self._purgar_doc_endpoint(int(p.split('/')[-1]), s)
+        elif re.fullmatch(r'/api/lixeira/lembretes/\d+', p):
+            self._purgar_lembrete_endpoint(int(p.split('/')[-1]), s)
         elif re.fullmatch(r'/api/lembretes/\d+', p):
             self._delete_lembrete(int(p.split('/')[-1]), s)
         elif re.fullmatch(r'/api/vinculos/\d+', p):
@@ -1309,13 +1315,22 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 (limite,)).fetchall()
             for row in expirados:
                 self._purgar_doc(conn, row['id'], row['arquivo_id'])
+            lembretes_expirados = conn.execute(
+                'SELECT id FROM lembretes WHERE excluido_em IS NOT NULL AND excluido_em < ?', (limite,)).fetchall()
+            for row in lembretes_expirados:
+                conn.execute('DELETE FROM lembretes WHERE id=?', (row['id'],))
             conn.commit()
             rows = conn.execute(
                 '''SELECT d.*, u.nome criado_por_nome FROM documentos d
                    LEFT JOIN usuarios u ON d.criado_por=u.id
                    WHERE d.excluido_em IS NOT NULL ORDER BY d.excluido_em DESC'''
             ).fetchall()
-        self._json(200, {'items': [dict(r) for r in rows]})
+            lembretes = conn.execute(
+                '''SELECT l.*, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano
+                   FROM lembretes l LEFT JOIN documentos d ON l.documento_id=d.id
+                   WHERE l.excluido_em IS NOT NULL ORDER BY l.excluido_em DESC'''
+            ).fetchall()
+        self._json(200, {'items': [dict(r) for r in rows], 'lembretes': [dict(r) for r in lembretes]})
 
     def _purgar_doc(self, conn, did, arquivo_id):
         if arquivo_id:
@@ -1440,7 +1455,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 'usuarios': conn.execute('SELECT COUNT(*) FROM usuarios WHERE ativo=1').fetchone()[0],
                 'tags': conn.execute('SELECT COUNT(*) FROM tags').fetchone()[0],
                 'vinculos': conn.execute('SELECT COUNT(*) FROM documento_vinculos').fetchone()[0],
-                'lembretes_pendentes': conn.execute('SELECT COUNT(*) FROM lembretes WHERE concluido=0').fetchone()[0],
+                'lembretes_pendentes': conn.execute('SELECT COUNT(*) FROM lembretes WHERE concluido=0 AND excluido_em IS NULL').fetchone()[0],
                 'na_lixeira': conn.execute('SELECT COUNT(*) FROM documentos WHERE excluido_em IS NOT NULL').fetchone()[0],
             }
             eventos = [dict(r) for r in conn.execute(
@@ -1483,10 +1498,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
     def _list_lembretes(self, qs, s):
         so_pendentes = qs.get('pendentes', [None])[0]
         doc_id = qs.get('documento_id', [None])[0]
-        where, params = [], []
+        where, params = ['l.excluido_em IS NULL'], []
         if so_pendentes: where.append('l.concluido=0')
         if doc_id: where.append('l.documento_id=?'); params.append(int(doc_id))
-        w = ('WHERE ' + ' AND '.join(where)) if where else ''
+        w = 'WHERE ' + ' AND '.join(where)
         with get_db() as conn:
             rows = conn.execute(
                 f'''SELECT l.*, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano
@@ -1540,7 +1555,29 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
     def _delete_lembrete(self, lid, s):
         with get_db() as conn:
+            row = conn.execute('SELECT * FROM lembretes WHERE id=?', (lid,)).fetchone()
+            if not row: self._json(404, {'error': 'Não encontrado'}); return
+            conn.execute("UPDATE lembretes SET excluido_em=? WHERE id=?",
+                         (time.strftime('%Y-%m-%dT%H:%M:%S'), lid))
+            audit(conn, s['user_id'], s['nome'], 'excluir_lembrete', detalhes=f"{row['titulo']} (enviado à lixeira)")
+            conn.commit()
+        self._json(200, {'ok': True})
+
+    def _restaurar_lembrete(self, lid, s):
+        with get_db() as conn:
+            row = conn.execute('SELECT * FROM lembretes WHERE id=?', (lid,)).fetchone()
+            if not row or not row['excluido_em']: self._json(404, {'error': 'Não encontrado na lixeira'}); return
+            conn.execute('UPDATE lembretes SET excluido_em=NULL WHERE id=?', (lid,))
+            audit(conn, s['user_id'], s['nome'], 'restaurar_lembrete', detalhes=row['titulo'])
+            conn.commit()
+        self._json(200, {'ok': True})
+
+    def _purgar_lembrete_endpoint(self, lid, s):
+        with get_db() as conn:
+            row = conn.execute('SELECT * FROM lembretes WHERE id=?', (lid,)).fetchone()
+            if not row or not row['excluido_em']: self._json(404, {'error': 'Não encontrado na lixeira'}); return
             conn.execute('DELETE FROM lembretes WHERE id=?', (lid,))
+            audit(conn, s['user_id'], s['nome'], 'excluir_permanente_lembrete', detalhes=row['titulo'])
             conn.commit()
         self._json(200, {'ok': True})
 
@@ -2286,7 +2323,8 @@ def _lembrete_notify_loop():
                 rows = conn.execute(
                     '''SELECT l.*, u.email criador_email FROM lembretes l
                        LEFT JOIN usuarios u ON l.criado_por=u.id
-                       WHERE l.concluido=0 AND l.notificado_em IS NULL AND l.data_prazo<=?''',
+                       WHERE l.concluido=0 AND l.notificado_em IS NULL AND l.data_prazo<=?
+                             AND l.excluido_em IS NULL''',
                     (hoje,)).fetchall()
                 for r in rows:
                     destino = (r['criador_email'] or '').strip() or cfg.get('smtp_to', '').strip()
@@ -2315,7 +2353,7 @@ def _send_daily_summary():
 
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT titulo, data_prazo FROM lembretes WHERE concluido=0 ORDER BY data_prazo ASC"
+            "SELECT titulo, data_prazo FROM lembretes WHERE concluido=0 AND excluido_em IS NULL ORDER BY data_prazo ASC"
         ).fetchall()
 
     agora = time.strftime('%Y-%m-%d')
