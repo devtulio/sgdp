@@ -5,6 +5,11 @@
 
 ---
 
+## [1.37.0] — 2026-07-19
+
+### Adicionado
+- **Auditoria registra geração de documentos.** Ao gerar qualquer documento/certidão oficial, um evento `gerar_documento` ("Gerar documento") passa a ser gravado na auditoria, com o nome do documento nos detalhes — fechando a lacuna de rastreabilidade que existia frente aos sistemas irmãos. Novo endpoint `POST /api/auditoria` (aceita apenas a ação `gerar_documento`; usuário e nome vêm sempre da sessão autenticada, nunca do corpo da requisição).
+
 ## [1.36.1] — 2026-07-18
 
 ### Alterado

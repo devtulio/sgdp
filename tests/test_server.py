@@ -265,6 +265,16 @@ class TestAuditoria(SGDPTestCase):
         self.assertEqual(status, 200)
         self.assertTrue(any(e['acao'] == 'criar' for e in data['items']))
 
+    def test_post_auditoria_registra_gerar_documento(self):
+        token = self.login()
+        status, _ = self.request('POST', '/api/auditoria',
+                                  {'detalhes': 'Certidão nº 1/2026'}, token=token)
+        self.assertEqual(status, 200)
+        status, data = self.request('GET', '/api/auditoria', token=token)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(e['acao'] == 'gerar_documento'
+                            and e['detalhes'] == 'Certidão nº 1/2026' for e in data['items']))
+
 
 class TestBackup(SGDPTestCase):
 

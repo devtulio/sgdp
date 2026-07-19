@@ -1184,7 +1184,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.36.1';
+const SGDP_VERSION = '1.37.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1718,6 +1718,7 @@ function _gerarDocumentoOficial(win, html, docNome) {
   if (!win) { toast('Popup bloqueado pelo navegador. Permita popups para este site e tente novamente.', 'error'); return; }
   win.document.write(html);
   win.document.close();
+  API.post('/api/auditoria', { detalhes: docNome || 'Documento oficial' }).catch(() => {});
 }
 
 async function _cabecalhoOficial(tituloDoc, subtitulo, cfgPreCarregado) {
@@ -3206,6 +3207,7 @@ const _AUDIT_LABELS = {
   login:              { label: 'Login',                 cor: '#16a34a' },
   logout:             { label: 'Logout',                cor: '#6b7280' },
   criar:              { label: 'Criar documento',       cor: '#2563eb' },
+  gerar_documento:    { label: 'Gerar documento',       cor: '#1a3a6b' },
   editar:             { label: 'Editar documento',      cor: '#d97706' },
   excluir:            { label: 'Excluir documento',     cor: '#dc2626' },
   restaurar:          { label: 'Restaurar da lixeira',  cor: '#0891b2' },

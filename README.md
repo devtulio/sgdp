@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.36.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/versão-v1.37.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
 
 ## Descrição
 

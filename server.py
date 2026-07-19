@@ -1,4 +1,4 @@
-# SGDP v1.36.1 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.37.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -930,6 +930,9 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             self._factory_reset(s)
 
+        elif p == '/api/auditoria':
+            self._log_doc_gerado(self._body(), s)
+
         else:
             self._json(404, {'error': 'Rota não encontrada'})
 
@@ -1507,6 +1510,18 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.commit()
             row = conn.execute('SELECT * FROM lembretes WHERE id=?', (lid,)).fetchone()
         self._json(201, dict(row))
+
+    def _log_doc_gerado(self, body, s):
+        # Registro de auditoria gravado pelo frontend ao gerar um documento oficial.
+        # Só aceita a ação 'gerar_documento'; usuário/nome vêm sempre da sessão,
+        # nunca do body, para o cliente não poder forjar auditoria de terceiros.
+        data = json.loads(body) if body else {}
+        detalhes = (data.get('detalhes') or '').strip()[:300]
+        doc_id = data.get('documento_id') or None
+        with get_db() as conn:
+            audit(conn, s['user_id'], s['nome'], 'gerar_documento', doc_id, detalhes)
+            conn.commit()
+        self._json(200, {'ok': True})
 
     def _update_lembrete(self, lid, body, s):
         data = json.loads(body) if body else {}
