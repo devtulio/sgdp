@@ -1,4 +1,4 @@
-# SGDP v1.38.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.39.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -356,6 +356,9 @@ def init_db():
         if 'matricula' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN matricula TEXT DEFAULT ''")
         if 'must_change_password' not in cols_usu: conn.execute("ALTER TABLE usuarios ADD COLUMN must_change_password INTEGER DEFAULT 0")
         if 'departamento' not in cols_usu: conn.execute(f"ALTER TABLE usuarios ADD COLUMN departamento TEXT NOT NULL DEFAULT '{DEPARTAMENTOS[0]}'")
+        # Config SMTP por usuário (vazio = herda a config do sistema em sys_settings).
+        for _c in ('smtp_host', 'smtp_port', 'smtp_secure', 'smtp_require_tls', 'smtp_ignore_ssl', 'smtp_user', 'smtp_pass', 'smtp_from_name'):
+            if _c not in cols_usu: conn.execute(f"ALTER TABLE usuarios ADD COLUMN {_c} TEXT DEFAULT ''")
         cols_lem = [r[1] for r in conn.execute('PRAGMA table_info(lembretes)').fetchall()]
         if 'notificado_em' not in cols_lem: conn.execute("ALTER TABLE lembretes ADD COLUMN notificado_em TEXT DEFAULT NULL")
         if 'excluido_em'   not in cols_lem: conn.execute("ALTER TABLE lembretes ADD COLUMN excluido_em   TEXT DEFAULT NULL")
@@ -416,6 +419,26 @@ def _parse_multipart_all(body, boundary):
 def get_config():
     with get_db() as conn:
         return {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()}
+
+_USER_SMTP_COLS = ('smtp_host', 'smtp_port', 'smtp_secure', 'smtp_require_tls', 'smtp_ignore_ssl', 'smtp_user', 'smtp_pass', 'smtp_from_name')
+
+def get_user_smtp(user_id):
+    """Config SMTP do usuário logado. Se ele não tiver host próprio configurado,
+    herda (fallback) a config do sistema — usada também pelos alertas automáticos."""
+    with get_db() as conn:
+        row = conn.execute(f"SELECT {', '.join(_USER_SMTP_COLS)} FROM usuarios WHERE id=?", (user_id,)).fetchone()
+    if row and (row['smtp_host'] or '').strip():
+        return {c: (row[c] or '') for c in _USER_SMTP_COLS}
+    return get_config()
+
+def _smtp_fields_from(data):
+    """Colunas smtp_* de um payload para UPDATE. smtp_pass em branco é ignorado
+    (preserva a senha salva), mesmo padrão do sys_settings."""
+    out = {}
+    for c in ('smtp_host', 'smtp_port', 'smtp_secure', 'smtp_require_tls', 'smtp_ignore_ssl', 'smtp_user', 'smtp_from_name'):
+        if c in data: out[c] = str(data[c] if data[c] is not None else '').strip()
+    if data.get('smtp_pass'): out['smtp_pass'] = data['smtp_pass']
+    return out
 
 _hash_password   = sgx_base.hash_password
 _verify_password = sgx_base.verify_password
@@ -674,6 +697,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                               'cpf': s.get('cpf'), 'email': s.get('email'),
                               'cargo': s.get('cargo'), 'matricula': s.get('matricula'), 'admin': bool(s['admin']),
                               'departamento': s.get('departamento')})
+
+        elif p == '/api/auth/me/smtp':
+            self._me_smtp_get(s)
+
+        elif re.fullmatch(r'/api/usuarios/\d+/smtp', p):
+            if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
+            self._user_smtp_get(int(p.split('/')[3]), s)
 
         elif p == '/api/departamentos':
             self._json(200, list(DEPARTAMENTOS))
@@ -946,6 +976,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif re.fullmatch(r'/api/usuarios/\d+', p):
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             self._update_usuario(int(p.split('/')[-1]), body, s)
+        elif p == '/api/auth/me/smtp':
+            self._me_smtp_put(body, s)
         elif p == '/api/auth/senha':
             self._change_senha(body, s)
         elif p == '/api/config':
@@ -1626,10 +1658,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         data = json.loads(body) if body else {}
         destinatario = (data.get('to') or '').strip()
         assunto      = (data.get('subject') or '').strip()
-        corpo        = data.get('body') or ''
+        corpo        = data.get('body') or data.get('text') or ''
+        corpo_html   = data.get('html') or ''
         if not destinatario: self._json(400, {'error': 'Destinatário obrigatório'}); return
-        cfg = get_config()
-        if not cfg.get('smtp_host'): self._json(400, {'error': 'SMTP não configurado. Configure em Configurações → Segurança.'}); return
+        # Config SMTP do usuário logado (herda a do sistema se ele não tiver a própria).
+        cfg = get_user_smtp(s['user_id'])
+        if not cfg.get('smtp_host'): self._json(400, {'error': 'SMTP não configurado. Configure em Configurações → Segurança (ou no seu cadastro).'}); return
         with get_db() as conn:
             doc = conn.execute(
                 'SELECT d.*, a.nome_original, a.nome_disco FROM documentos d LEFT JOIN arquivos a ON d.arquivo_id=a.id WHERE d.id=?',
@@ -1642,6 +1676,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             msg['From'] = f"{cfg.get('smtp_from_name') or 'SGDP'} <{cfg.get('smtp_user')}>"
             msg['To'] = destinatario
             msg.set_content(corpo or doc['ementa'])
+            if corpo_html:
+                msg.add_alternative(corpo_html, subtype='html')
             if doc['nome_disco']:
                 fp = os.path.join(UPLOADS_DIR, doc['nome_disco'])
                 if os.path.isfile(fp):
@@ -1863,6 +1899,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             if len(data['senha']) < 6: self._json(400, {'error': 'Senha mínima: 6 caracteres'}); return
             fields['senha_hash'] = _hash_password(data['senha'])
             fields['must_change_password'] = 0
+        fields.update(_smtp_fields_from(data))  # admin pode editar a config SMTP do usuário
         if not fields: self._json(400, {'error': 'Nada para atualizar'}); return
         with get_db() as conn:
             row = conn.execute('SELECT nome, username FROM usuarios WHERE id=?', (uid,)).fetchone()
@@ -1870,7 +1907,39 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 self._json(404, {'error': 'Usuário não encontrado'}); return
             conn.execute(f"UPDATE usuarios SET {', '.join(f'{k}=?' for k in fields)} WHERE id=?",
                          list(fields.values()) + [uid])
-            audit(conn, s['user_id'], s['nome'], 'editar_usuario', detalhes=f"@{row['username']} ({row['nome']}): {', '.join(k for k in fields if k != 'senha_hash')}")
+            audit(conn, s['user_id'], s['nome'], 'editar_usuario', detalhes=f"@{row['username']} ({row['nome']}): {', '.join(k for k in fields if k not in ('senha_hash', 'smtp_pass'))}")
+            conn.commit()
+        self._json(200, {'ok': True})
+
+    # Config SMTP de um usuário (sem a senha), + defaults do sistema para "copiar do sistema".
+    def _smtp_payload(self, user_id):
+        with get_db() as conn:
+            row = conn.execute(f"SELECT {', '.join(_USER_SMTP_COLS)} FROM usuarios WHERE id=?", (user_id,)).fetchone()
+        if not row: return None
+        sysc = get_config()
+        out = {c: (row[c] or '') for c in _USER_SMTP_COLS if c != 'smtp_pass'}
+        out['smtp_pass_set'] = bool((row['smtp_pass'] or '').strip())
+        out['system'] = {c: sysc.get(c, '') for c in ('smtp_host', 'smtp_port', 'smtp_secure', 'smtp_require_tls', 'smtp_ignore_ssl', 'smtp_from_name')}
+        return out
+
+    # Config SMTP do próprio usuário logado (qualquer usuário autenticado edita a sua).
+    def _me_smtp_get(self, s):
+        self._json(200, self._smtp_payload(s['user_id']) or {})
+
+    # Config SMTP de outro usuário (só admin) — para prefill do modal de usuário.
+    def _user_smtp_get(self, uid, s):
+        payload = self._smtp_payload(uid)
+        if payload is None: self._json(404, {'error': 'Usuário não encontrado'}); return
+        self._json(200, payload)
+
+    def _me_smtp_put(self, body, s):
+        data = json.loads(body) if body else {}
+        fields = _smtp_fields_from(data)
+        if not fields: self._json(400, {'error': 'Nada para atualizar'}); return
+        with get_db() as conn:
+            conn.execute(f"UPDATE usuarios SET {', '.join(f'{k}=?' for k in fields)} WHERE id=?",
+                         list(fields.values()) + [s['user_id']])
+            audit(conn, s['user_id'], s['nome'], 'editar_usuario', detalhes=f"config SMTP própria: {', '.join(k for k in fields if k != 'smtp_pass')}")
             conn.commit()
         self._json(200, {'ok': True})
 

@@ -5,6 +5,12 @@
 
 ---
 
+## [1.39.0] — 2026-07-19
+
+### Adicionado
+- **Config de e-mail (SMTP) por usuário.** Cada usuário passa a ter a sua própria config na aba **Segurança** ("Meu E-mail"): 8 colunas `smtp_*` em `usuarios`, migração aditiva. Quando o usuário envia um documento por e-mail **estando logado**, o envio sai pela **conta dele** (`_enviar_email` resolve por `get_user_smtp(user_id)`, com **fallback** para a config do sistema). Vazio = herda o sistema; botão **"Copiar do sistema"** (copia servidor/porta/segurança, sem a senha). Novos endpoints `GET/PUT /api/auth/me/smtp` (próprio usuário) e `GET /api/usuarios/{id}/smtp` (admin); o admin também edita a config de qualquer usuário na tela de **Usuários**. Os **avisos automáticos de prazo** continuam usando a config do sistema.
+- **Editor de mensagem formatada** (HTML) no envio de documento por e-mail, no lugar do campo de texto simples — negrito, itálico, listas, links, alinhamento, com sanitização. É o mesmo editor do SGCD, **extraído para o `base.js`/`base.css` compartilhado** da família (`_rteToolbarHtml`/`_rteMount`/`_sanitizeEmailHtml`). O e-mail passa a ser enviado como HTML (com alternativa em texto e o anexo PDF).
+
 ## [1.38.0] — 2026-07-19
 
 ### Corrigido

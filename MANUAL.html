@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.38.0</title>
+<title>Manual Operacional — SGDP v1.39.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.38.0 — Manual Operacional";
+        content: "SGDP v1.39.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -112,7 +112,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.38.0</div>
+    <div class="cover-version">Versão 1.39.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -373,7 +373,9 @@
   <p>
     Na tela de visualização do PDF há também os botões <strong>🖨 Imprimir / Salvar PDF</strong>
     (imprime ou salva uma cópia do documento exibido) e <strong>✉ Enviar por e-mail</strong>
-    (envia o PDF assinado como anexo — requer SMTP configurado, ver 6.6).
+    (envia o PDF assinado como anexo, com um <strong>editor de mensagem formatada</strong> — negrito, itálico,
+    listas, links; deixe em branco para usar a ementa). Estando você logado, o e-mail sai pela
+    <strong>sua conta de e-mail</strong> — requer SMTP configurado, ver 6.6).
   </p>
   <div class="nota">
     <strong>Nota:</strong> todo botão de exportar/baixar arquivo no sistema (PDF de documento,
@@ -636,9 +638,14 @@
 
   <h3 id="s6-6">6.6 Configuração de e-mail (SMTP)</h3>
   <p>
-    Para habilitar o botão <strong>✉ Enviar por e-mail</strong> (ver 4.3), configure um servidor SMTP
-    na aba <strong>Segurança</strong> de Configurações: servidor, porta, usuário, senha e remetente.
-    Sem essa configuração, o botão de envio exibe uma mensagem de erro orientando a configurá-lo.
+    O sistema tem <strong>duas camadas</strong> de configuração de e-mail:
+  </p>
+  <ul>
+    <li><strong>Config do sistema</strong> (só administradores), na aba <strong>Comunicação</strong> de Configurações: servidor, porta, usuário, senha e remetente. É usada nos <strong>avisos automáticos de prazo</strong> (que rodam mesmo sem ninguém logado) e serve de <strong>padrão</strong> para quem não tiver config própria.</li>
+    <li><strong>Meu E-mail (SMTP)</strong>, na aba <strong>Segurança</strong> — disponível a <em>todos</em> os usuários. Cada um informa a sua própria conta de envio; assim, os e-mails que você dispara <strong>estando logado</strong> saem por você. Deixe em branco para herdar a config do sistema. O botão <strong>"Copiar do sistema"</strong> preenche servidor/porta/segurança a partir da config do sistema (você informa seu usuário e senha). Um administrador também pode preencher a config de qualquer usuário pela tela de <strong>Usuários</strong> (ao editar o usuário).</li>
+  </ul>
+  <p>
+    Sem nenhuma configuração (nem do usuário, nem do sistema), o botão <strong>✉ Enviar por e-mail</strong> (ver 4.3) exibe uma mensagem de erro orientando a configurá-lo.
   </p>
 
   <h3 id="s6-7">6.7 Diagnóstico de rede</h3>
@@ -798,6 +805,13 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.39.0 — 19/07/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Config de e-mail (SMTP) por usuário.</strong> Além da config do sistema (usada nos avisos automáticos e como padrão), cada usuário passa a ter a sua, na aba <strong>Segurança</strong> ("Meu E-mail"). Quando você envia um documento por e-mail estando logado, ele sai pela <strong>sua</strong> conta. Em branco = herda a do sistema; botão "Copiar do sistema" para partir dos dados do servidor. O administrador pode preencher a de qualquer usuário na tela de Usuários.</li>
+    <li><strong>Editor de mensagem formatada</strong> no envio de documento por e-mail (negrito, itálico, listas, links, alinhamento) — o mesmo editor do SGCD, agora compartilhado pela família.</li>
+  </ul>
 
   <h3>v1.38.0 — 19/07/2026</h3>
   <p><strong>Corrigido</strong></p>
