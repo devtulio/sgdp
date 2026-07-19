@@ -1184,7 +1184,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.36.0';
+const SGDP_VERSION = '1.36.1';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -4327,25 +4327,14 @@ function esc(s) {
 // certificado, arquitetura do SGDP) o navegador não expõe a API, então cai
 // automaticamente no download tradicional pra pasta padrão (mesmo
 // comportamento de antes), sem quebrar nada.
+// Adaptador local: mantém a assinatura (origem, nomeSugerido, tipos) já usada
+// pelos chamadores do SGDP — incluindo `origem` como URL a buscar via fetch, que
+// o helper comum não faz — e delega o diálogo "Salvar como" + fallback ao
+// _salvarArquivoComo do base.js (compartilhado com os sistemas irmãos).
 async function salvarArquivo(origem, nomeSugerido, tipos) {
   const blob = origem instanceof Blob ? origem : await (await fetch(origem)).blob();
-  if (window.showSaveFilePicker) {
-    try {
-      const handle = await window.showSaveFilePicker({ suggestedName: nomeSugerido, types: tipos });
-      const writable = await handle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      return;
-    } catch (e) {
-      if (e.name === 'AbortError') return; // usuário cancelou o diálogo
-      // qualquer outro erro (ex: API indisponível no contexto atual) cai no fallback abaixo
-    }
-  }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = nomeSugerido;
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
+  const mime = Object.keys(tipos?.[0]?.accept || { 'application/octet-stream': [] })[0];
+  return _salvarArquivoComo(blob, nomeSugerido, mime);
 }
 
 const DEPARTAMENTO_SIGLA = { 'Procuradoria-Geral': 'PG', 'Gabinete': 'GAB' };

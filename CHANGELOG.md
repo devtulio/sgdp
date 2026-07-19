@@ -5,6 +5,11 @@
 
 ---
 
+## [1.36.1] — 2026-07-18
+
+### Alterado
+- **Helper de exportação consolidado no `base.js` compartilhado.** A lógica do diálogo "Salvar como" (`showSaveFilePicker` + fallback) deixa de ser duplicada aqui e passa a vir do `base.js` comum aos 4 sistemas; a `salvarArquivo` local virou um adaptador fino que preserva o formato dos chamadores (incluindo buscar a origem por URL) e delega o resto. Sem mudança de comportamento.
+
 ## [1.36.0] — 2026-07-18
 
 ### Removido
