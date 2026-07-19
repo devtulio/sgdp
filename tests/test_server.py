@@ -973,9 +973,10 @@ class TestBackupsDb(SGDPTestCase):
 
 
 class TestRestoreESincronizacao(SGDPTestCase):
-    """Endpoints destrutivos (substituem documentos/arquivos/contadores/signatures
-    ou zeram tudo) — cada teste monta seu próprio payload e confere só o que
-    escreveu, sem depender de estado deixado por outras classes."""
+    """Endpoints destrutivos (substituem documentos/arquivos/contadores ou zeram
+    tudo) — cada teste monta seu próprio payload e confere só o que escreveu, sem
+    depender de estado deixado por outras classes. O campo 'signatures' antigo é
+    mantido no payload de propósito: confere que o restore o ignora sem quebrar."""
 
     def _backup_minimo(self, documentos):
         return {

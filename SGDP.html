@@ -1087,33 +1087,6 @@ tr:hover td { background: var(--gray-50); }
   </div>
 </div>
 
-<!-- ── Modal: Assinatura Digital ICP-Brasil ────────────────────────────────── -->
-<div class="overlay hidden" id="modal-assinar" role="dialog" aria-modal="true" aria-labelledby="modal-assinar-titulo">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-assinar-titulo">Assinatura Digital — <span id="assinar-doc-label"></span></h2>
-      <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-assinar')">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:12px;color:var(--gray-500);margin-bottom:12px">
-        Assina o PDF anexado com certificado ICP-Brasil A1 (arquivo <code>.pfx</code>). A senha do certificado não é armazenada — usada apenas no momento da assinatura.
-      </p>
-      <div class="form-group">
-        <label for="f-assinar-cert">Certificado (.pfx) <span style="color:var(--red)">*</span></label>
-        <input id="f-assinar-cert" type="file" accept=".pfx,.p12">
-      </div>
-      <div class="form-group">
-        <label for="f-assinar-senha">Senha do certificado <span style="color:var(--red)">*</span></label>
-        <input id="f-assinar-senha" type="password" autocomplete="off">
-      </div>
-      <p id="assinar-status" style="font-size:12px;margin-top:8px"></p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="fecharModal('modal-assinar')">Cancelar</button>
-      <button class="btn btn-primary" id="btn-assinar-confirmar" onclick="assinarDocumento()">🔏 Assinar</button>
-    </div>
-  </div>
-</div>
 
 <!-- ── Modal: Importar CSV ────────────────────────────────────────────────── -->
 <div class="overlay hidden" id="modal-csv" role="dialog" aria-modal="true" aria-labelledby="modal-csv-titulo">
@@ -1211,7 +1184,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.35.0';
+const SGDP_VERSION = '1.36.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1741,23 +1714,6 @@ function _footerOficial() {
   return `<div class="footer">Documento gerado pelo <strong>SGDP</strong> — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; ${dtFmt} &nbsp;·&nbsp; por ${esc(S.user?.nome || '—')}</div>`;
 }
 
-// Rodapé com QR real, só usado quando existe um código de verificação
-// de fato registrado no servidor (assinatura ICP-Brasil) — ver /verificar/<cod>.
-function _footerVerificavel(cod) {
-  const dtFmt = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' às ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  const qrText = `${location.origin}/verificar/${cod}`;
-  const svg = _QR.svg(qrText, 3);
-  const svgB64 = svg ? 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))) : null;
-  return `
-<div style="margin-top:28pt;border-top:1px solid #ccc;padding-top:8pt;display:flex;align-items:center;gap:16pt">
-  ${svgB64 ? `<img src="${svgB64}" width="64" height="64" alt="QR" style="flex-shrink:0;border:1px solid #eee">` : ''}
-  <div style="font-size:7.5pt;color:#666;line-height:1.6">
-    Documento gerado pelo <strong>SGDP</strong> — Sistema de Gestão de Documentos da Procuradoria &nbsp;·&nbsp; ${dtFmt}<br>
-    Assinado digitalmente (ICP-Brasil) &nbsp;·&nbsp; Código de verificação: <strong>${esc(cod)}</strong> &nbsp;·&nbsp; Verifique em <em>${esc(qrText)}</em>
-  </div>
-</div>`;
-}
-
 function _gerarDocumentoOficial(win, html, docNome) {
   if (!win) { toast('Popup bloqueado pelo navegador. Permita popups para este site e tente novamente.', 'error'); return; }
   win.document.write(html);
@@ -1857,13 +1813,12 @@ async function gerarRelatorioProdutividade(de, ate) {
   const items = (await API.json(r))?.items || [];
 
   const linha = u => {
-    const total = u.criar + u.editar + u.upload + u.assinar_icp;
+    const total = u.criar + u.editar + u.upload;
     return `<tr>
       <td>${esc(u.usuario_nome)}</td>
       <td style="text-align:center">${u.criar}</td>
       <td style="text-align:center">${u.editar}</td>
       <td style="text-align:center">${u.upload}</td>
-      <td style="text-align:center">${u.assinar_icp}</td>
       <td style="text-align:center;font-weight:700">${total}</td>
     </tr>`;
   };
@@ -1877,7 +1832,7 @@ async function gerarRelatorioProdutividade(de, ate) {
 ${cab}
 <div class="meta">Período: ${fmtData(de)} a ${fmtData(ate)}</div>
 ${items.length ? `<table class="rel">
-  <thead><tr><th>Usuário</th><th style="width:70pt;text-align:center">Criados</th><th style="width:70pt;text-align:center">Editados</th><th style="width:70pt;text-align:center">Uploads</th><th style="width:70pt;text-align:center">Assinados</th><th style="width:60pt;text-align:center">Total</th></tr></thead>
+  <thead><tr><th>Usuário</th><th style="width:70pt;text-align:center">Criados</th><th style="width:70pt;text-align:center">Editados</th><th style="width:70pt;text-align:center">Uploads</th><th style="width:60pt;text-align:center">Total</th></tr></thead>
   <tbody>${items.map(linha).join('')}</tbody>
 </table>` : '<p style="font-size:10pt;color:#666">Nenhuma atividade registrada no período.</p>'}
 ${_blocoAssinaturaOficial(cfg)}
@@ -1922,10 +1877,6 @@ async function _blocoCertidao(doc, cfg) {
     ? `<p style="font-size:10pt;margin-top:4pt">Este documento foi editado ${revisoes.length} vez(es) desde a criação. Histórico completo disponível no sistema.</p>`
     : '<p style="font-size:10pt;color:#666">Nenhuma revisão — documento inalterado desde a criação.</p>';
 
-  const statusAssinatura = doc.assinado_em
-    ? `<p style="font-size:10.5pt"><strong>Assinado digitalmente</strong> (ICP-Brasil) em ${fmtDataHora(doc.assinado_em)} por ${esc(doc.assinado_por_nome || '—')}.<br>Certificado: ${esc(doc.assinatura_cert || '—')}</p>`
-    : `<p style="font-size:10.5pt;color:#666">Este documento não possui assinatura digital ICP-Brasil registrada.</p>`;
-
   return `
 ${cab}
 
@@ -1939,11 +1890,8 @@ ${linhasVinculos}
 <h4 style="font-size:11pt;margin:16pt 0 4pt">Histórico de revisões</h4>
 ${linhasRevisoes}
 
-<h4 style="font-size:11pt;margin:16pt 0 4pt">Assinatura digital</h4>
-${statusAssinatura}
-
 ${_blocoAssinaturaOficial(cfg)}
-${doc.cod_verificacao ? _footerVerificavel(doc.cod_verificacao) : _footerOficial()}`;
+${_footerOficial()}`;
 }
 
 async function gerarCertidaoDocumento(docId) {
@@ -2101,7 +2049,7 @@ async function gerarRelatorioIntegridade() {
     ['Documentos ativos', c.documentos], ['Documentos na lixeira', c.na_lixeira],
     ['PDFs anexados', c.arquivos], ['Usuários ativos', c.usuarios],
     ['Etiquetas', c.tags], ['Vínculos entre documentos', c.vinculos],
-    ['Assinaturas digitais registradas', c.assinaturas], ['Lembretes pendentes', c.lembretes_pendentes],
+    ['Lembretes pendentes', c.lembretes_pendentes],
   ].map(([lbl, n]) => `<tr><td>${esc(lbl)}</td><td style="text-align:right;font-weight:700">${n}</td></tr>`).join('');
 
   const dias = d.last_backup ? Math.floor((Date.now() - new Date(d.last_backup).getTime()) / 86400000) : null;
@@ -2468,9 +2416,6 @@ async function renderDocumentosLista(page = 1) {
         ? `<span style="display:flex;gap:4px;align-items:center">
             <button class="btn btn-outline btn-sm btn-icon" onclick="verPdf(${doc.arquivo_id},'${esc(doc.arquivo_nome || 'Documento')}')" title="Visualizar PDF">👁</button>
             <button class="btn btn-outline btn-sm btn-icon" onclick="baixarPdfDoc(${doc.arquivo_id},'${esc(doc.arquivo_nome || 'documento.pdf')}')" title="Baixar PDF">⬇</button>
-            ${doc.assinado_em ? (doc.cod_verificacao
-              ? `<a href="/verificar/${doc.cod_verificacao}" target="_blank" rel="noopener" title="Assinado digitalmente em ${fmtDataHora(doc.assinado_em)}${doc.assinatura_cert ? ' — ' + esc(doc.assinatura_cert) : ''}. Clique para verificar (cód. ${doc.cod_verificacao})" style="font-size:14px;text-decoration:none">🔏</a>`
-              : `<span title="Assinado digitalmente em ${fmtDataHora(doc.assinado_em)}${doc.assinatura_cert ? ' — ' + esc(doc.assinatura_cert) : ''}" style="font-size:14px">🔏</span>`) : ''}
            </span>`
         : '<span style="color:var(--gray-300);font-size:12px">Sem PDF</span>'}</td>
       <td>
@@ -2478,7 +2423,6 @@ async function renderDocumentosLista(page = 1) {
           ${podeEditar ? `<button class="btn btn-outline btn-sm" onclick="abrirEditarDoc(${doc.id})">✎ Editar</button>` : ''}
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirHistoricoDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Histórico de revisões">🕘</button>
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirVinculosDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Vínculos com outros documentos">🔗</button>
-          ${podeEditar ? `<button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalAssinar(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Assinar digitalmente (ICP-Brasil)">🔏</button>` : ''}
           <button class="btn btn-outline btn-sm btn-icon" onclick="gerarCertidaoDocumento(${doc.id})" title="Gerar certidão deste documento">📜</button>
           <button class="btn btn-outline btn-sm btn-icon" onclick="abrirModalEmail(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Enviar por e-mail">✉</button>
           ${podeEditar ? `<button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirDoc(${doc.id},'${esc(fmtNum(doc.numero, doc.ano, doc.tipo))}')" title="Excluir" aria-label="Excluir documento">✕</button>` : ''}
@@ -2935,46 +2879,6 @@ async function excluirVinculo(id) {
   await _renderVinculos();
 }
 
-// ── Assinatura digital ICP-Brasil ─────────────────────────────────────────────
-function abrirModalAssinar(id, label) {
-  S.assinarDocId = id;
-  document.getElementById('assinar-doc-label').textContent = label;
-  document.getElementById('f-assinar-cert').value = '';
-  document.getElementById('f-assinar-senha').value = '';
-  document.getElementById('assinar-status').textContent = '';
-  abrirModal('modal-assinar');
-}
-
-async function assinarDocumento() {
-  const certFile = document.getElementById('f-assinar-cert').files[0];
-  const senha = document.getElementById('f-assinar-senha').value;
-  const status = document.getElementById('assinar-status');
-  if (!certFile) { status.textContent = 'Selecione o arquivo do certificado (.pfx).'; status.style.color = 'var(--red)'; return; }
-  if (!senha)    { status.textContent = 'Informe a senha do certificado.'; status.style.color = 'var(--red)'; return; }
-
-  const btn = document.getElementById('btn-assinar-confirmar');
-  btn.disabled = true;
-  status.style.color = '';
-  status.textContent = '⏳ Assinando…';
-
-  const fd = new FormData();
-  fd.append('cert', certFile);
-  fd.append('senha', senha);
-  const r = await API.upload(`/api/documentos/${S.assinarDocId}/assinar`, fd);
-  btn.disabled = false;
-  const d = await API.json(r);
-  if (!r || !r.ok) { status.textContent = d?.error || 'Erro ao assinar.'; status.style.color = 'var(--red)'; return; }
-  toast('Documento assinado digitalmente.', 'success');
-  const verifUrl = `${location.origin}/verificar/${d.cod_verificacao}`;
-  status.style.color = 'var(--green, #16a34a)';
-  status.innerHTML = `✔ Assinado com sucesso.<br>
-    Código de verificação: <strong style="font-family:monospace;letter-spacing:1px">${esc(d.cod_verificacao)}</strong><br>
-    <a href="${esc(verifUrl)}" target="_blank" rel="noopener">${esc(verifUrl)}</a>`;
-  document.getElementById('f-assinar-cert').value = '';
-  document.getElementById('f-assinar-senha').value = '';
-  await renderDocumentosLista(S.pag.page);
-}
-
 // ── E-mail ───────────────────────────────────────────────────────────────────
 function abrirModalEmail(id, label) {
   S.emailDocId = id;
@@ -3317,7 +3221,6 @@ const _AUDIT_LABELS = {
   alterar_smtp:       { label: 'Alterar SMTP',          cor: '#6b7280' },
   criar_lembrete:     { label: 'Criar lembrete',        cor: '#2563eb' },
   criar_vinculo:      { label: 'Criar vínculo',         cor: '#0891b2' },
-  assinar_icp:        { label: 'Assinar (ICP-Brasil)',  cor: '#166534' },
   excluir_vinculo:    { label: 'Remover vínculo',       cor: '#dc2626' },
   enviar_email:       { label: 'Enviar e-mail',         cor: '#7c3aed' },
   import_csv:         { label: 'Importar CSV',          cor: '#2563eb' },

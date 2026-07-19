@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.35.0</title>
+<title>Manual Operacional — SGDP v1.36.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -83,7 +83,7 @@
       margin: 20mm 20mm 25mm;
       size: A4;
       @top-center {
-        content: "SGDP v1.35.0 — Manual Operacional";
+        content: "SGDP v1.36.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -112,7 +112,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.35.0</div>
+    <div class="cover-version">Versão 1.36.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -149,7 +149,7 @@
     <div class="toc-item h3"><a href="#s4-4">4.4 Assunto e campos específicos por tipo</a></div>
     <div class="toc-item h3"><a href="#s4-5">4.5 Importação em lote via CSV</a></div>
     <div class="toc-item h3"><a href="#s4-6">4.6 Documentos sigilosos e departamentos</a></div>
-    <div class="toc-item h3"><a href="#s4-7">4.7 Assinatura digital, verificação e histórico</a></div>
+    <div class="toc-item h3"><a href="#s4-7">4.7 Histórico de revisões</a></div>
     <div class="toc-item h3"><a href="#s4-8">4.8 Etiquetas e vínculos entre documentos</a></div>
     <div class="toc-item h2"><a href="#s5">5. Busca e Filtros</a></div>
     <div class="toc-item h2"><a href="#s6">6. Administração</a></div>
@@ -443,7 +443,7 @@
   </div>
   <p>Regras de acesso a um documento (Parecer, Portaria ou Ofício):</p>
   <ul>
-    <li><strong>Edição/exclusão (documento não-sigiloso):</strong> qualquer usuário do <em>mesmo departamento</em> de quem criou pode editar, excluir ou assinar — além do administrador</li>
+    <li><strong>Edição/exclusão (documento não-sigiloso):</strong> qualquer usuário do <em>mesmo departamento</em> de quem criou pode editar ou excluir — além do administrador</li>
     <li><strong>Marcado como 🔒 Sigiloso:</strong> aparece na listagem, no dashboard, na busca e nos relatórios apenas para quem o criou e para administradores — mesmo colegas do mesmo departamento não veem</li>
     <li><strong>Alterar a marcação de sigilo:</strong> só quem criou o documento ou um administrador pode marcar/desmarcar como sigiloso — nem colegas de departamento podem</li>
   </ul>
@@ -452,31 +452,13 @@
     sigilosos ou não, de qualquer departamento.
   </div>
 
-  <h3 id="s4-7">4.7 Assinatura digital, verificação e histórico</h3>
+  <h3 id="s4-7">4.7 Histórico de revisões</h3>
   <p>
-    Além de anexar um PDF já assinado externamente (ver 4.3), o SGDP pode <strong>assinar
-    digitalmente dentro do próprio sistema</strong>, usando um certificado ICP-Brasil A1
-    (arquivo <code>.pfx</code>):
-  </p>
-  <ol>
-    <li>Na listagem do documento, clique no ícone <strong>🔏</strong> (disponível para quem pode editar o documento — ver 4.6)</li>
-    <li>Selecione o arquivo do certificado (<code>.pfx</code>) e informe a senha</li>
-    <li>Opcionalmente, envie um PDF novo para assinar — se nenhum for enviado, o sistema assina o PDF já anexado ao documento</li>
-    <li>Confirme — o PDF assinado substitui o anexo do documento</li>
-  </ol>
-  <div class="nota">
-    <strong>Requisito:</strong> a assinatura ICP-Brasil depende do módulo opcional <code>pyhanko</code>
-    (ver Requisitos, 2.1). Se não estiver instalado, o botão exibe uma mensagem orientando a instalação.
-  </div>
-  <p>
-    Toda assinatura feita pelo sistema gera um <strong>código de verificação</strong> curto
-    (ex: <code>65C9-CA87</code>), consultável sem login em <code>/verificar/&lt;código&gt;</code> —
-    a página mostra o documento, o signatário, os dados do certificado e a data, permitindo que
-    qualquer pessoa (ex: outro órgão, um cidadão) confirme a autenticidade sem precisar acessar o SGDP.
-    Documentos assinados pelo sistema mostram o ícone 🔏 como link direto para essa página.
+    Para assinar um documento, anexe um PDF já assinado externamente (ver 4.3) — pela
+    plataforma de assinatura do município, GOV.BR, ICP-Brasil ou equivalente.
   </p>
   <p>
-    Toda edição de um documento também fica registrada em seu <strong>histórico de revisões</strong>,
+    Toda edição de um documento fica registrada em seu <strong>histórico de revisões</strong>,
     acessível pelo ícone <strong>🕘</strong> na listagem — mostra os campos como estavam antes de
     cada alteração, com autor e data/hora.
   </p>
@@ -566,7 +548,6 @@
       <tr><td>Restaurar da lixeira</td><td>Documento devolvido à listagem normal</td></tr>
       <tr><td>Excluir permanente</td><td>Remoção definitiva, seja pela Lixeira ou pela purga automática após 30 dias</td></tr>
       <tr><td>Upload PDF / Remover PDF</td><td>Anexação ou remoção do PDF de um documento</td></tr>
-      <tr><td>Assinar (ICP-Brasil)</td><td>Assinatura digital do PDF anexado com certificado A1 (ver 4.7)</td></tr>
       <tr><td>Criar/Remover vínculo</td><td>Vínculo criado ou removido entre dois documentos (ver 4.8)</td></tr>
       <tr><td>Importar CSV</td><td>Importação em lote de documentos</td></tr>
       <tr><td>Enviar e-mail</td><td>PDF assinado enviado por e-mail a partir de um documento</td></tr>
@@ -694,7 +675,7 @@
   </p>
   <ul>
     <li><strong>Pendências e Prazos</strong> — lembretes vencidos/a vencer e documentos sem PDF anexado</li>
-    <li><strong>Produtividade por Usuário</strong> — ações (criar/editar/upload/assinar) por procurador no período</li>
+    <li><strong>Produtividade por Usuário</strong> — ações (criar/editar/upload) por procurador no período</li>
     <li><strong>Certidão de Documento</strong> (ícone 📜 na listagem) — ficha completa: campos, etiquetas, vínculos, histórico de revisões e status de assinatura</li>
     <li><strong>Certidão Negativa de Pendências</strong> — atesta, a partir da Certidão, a ausência de lembretes pendentes e de PDF faltante para aquele documento (ou lista o que falta, se houver)</li>
     <li><strong>Certidões em lote</strong> — gera as Certidões de todos os documentos do filtro/tipo atual num único PDF</li>
@@ -812,6 +793,12 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.36.0 — 18/07/2026</h3>
+  <p><strong>Removido</strong></p>
+  <ul>
+    <li><strong>Assinatura digital ICP-Brasil</strong> — o módulo de assinar PDF com certificado A1 (<code>.pfx</code>) dentro do sistema foi removido por completo: botão/modal de assinar, página pública de verificação (<code>/verificar</code>), registro de assinaturas, dependência <code>pyhanko</code> (o SGDP volta a rodar 100% com a biblioteca padrão) e o instalador ICP. A linha de assinatura manuscrita nos documentos impressos permanece. Para assinar, anexe um PDF já assinado externamente (4.3).</li>
+  </ul>
 
   <h3>v1.35.0 — 18/07/2026</h3>
   <p><strong>Adicionado</strong></p>
@@ -1030,7 +1017,6 @@
   <h3>v1.23.0 — 10/07/2026</h3>
   <p><strong>Adicionado</strong></p>
   <ul>
-    <li><strong>Instalar Assinatura ICP-Brasil.bat</strong> (opcional) — habilita o pip e instala o pyhanko quando o servidor usa o Python embarcável, para quem for usar a assinatura com certificado ICP-Brasil A1 numa máquina sem Python instalado</li>
   </ul>
 
   <h3>v1.22.0 — 10/07/2026</h3>

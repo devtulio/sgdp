@@ -5,6 +5,11 @@
 
 ---
 
+## [1.36.0] — 2026-07-18
+
+### Removido
+- **Assinatura digital ICP-Brasil.** O módulo de assinatura de PDF com certificado A1 (`.pfx`) foi removido por completo: o botão e o modal de assinar, a página pública de verificação (`/verificar/<código>`), o registro de assinaturas, a coluna "Assinados" do Relatório de Produtividade, a contagem de assinaturas no Relatório Gerencial, a dependência opcional `pyhanko` (o SGDP volta a rodar 100% com a biblioteca padrão do Python) e o script `Instalar Assinatura ICP-Brasil.bat`. A tabela `signatures` e seus dados são descartados na inicialização; backups antigos que ainda tragam esse bloco são aceitos e o bloco é ignorado. **A linha de assinatura manuscrita nos documentos/certidões impressos permanece** — não tinha relação com a assinatura digital.
+
 ## [1.35.0] — 2026-07-18
 
 ### Adicionado

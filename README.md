@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.35.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/versão-v1.36.0-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
 
 ## Descrição
 
@@ -46,10 +46,8 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Vínculos entre documentos** — relação tipada (revoga, altera, complementa, referencia) navegável nos dois sentidos
 - **Exportação do relatório** — CSV com os dados brutos do período, e impressão/PDF limpo (sem menu/sidebar)
 - **Exportação da Trilha de Auditoria em CSV**, respeitando os filtros ativos na tela
-- **Assinatura digital ICP-Brasil** — assina o PDF anexado com certificado A1 (`.pfx`), nível qualificado (dependência opcional)
-- **Verificação pública de assinatura** — cada assinatura gera um código de verificação consultável sem login em `/verificar/<código>`
 - **Sincronização de auditoria entre instâncias** — a sincronização de backup também mescla o histórico de auditoria, preservando autor e data originais
-- **Relatórios em papel timbrado** — Pendências e Prazos, Produtividade por Usuário, Certidão de Documento, Certidão Negativa de Pendências, Certidões em lote, Cadeia Normativa, Relatório de Etiquetas e Backup e Integridade (admin), no mesmo padrão documental do SGCD (brasão, Times New Roman, bloco de assinatura, QR de verificação quando o documento tem assinatura digital)
+- **Relatórios em papel timbrado** — Pendências e Prazos, Produtividade por Usuário, Certidão de Documento, Certidão Negativa de Pendências, Certidões em lote, Cadeia Normativa, Relatório de Etiquetas e Backup e Integridade (admin), no mesmo padrão documental do SGCD (brasão, Times New Roman, bloco de assinatura manuscrita)
 - **Comparativo entre períodos** no Relatório Gerencial — variação (▲/▼, diferença e percentual) contra o intervalo de mesma duração imediatamente anterior
 
 ---
@@ -59,12 +57,10 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Python 3.8+** (apenas biblioteca padrão — sem dependências externas)
 - **Google Chrome** ou **Microsoft Edge** (recomendado)
 - Windows 10/11
-- Opcional: `pip install -r requirements.txt` — só necessário para o módulo de assinatura com certificado ICP-Brasil (`pyhanko`)
+- Nenhuma dependência externa — o SGDP roda 100% com a biblioteca padrão do Python
 
 > **Servidor sem Python instalado (ex.: Windows Server bloqueado por política de TI):**
 > o `Iniciar SGDP.bat` detecta automaticamente a ausência do Python e extrai uma versão portátil (embarcável, sem instalador) incluída no próprio projeto (`python-3.12.9-embed-amd64.zip`) para `C:\Python312-embed\` — não exige instalação nem privilégio de administrador.
->
-> Essa versão portátil não vem com `pip` pronto (limitação do próprio pacote embarcável do Python). Se esse servidor precisar do módulo de assinatura ICP-Brasil, rode **`Instalar Assinatura ICP-Brasil.bat`** depois — ele habilita o pip e instala o `pyhanko` (requer acesso à internet só nesse momento, para baixar do PyPI).
 
 ---
 
@@ -129,7 +125,6 @@ SGDP/
 │   └── e2e/                # Testes E2E (Playwright) — navegador real de ponta a ponta
 ├── Iniciar SGDP.bat        # Inicializa o servidor
 ├── python-3.12.9-embed-amd64.zip  # Python portátil (fallback se não houver Python instalado)
-├── Instalar Assinatura ICP-Brasil.bat  # Opcional — instala pip + pyhanko no Python embarcável
 ├── get-pip.py              # Usado só pelo script acima (Python embarcável não vem com pip)
 ├── Criar Atalho SGDP.bat   # Cria atalho na área de trabalho com ícone
 ├── Criar Atalho SGDP.ps1   # Script PowerShell de criação do atalho
@@ -140,7 +135,7 @@ SGDP/
 ├── sgdp.db                 # Banco de dados SQLite (criado automaticamente)
 ├── uploads/                # PDFs armazenados (criado automaticamente)
 ├── backups/                # Backups automáticos (criado automaticamente)
-├── requirements.txt        # Dependência opcional (pyhanko — só p/ assinatura ICP-Brasil)
+├── requirements.txt        # Sem dependências externas (stdlib do Python)
 ├── README.md
 ├── CHANGELOG.md
 └── MANUAL.html

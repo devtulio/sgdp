@@ -1,4 +1,4 @@
-# SGDP v1.35.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.36.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -184,18 +184,6 @@ def init_db():
                 criado_em  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
                 UNIQUE(origem_id, destino_id, tipo)
             );
-            CREATE TABLE IF NOT EXISTS signatures (
-                id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                cod            TEXT NOT NULL UNIQUE,
-                documento_id   INTEGER REFERENCES documentos(id) ON DELETE SET NULL,
-                doc_tipo       TEXT, doc_numero INTEGER, doc_ano INTEGER, doc_ementa TEXT,
-                signer_user_id INTEGER REFERENCES usuarios(id),
-                signer_name    TEXT,
-                method         TEXT DEFAULT 'icp-brasil',
-                cert_subject   TEXT,
-                hash_sha256    TEXT,
-                signed_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
-            );
             CREATE INDEX IF NOT EXISTS idx_docs_tipo ON documentos(tipo);
             CREATE INDEX IF NOT EXISTS idx_docs_ano  ON documentos(ano);
             CREATE INDEX IF NOT EXISTS idx_audit_em  ON auditoria(em);
@@ -204,8 +192,10 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_doc_tags_tag ON documento_tags(tag_id);
             CREATE INDEX IF NOT EXISTS idx_vinculos_origem  ON documento_vinculos(origem_id);
             CREATE INDEX IF NOT EXISTS idx_vinculos_destino ON documento_vinculos(destino_id);
-            CREATE INDEX IF NOT EXISTS idx_signatures_doc ON signatures(documento_id);
         ''')
+        # Assinatura digital ICP-Brasil removida (v: ver CHANGELOG) — descarta a tabela
+        # e seus dados; a assinatura manuscrita nos documentos impressos permanece.
+        conn.execute('DROP TABLE IF EXISTS signatures')
         global FTS_AVAILABLE
         try:
             # COUNT(*) numa fts5 external-content faz passthrough pra contagem de
@@ -420,30 +410,6 @@ def _parse_multipart_all(body, boundary):
             parts[name] = {'data': content, 'filename': None, 'text': content.decode('utf-8', errors='replace').strip()}
     return parts
 
-def _assinar_pdf_icp(pdf_bytes, cert_bytes, senha):
-    """Assina um PDF com certificado ICP-Brasil A1 (.pfx), nível qualificado.
-    Import tardio de pyHanko: o servidor sobe normalmente mesmo sem a lib
-    instalada — só este módulo fica indisponível, com erro claro. Portado do SGCD.
-    Retorna (pdf_assinado_bytes, subject_do_certificado)."""
-    import tempfile, io
-    from pyhanko.sign import signers
-    from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
-
-    with tempfile.NamedTemporaryFile(suffix='.pfx', delete=False) as tf:
-        tf.write(cert_bytes)
-        pfx_path = tf.name
-    try:
-        signer = signers.SimpleSigner.load_pkcs12(pfx_path, passphrase=senha.encode('utf-8'))
-        if signer is None:
-            raise ValueError('Senha do certificado incorreta ou arquivo .pfx inválido/corrompido')
-        cert_subject = str(signer.signing_cert.subject.human_friendly)
-        writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes))
-        out = io.BytesIO()
-        signers.sign_pdf(writer, signers.PdfSignatureMetadata(field_name='Signature1'), signer=signer, output=out)
-        return out.getvalue(), cert_subject
-    finally:
-        os.remove(pfx_path)
-
 # ── Segurança ─────────────────────────────────────────────────────────────────
 
 def get_config():
@@ -571,26 +537,6 @@ def _tags_map(conn, doc_ids):
         out.setdefault(r['documento_id'], []).append(r['nome'])
     return out
 
-def _sig_cod_map(conn, doc_ids):
-    """Retorna {documento_id: cod} do registro de assinatura mais recente de cada id."""
-    if not doc_ids: return {}
-    qs = ','.join('?' * len(doc_ids))
-    rows = conn.execute(
-        f'''SELECT documento_id, cod FROM signatures WHERE id IN (
-                SELECT MAX(id) FROM signatures WHERE documento_id IN ({qs}) GROUP BY documento_id
-            )''', doc_ids
-    ).fetchall()
-    return {r['documento_id']: r['cod'] for r in rows}
-
-def _gerar_cod_assinatura(conn):
-    """Código curto de verificação (ex: A1B2-C3D4), único na tabela signatures."""
-    for _ in range(10):
-        raw = secrets.token_hex(4).upper()
-        cod = raw[:4] + '-' + raw[4:]
-        if not conn.execute('SELECT 1 FROM signatures WHERE cod=?', (cod,)).fetchone():
-            return cod
-    raise RuntimeError('Não foi possível gerar código de verificação único')
-
 # ── HTTP Handler ──────────────────────────────────────────────────────────────
 
 class SGDPHandler(http.server.SimpleHTTPRequestHandler):
@@ -658,8 +604,6 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {'ts': row['value'] if row else None})
             except Exception:
                 self._json(200, {'ts': None})
-        elif p.startswith('/verificar/'):
-            self._serve_verificar(p[len('/verificar/'):].strip('/').upper())
         elif p.startswith('/api/'):
             s = self._auth()
             if s: self._route_get(p, qs, s)
@@ -936,8 +880,6 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif re.fullmatch(r'/api/documentos/\d+/arquivo', p):
             self._upload_arquivo(int(p.split('/')[3]), s)
 
-        elif re.fullmatch(r'/api/documentos/\d+/assinar', p):
-            self._assinar_doc(int(p.split('/')[3]), s)
 
         elif re.fullmatch(r'/api/documentos/\d+/email', p):
             self._enviar_email(int(p.split('/')[3]), self._body(), s)
@@ -1106,12 +1048,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             ).fetchall()
             ids = [r['id'] for r in rows]
             tags_map = _tags_map(conn, ids)
-            cod_map = _sig_cod_map(conn, ids)
         items = []
         for r in rows:
             item = dict(r)
             item['tags'] = tags_map.get(r['id'], [])
-            item['cod_verificacao'] = cod_map.get(r['id'])
             items.append(item)
         self._json(200, {'total': total, 'page': page, 'per': per, 'items': items})
 
@@ -1130,11 +1070,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             if not row: self._json(404, {'error': 'Não encontrado'}); return
             if not pode_ver_doc(row, s): self._json(404, {'error': 'Não encontrado'}); return
             tags = _tags_map(conn, [did]).get(did, [])
-            sig = conn.execute(
-                'SELECT cod FROM signatures WHERE documento_id=? ORDER BY id DESC LIMIT 1', (did,)
-            ).fetchone()
         item = dict(row); item['tags'] = tags
-        item['cod_verificacao'] = sig['cod'] if sig else None
         self._json(200, item)
 
     def _list_tags(self):
@@ -1464,12 +1400,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with get_db() as conn:
             rows = conn.execute(
                 '''SELECT usuario_nome, acao, COUNT(*) n FROM auditoria
-                   WHERE em BETWEEN ? AND ? AND acao IN ('criar','editar','upload','assinar_icp')
+                   WHERE em BETWEEN ? AND ? AND acao IN ('criar','editar','upload')
                    AND usuario_nome IS NOT NULL GROUP BY usuario_nome, acao''',
                 (de, ate)).fetchall()
         por_usuario = {}
         for r in rows:
-            u = por_usuario.setdefault(r['usuario_nome'], {'criar': 0, 'editar': 0, 'upload': 0, 'assinar_icp': 0})
+            u = por_usuario.setdefault(r['usuario_nome'], {'criar': 0, 'editar': 0, 'upload': 0})
             u[r['acao']] = r['n']
         items = [{'usuario_nome': nome, **contagens} for nome, contagens in sorted(por_usuario.items())]
         self._json(200, {'items': items})
@@ -1501,7 +1437,6 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 'usuarios': conn.execute('SELECT COUNT(*) FROM usuarios WHERE ativo=1').fetchone()[0],
                 'tags': conn.execute('SELECT COUNT(*) FROM tags').fetchone()[0],
                 'vinculos': conn.execute('SELECT COUNT(*) FROM documento_vinculos').fetchone()[0],
-                'assinaturas': conn.execute('SELECT COUNT(*) FROM signatures').fetchone()[0],
                 'lembretes_pendentes': conn.execute('SELECT COUNT(*) FROM lembretes WHERE concluido=0').fetchone()[0],
                 'na_lixeira': conn.execute('SELECT COUNT(*) FROM documentos WHERE excluido_em IS NOT NULL').fetchone()[0],
             }
@@ -1743,89 +1678,6 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.commit()
         self._json(200, {'ok': True, 'arquivo_id': aid, 'nome_original': filename, 'tamanho': len(filedata)})
 
-    def _assinar_doc(self, did, s):
-        """Assina digitalmente o PDF do documento com certificado ICP-Brasil (.pfx A1).
-        Se um novo PDF for enviado no campo 'pdf', assina e anexa esse; senão assina
-        o PDF já anexado ao documento."""
-        ct = self.headers.get('Content-Type', '')
-        if 'multipart/form-data' not in ct:
-            self._json(400, {'error': 'Envie como multipart/form-data'}); return
-        length = int(self.headers.get('Content-Length', 0))
-        if length > MAX_UPLOAD_SIZE:
-            self._json(413, {'error': 'Arquivo muito grande (máx. 50 MB)'}); return
-        boundary = next((p.strip()[9:].strip('"') for p in ct.split(';') if p.strip().startswith('boundary=')), None)
-        if not boundary: self._json(400, {'error': 'Boundary não encontrado'}); return
-        parts = _parse_multipart_all(self.rfile.read(length), boundary.encode())
-
-        cert_bytes = parts.get('cert', {}).get('data')
-        senha = parts.get('senha', {}).get('text', '')
-        pdf_novo = parts.get('pdf', {}).get('data')
-        if not cert_bytes or not senha:
-            self._json(400, {'error': 'Certificado (.pfx) e senha são obrigatórios'}); return
-
-        with get_db() as conn:
-            doc = conn.execute(
-                '''SELECT d.*, u.departamento criado_por_departamento
-                   FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
-                   WHERE d.id=?''', (did,)
-            ).fetchone()
-            if not doc: self._json(404, {'error': 'Documento não encontrado'}); return
-            if not pode_editar_doc(doc, s): self._json(403, {'error': 'Sem permissão para este documento'}); return
-            nome_original = 'documento.pdf'
-            if pdf_novo:
-                pdf_bytes = pdf_novo
-            elif doc['arquivo_id']:
-                arq = conn.execute('SELECT * FROM arquivos WHERE id=?', (doc['arquivo_id'],)).fetchone()
-                if not arq: self._json(404, {'error': 'PDF anexado não encontrado no disco'}); return
-                fp = os.path.join(UPLOADS_DIR, arq['nome_disco'])
-                if not os.path.isfile(fp): self._json(404, {'error': 'PDF anexado não encontrado no disco'}); return
-                with open(fp, 'rb') as f: pdf_bytes = f.read()
-                nome_original = arq['nome_original']
-            else:
-                self._json(400, {'error': 'Este documento não tem PDF anexado. Envie um PDF para assinar.'}); return
-
-        try:
-            pdf_assinado, cert_subject = _assinar_pdf_icp(pdf_bytes, cert_bytes, senha)
-        except ImportError:
-            self._json(400, {'error': 'Módulo de assinatura ICP-Brasil indisponível — instale com "pip install -r requirements.txt"'}); return
-        except Exception as e:
-            self._json(400, {'error': f'Falha ao assinar com o certificado: {e}'}); return
-        finally:
-            cert_bytes = None; senha = None  # descarta referências assim que possível
-
-        with get_db() as conn:
-            doc = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
-            if doc['arquivo_id']:
-                old = conn.execute('SELECT * FROM arquivos WHERE id=?', (doc['arquivo_id'],)).fetchone()
-                if old:
-                    p = os.path.join(UPLOADS_DIR, old['nome_disco'])
-                    if os.path.isfile(p): os.remove(p)
-                    conn.execute('DELETE FROM arquivos WHERE id=?', (old['id'],))
-            nome_disco = f"{secrets.token_hex(16)}.pdf"
-            with open(os.path.join(UPLOADS_DIR, nome_disco), 'wb') as f:
-                f.write(pdf_assinado)
-            conn.execute('INSERT INTO arquivos (nome_original,nome_disco,tamanho,enviado_por) VALUES (?,?,?,?)',
-                         (nome_original, nome_disco, len(pdf_assinado), s['user_id']))
-            aid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
-            agora = time.strftime('%Y-%m-%dT%H:%M:%S')
-            conn.execute('''UPDATE documentos SET arquivo_id=?,atualizado_por=?,atualizado_em=?,
-                             assinado_por=?,assinado_em=?,assinatura_cert=? WHERE id=?''',
-                         (aid, s['user_id'], agora, s['user_id'], agora, cert_subject, did))
-            # Registro imutável e independente do arquivo — sobrevive mesmo se o PDF for
-            # trocado/apagado depois, permitindo verificação pública por código.
-            cod = _gerar_cod_assinatura(conn)
-            hash_sha256 = hashlib.sha256(pdf_assinado).hexdigest()
-            conn.execute(
-                '''INSERT INTO signatures (cod,documento_id,doc_tipo,doc_numero,doc_ano,doc_ementa,
-                   signer_user_id,signer_name,method,cert_subject,hash_sha256,signed_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
-                (cod, did, doc['tipo'], doc['numero'], doc['ano'], doc['ementa'],
-                 s['user_id'], s['nome'], 'icp-brasil', cert_subject, hash_sha256, agora)
-            )
-            audit(conn, s['user_id'], s['nome'], 'assinar_icp', did, f'{cert_subject} — cód. {cod}')
-            conn.commit()
-        self._json(200, {'ok': True, 'arquivo_id': aid, 'cert_subject': cert_subject, 'cod_verificacao': cod})
-
     def _remove_arquivo(self, did, s):
         with get_db() as conn:
             doc = conn.execute(
@@ -1845,65 +1697,6 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             audit(conn, s['user_id'], s['nome'], 'remover_arquivo', did)
             conn.commit()
         self._json(200, {'ok': True})
-
-    def _serve_verificar(self, cod):
-        with get_db() as conn:
-            row = conn.execute('SELECT * FROM signatures WHERE cod=?', (cod,)).fetchone()
-        TIPOS_LABEL = {'lei': 'Lei', 'decreto': 'Decreto', 'portaria': 'Portaria', 'parecer': 'Parecer', 'oficio': 'Ofício'}
-        if row:
-            doc_label = f"{TIPOS_LABEL.get(row['doc_tipo'], row['doc_tipo'] or '')} nº {row['doc_numero']}/{row['doc_ano']}"
-            status_html = f'''<h2>✓ Assinatura Encontrada</h2>
-    <div class="field"><strong>Documento:</strong> {html_mod.escape(doc_label)}</div>
-    <div class="field"><strong>Ementa:</strong> {html_mod.escape(row['doc_ementa'] or '—')}</div>
-    <div class="field"><strong>Assinado por:</strong> {html_mod.escape(row['signer_name'] or '—')}</div>
-    <div class="field"><strong>Certificado:</strong> {html_mod.escape(row['cert_subject'] or '—')}</div>
-    <div class="field"><strong>Data:</strong> {html_mod.escape(row['signed_at'] or '—')}</div>'''
-            status_class = 'ok'
-            extra_note = '<p style="font-size:12px;color:#6b7280;margin-top:10px">Para validar a cadeia de certificação, confira também o <a href="https://verificador.iti.gov.br/" target="_blank" rel="noopener">verificador oficial do ITI</a>.</p>'
-        else:
-            status_html = '<h2>✗ Não encontrado</h2><p style="font-size:13px;margin-top:6px">O código não corresponde a nenhuma assinatura registrada nesta instalação.</p>'
-            status_class = 'err'
-            extra_note = ''
-
-        html = f"""<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Verificação de Autenticidade — SGDP</title>
-<style>
-  *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{font-family:system-ui,sans-serif;background:#f3f4f6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}
-  .card{{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.10);max-width:520px;width:100%;padding:32px 36px}}
-  .logo{{font-size:13px;font-weight:700;letter-spacing:.5px;color:#6b7280;text-transform:uppercase;margin-bottom:20px}}
-  h1{{font-size:18px;font-weight:700;margin-bottom:6px}}
-  .cod{{font-family:monospace;font-size:15px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 14px;display:inline-block;margin-bottom:20px;letter-spacing:2px}}
-  #status{{border-radius:8px;padding:16px 20px;margin-bottom:20px}}
-  #status.ok{{background:#f0fdf4;border:1px solid #86efac}}
-  #status.err{{background:#fef2f2;border:1px solid #fca5a5}}
-  #status h2{{font-size:15px;font-weight:700;margin-bottom:4px}}
-  #status.ok h2{{color:#166534}} #status.err h2{{color:#b91c1c}}
-  .field{{margin-bottom:8px;font-size:13px}} .field strong{{color:#374151}}
-  .footer{{font-size:11px;color:#9ca3af;margin-top:20px;text-align:center}}
-</style>
-</head>
-<body>
-  <div class="card">
-    <div class="logo">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
-    <h1>Verificação de Autenticidade</h1>
-    <div class="cod">{html_mod.escape(cod)}</div>
-    <div id="status" class="{status_class}">{status_html}</div>
-    {extra_note}
-    <div class="footer">Consulta realizada em {time.strftime('%d/%m/%Y %H:%M')} nesta instalação do SGDP.</div>
-  </div>
-</body>
-</html>"""
-        payload = html.encode('utf-8')
-        self.send_response(200 if row else 404)
-        self._cors()
-        self.send_header('Content-Type', 'text/html; charset=utf-8')
-        self.send_header('Content-Length', str(len(payload)))
-        self.end_headers()
-        self.wfile.write(payload)
 
     def _download_arquivo(self, aid, qs, s):
         with get_db() as conn:
@@ -2113,7 +1906,6 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.execute('DELETE FROM arquivos')
             conn.execute('DELETE FROM contadores')
             conn.execute('DELETE FROM auditoria')
-            conn.execute('DELETE FROM signatures')
             conn.execute('DELETE FROM lembretes')
             conn.commit()
         import shutil
@@ -2131,7 +1923,6 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 'SELECT id,username,nome,senha_hash,admin,ativo,departamento,criado_em FROM usuarios').fetchall()]
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
             auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
-            signatures = [dict(r) for r in conn.execute('SELECT * FROM signatures').fetchall()]
             arqs  = []
             for arq in conn.execute('SELECT * FROM arquivos').fetchall():
                 p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
@@ -2140,7 +1931,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                         arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
         backup = {'sgdp_version': '1.17.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
                   'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs,
-                  'auditoria': auditoria, 'signatures': signatures}
+                  'auditoria': auditoria}
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
         self._cors()
@@ -2163,7 +1954,6 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.execute('DELETE FROM documentos')
             conn.execute('DELETE FROM arquivos')
             conn.execute('DELETE FROM contadores')
-            conn.execute('DELETE FROM signatures')
             for arq in backup.get('arquivos', []):
                 nome_disco = f"{secrets.token_hex(16)}.pdf"
                 with open(os.path.join(UPLOADS_DIR, nome_disco), 'wb') as f:
@@ -2184,17 +1974,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 conn.execute('INSERT OR REPLACE INTO usuarios (id,username,nome,senha_hash,admin,ativo,departamento,criado_em) VALUES (?,?,?,?,?,?,?,?)',
                              (u['id'],u['username'],u['nome'],u['senha_hash'],u['admin'],u.get('ativo',1),
                               u.get('departamento') or DEPARTAMENTOS[0],u.get('criado_em')))
-            for sig in backup.get('signatures', []):
-                conn.execute(
-                    '''INSERT OR REPLACE INTO signatures
-                       (id,cod,documento_id,doc_tipo,doc_numero,doc_ano,doc_ementa,
-                        signer_user_id,signer_name,method,cert_subject,hash_sha256,signed_at)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                    (sig.get('id'), sig.get('cod'), sig.get('documento_id'), sig.get('doc_tipo'),
-                     sig.get('doc_numero'), sig.get('doc_ano'), sig.get('doc_ementa'),
-                     sig.get('signer_user_id'), sig.get('signer_name'), sig.get('method'),
-                     sig.get('cert_subject'), sig.get('hash_sha256'), sig.get('signed_at'))
-                )
+            # Backups antigos podem trazer uma chave 'signatures' — ignorada de propósito
+            # (assinatura digital removida).
             ndoc = len(backup.get('documentos', []))
             narq = len(backup.get('arquivos', []))
             audit(conn, s['user_id'], s['nome'], 'restaurar_backup', detalhes=f"{ndoc} documentos, {narq} arquivos")
