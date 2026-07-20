@@ -5,6 +5,13 @@
 
 ---
 
+## [1.39.2] — 2026-07-20
+
+### Alterado
+- **Legibilidade do modo escuro**: novo token `--brand-text` — textos na cor da marca (números, links, metadados de cards) agora clareiam automaticamente no tema escuro (antes: navy sobre fundo escuro, quase ilegível). Aplicado via troca global `color: var(--brand)` → `var(--brand-text)`.
+- **Componentes canônicos novos no `base.css`** (auditoria de design 2026-07-20): tabela de listagem (`.list-table`, com cabeçalho, zebra e hover) e variantes de badge (`badge-ok/warn/danger/neutral`). `DESIGN.md` atualizado (token, tabela e regra do acento esquerdo nos stat-cards).
+- **Cards do dashboard com acento na borda esquerda** (antes: topo) — padrão visual unificado da família.
+
 ## [1.39.1] — 2026-07-20
 
 ### Removido

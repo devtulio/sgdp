@@ -48,7 +48,7 @@ html.font-grande  { font-size: 18px; }
 html, body { height: 100%; }
 body { font-family: system-ui, -apple-system, sans-serif;
   font-size: 0.875rem; color: var(--gray-900); background: var(--gray-100); }
-a { color: var(--brand); text-decoration: none; }
+a { color: var(--brand-text); text-decoration: none; }
 input, textarea, select, button { font-family: inherit; font-size: inherit; }
 button { cursor: pointer; }
 
@@ -131,11 +131,11 @@ body.dark #overlay-pin input {
   margin-bottom: -2px; border-radius: 4px 4px 0 0; transition: color .15s, border-color .15s;
 }
 .cfg-tab:hover { color: var(--gray-700); }
-.cfg-tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+.cfg-tab.active { color: var(--brand-text); border-bottom-color: var(--brand-text); }
 .cfg-panel { display: none; }
 .cfg-panel.active { display: block; }
 .cfg-section { margin-bottom: 20px; }
-.cfg-section h3 { font-size: 0.75rem; font-weight: 700; color: var(--brand); text-transform: uppercase;
+.cfg-section h3 { font-size: 0.75rem; font-weight: 700; color: var(--brand-text); text-transform: uppercase;
   letter-spacing: .4px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--brand-light); }
 #senha-status { font-size: 0.75rem; margin-top: 8px; display: none; }
 
@@ -208,7 +208,7 @@ body.dark #overlay-pin input {
 .btn-primary  { background: var(--brand); color: #fff; }
 .btn-primary:hover  { background: var(--brand-dark); }
 .btn-outline  { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-200); }
-.btn-outline:hover  { border-color: var(--brand); color: var(--brand); }
+.btn-outline:hover  { border-color: var(--brand-text); color: var(--brand-text); }
 .btn-danger   { background: var(--danger); color: #fff; }
 .btn-danger:hover   { background: #991b1b; }
 .btn-sm { padding: 5px 12px; font-size: .78rem; }
@@ -220,7 +220,7 @@ body.dark #overlay-pin input {
 .dash-card {
   background: #fff; border-radius: var(--radius); padding: 20px;
   box-shadow: var(--shadow); cursor: pointer; transition: box-shadow .15s;
-  border-top: 3px solid var(--tc, var(--gray-300));
+  border-left: 4px solid var(--tc, var(--gray-300));
 }
 .dash-card:hover { box-shadow: var(--shadow-md); }
 .dash-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
@@ -239,12 +239,12 @@ body.dark #overlay-pin input {
 }
 .search-input { flex: 1; min-width: 200px; border: 1px solid var(--gray-300);
   border-radius: var(--radius); padding: 7px 12px; outline: none; transition: border-color .15s; }
-.search-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); }
+.search-input:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-light); }
 .select-sm { border: 1px solid var(--gray-300); border-radius: var(--radius);
   padding: 7px 10px; outline: none; background: #fff; }
-.select-sm:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); }
+.select-sm:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-light); }
 .wipe-confirm-inp:focus { border-color: var(--red); box-shadow: 0 0 0 3px #fecaca; }
-.cfg-ui-select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); }
+.cfg-ui-select:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-light); }
 table { width: 100%; border-collapse: collapse; }
 th { background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
   padding: 10px 14px; text-align: left; font-size: 0.6875rem; font-weight: 700;
@@ -266,9 +266,9 @@ tr:hover td { background: var(--gray-50); }
 .pag-btns { display: flex; gap: 4px; }
 .pag-btn  { border: 1px solid var(--gray-300); background: #fff; border-radius: 6px;
   padding: 4px 10px; font-size: 0.75rem; transition: all .15s; }
-.pag-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.pag-btn:hover:not(:disabled) { border-color: var(--brand-text); color: var(--brand-text); }
 .pag-btn:disabled { opacity: .4; cursor: default; }
-.pag-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+.pag-btn.active { background: var(--brand); color: #fff; border-color: var(--brand-text); }
 
 /* ── Badges tipo ─────────────────────────────────────────────────────────── */
 .badge-tipo {
@@ -351,7 +351,7 @@ tr:hover td { background: var(--gray-50); }
   padding: 8px 12px; outline: none; transition: border-color .15s; width: 100%;
 }
 .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
-  border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light);
+  border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-light);
 }
 .form-group textarea { resize: vertical; min-height: 80px; }
 .form-hint { font-size: 0.6875rem; color: var(--gray-400); margin-top: 2px; }
@@ -363,7 +363,7 @@ tr:hover td { background: var(--gray-50); }
   padding: 24px; text-align: center; cursor: pointer;
   transition: all .15s; color: var(--gray-500);
 }
-.upload-zone:hover, .upload-zone.dragover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+.upload-zone:hover, .upload-zone.dragover { border-color: var(--brand-text); color: var(--brand-text); background: var(--brand-light); }
 .upload-zone input { display: none; }
 .upload-zone svg { margin-bottom: 8px; }
 .upload-zone p  { font-size: 0.8125rem; }
@@ -1185,7 +1185,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.39.1';
+const SGDP_VERSION = '1.39.2';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
