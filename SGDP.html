@@ -977,23 +977,6 @@ tr:hover td { background: var(--gray-50); }
           <label for="u-ativo" style="text-transform:none;font-weight:600;font-size:.85rem;color:inherit;cursor:pointer">Conta ativa</label>
         </div>
       </div>
-      <div id="u-smtp-section" style="display:none;border-top:1px solid var(--gray-200);margin-top:10px;padding-top:12px">
-        <label>E-mail (SMTP) deste usuário</label>
-        <p style="font-size:.72rem;font-weight:400;text-transform:none;letter-spacing:0;color:var(--gray-500);margin:4px 0 10px;line-height:1.5">Em branco = herda a config do sistema. Os e-mails que este usuário enviar logado saem por esta conta.</p>
-        <div class="form-row cols-2">
-          <div class="form-group"><label for="u-smtp-host">Host</label><input id="u-smtp-host" type="text" placeholder="ex: smtp.gmail.com"></div>
-          <div class="form-group"><label for="u-smtp-port">Porta</label><input id="u-smtp-port" type="number" placeholder="587" style="max-width:120px"></div>
-        </div>
-        <div class="form-row" style="gap:16px;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer"><input id="u-smtp-require-tls" type="checkbox" style="width:15px;height:15px"> STARTTLS (587)</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer"><input id="u-smtp-secure" type="checkbox" style="width:15px;height:15px"> SSL direto (465)</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer"><input id="u-smtp-ignore-ssl" type="checkbox" style="width:15px;height:15px"> Ignorar SSL</label>
-        </div>
-        <div class="form-group"><label for="u-smtp-user">Usuário (e-mail de envio)</label><input id="u-smtp-user" type="email" placeholder="ex: fulano@municipio.gov.br"></div>
-        <div class="form-group"><label for="u-smtp-pass">Senha</label><input id="u-smtp-pass" type="password" autocomplete="new-password" placeholder="(em branco preserva a atual)"></div>
-        <div class="form-group"><label for="u-smtp-from-name">Nome do remetente</label><input id="u-smtp-from-name" type="text" placeholder="ex: Dr. Fulano — Procuradoria"></div>
-        <button type="button" class="btn btn-outline btn-sm" onclick="copiarSmtpDoSistemaUser()" title="Copia host/porta/segurança do sistema; informe usuário e senha do usuário">Copiar do sistema</button>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fecharModal('modal-usuario')">Cancelar</button>
@@ -1202,7 +1185,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.39.0';
+const SGDP_VERSION = '1.39.1';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -3204,7 +3187,6 @@ function abrirNovoUsuario() {
   _populaDepartamento(S.departamentos[0]);
   document.getElementById('u-admin').checked = false;
   document.getElementById('u-ativo-row').style.display = 'none';
-  document.getElementById('u-smtp-section').style.display = 'none';  // SMTP só na edição (novo herda o sistema)
   abrirModal('modal-usuario');
 }
 
@@ -3224,36 +3206,7 @@ function abrirEditarUsuario(id, nome, username, admin, ativo, email, cpf, cargo,
   document.getElementById('u-admin').checked = !!admin;
   document.getElementById('u-ativo').checked = !!ativo;
   document.getElementById('u-ativo-row').style.display = '';
-  document.getElementById('u-smtp-section').style.display = '';
-  _carregarUserSmtp(id);
   abrirModal('modal-usuario');
-}
-
-let _userSmtpSystem = {};
-async function _carregarUserSmtp(uid) {
-  const d = await API.json(await API.get(`/api/usuarios/${uid}/smtp`));
-  if (!d) return;
-  _userSmtpSystem = d.system || {};
-  document.getElementById('u-smtp-host').value = d.smtp_host || '';
-  document.getElementById('u-smtp-port').value = d.smtp_port || '';
-  document.getElementById('u-smtp-require-tls').checked = d.smtp_require_tls !== '0';
-  document.getElementById('u-smtp-secure').checked = d.smtp_secure === '1';
-  document.getElementById('u-smtp-ignore-ssl').checked = d.smtp_ignore_ssl === '1';
-  document.getElementById('u-smtp-user').value = d.smtp_user || '';
-  document.getElementById('u-smtp-from-name').value = d.smtp_from_name || '';
-  document.getElementById('u-smtp-pass').value = '';
-  document.getElementById('u-smtp-pass').placeholder = d.smtp_pass_set ? '(senha salva — em branco preserva)' : '(em branco preserva a atual)';
-}
-
-function copiarSmtpDoSistemaUser() {
-  const sys = _userSmtpSystem || {};
-  document.getElementById('u-smtp-host').value = sys.smtp_host || '';
-  document.getElementById('u-smtp-port').value = sys.smtp_port || '';
-  document.getElementById('u-smtp-require-tls').checked = sys.smtp_require_tls !== '0';
-  document.getElementById('u-smtp-secure').checked = sys.smtp_secure === '1';
-  document.getElementById('u-smtp-ignore-ssl').checked = sys.smtp_ignore_ssl === '1';
-  document.getElementById('u-smtp-from-name').value = sys.smtp_from_name || '';
-  document.getElementById('u-smtp-user').focus();  // usuário/senha em branco: a conta é do usuário
 }
 
 async function salvarUsuario() {
@@ -3270,17 +3223,6 @@ async function salvarUsuario() {
   if (S.editUid) {
     const payload = { nome, admin, email, cpf, cargo, matricula, departamento, ativo: document.getElementById('u-ativo').checked };
     if (senha) payload.senha = senha;
-    Object.assign(payload, {
-      smtp_host: document.getElementById('u-smtp-host').value.trim(),
-      smtp_port: document.getElementById('u-smtp-port').value.trim(),
-      smtp_require_tls: document.getElementById('u-smtp-require-tls').checked ? '1' : '0',
-      smtp_secure: document.getElementById('u-smtp-secure').checked ? '1' : '0',
-      smtp_ignore_ssl: document.getElementById('u-smtp-ignore-ssl').checked ? '1' : '0',
-      smtp_user: document.getElementById('u-smtp-user').value.trim(),
-      smtp_from_name: document.getElementById('u-smtp-from-name').value.trim(),
-    });
-    const uPass = document.getElementById('u-smtp-pass').value;
-    if (uPass) payload.smtp_pass = uPass;
     r = await API.put(`/api/usuarios/${S.editUid}`, payload);
   } else {
     const username = document.getElementById('u-username').value.trim();

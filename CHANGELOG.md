@@ -5,6 +5,11 @@
 
 ---
 
+## [1.39.1] — 2026-07-20
+
+### Removido
+- **Seção de SMTP no modal de edição de usuário** — cada usuário configura a própria conta na aba **Segurança** ("Meu E-mail"); a config inclui a senha do e-mail pessoal, que não cabe ao administrador digitar. Alinhado com SGCD v2.35.1 / SGCA v0.30.1. (Endpoints do servidor mantidos.)
+
 ## [1.39.0] — 2026-07-19
 
 ### Adicionado
