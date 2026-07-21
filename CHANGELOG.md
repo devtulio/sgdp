@@ -5,6 +5,15 @@
 
 ---
 
+## [1.39.4] — 2026-07-21
+
+### Corrigido
+- **Relatório de Backup e Integridade**: a mensagem de erro deixou de cravar "acesso restrito a administradores" para qualquer falha — agora mostra o motivo real devolvido pelo servidor (irmão da correção feita no SGEA v0.22.1, encontrado numa varredura de erro mascarado).
+- **Acessibilidade (WCAG 1.4.3)**: o contraste do botão "Dispensar" da faixa de aviso de servidor desatualizado subiu de ~3,5:1 para 8,1:1, com `aria-label` e alvo de toque maior.
+
+### Interno
+- Três funções que estavam copiadas idênticas nos 4 sistemas (`checarVersaoServidor` no `base.js`; `backup_ts` e `pick_folder_dialog` no `sgx_base.py`) foram consolidadas no esqueleto compartilhado (fonte única via `sync.py`), sem mudança de comportamento. O `Iniciar SGDP.bat` passou a encerrar um servidor preso na porta antes de subir o novo.
+
 ## [1.39.3] — 2026-07-20
 
 ### Adicionado
