@@ -5,6 +5,13 @@
 
 ---
 
+## [1.39.5] — 2026-07-22
+
+### Modificado
+- **Busca com ✕ para limpar** na lista de **Documentos**: o campo de busca ganhou o botão ✕ (aparece ao digitar, limpa a busca ao clicar), em paridade com os outros sistemas. Helper compartilhado no `base.js`.
+
+---
+
 ## [1.39.4] — 2026-07-21
 
 ### Corrigido
