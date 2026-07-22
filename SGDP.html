@@ -237,9 +237,6 @@ body.dark #overlay-pin input {
   padding: 14px 16px; border-bottom: 1px solid var(--gray-200);
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
-.search-input { flex: 1; min-width: 200px; border: 1px solid var(--gray-300);
-  border-radius: var(--radius); padding: 7px 12px; outline: none; transition: border-color .15s; }
-.search-input:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-light); }
 .select-sm { border: 1px solid var(--gray-300); border-radius: var(--radius);
   padding: 7px 10px; outline: none; background: #fff; }
 .select-sm:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-light); }
@@ -667,7 +664,7 @@ tr:hover td { background: var(--gray-50); }
       </div>
       <div class="table-wrap">
         <div class="table-toolbar">
-          <div style="position:relative;flex:1;min-width:200px;max-width:340px"><input class="search-input" id="doc-search" placeholder="Buscar por número, ementa, partes…" aria-label="Buscar documentos"
+          <div style="position:relative;flex:1;min-width:200px;max-width:340px"><input class="search-inp" id="doc-search" placeholder="Buscar por número, ementa, partes…" aria-label="Buscar documentos"
             style="width:100%;padding-right:28px" oninput="S.filtros.q=this.value;toggleSearchClear(this)" onkeydown="if(event.key==='Enter')renderDocumentosLista(1)"><button onclick="clearSearch('doc-search', ()=>{S.filtros.q='';renderDocumentosLista(1)})" id="doc-search-clear" title="Limpar busca" style="display:none;position:absolute;right:7px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:.85rem;padding:0;line-height:1">✕</button></div>
           <select class="select-sm" id="doc-ano" aria-label="Filtrar por ano" onchange="S.filtros.ano=this.value;renderDocumentosLista(1)"></select>
           <button class="btn btn-outline btn-sm" onclick="renderDocumentosLista(1)">Filtrar</button>
@@ -1185,7 +1182,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.39.5';
+const SGDP_VERSION = '1.39.6';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 

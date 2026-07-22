@@ -5,6 +5,13 @@
 
 ---
 
+## [1.39.6] — 2026-07-22
+
+### Corrigido
+- Campo de busca de Documentos agora usa um estilo único compartilhado (`.search-inp` no `base.css`), com o mesmo visual arredondado dos demais sistemas da família.
+
+---
+
 ## [1.39.5] — 2026-07-22
 
 ### Modificado
