@@ -1183,7 +1183,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.40.0';
+const SGDP_VERSION = '1.40.1';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1535,7 +1535,7 @@ const SGDP_DOC_CSS = `
   .btn-print { display: block; margin: 0 auto 20pt; padding: 8pt 24pt; background: #1a3a6b; color: #fff; border: none; border-radius: 4px; font-size: 11pt; cursor: pointer; letter-spacing: .5px; }
   .btn-print:hover { background: #102855; }
   @media print { body { padding: 0; } .no-print { display: none !important; } }
-  @page { @bottom-right { content: "Folha " counter(page); font-size: 8pt; color: #888; } }
+  @page { size: A4; margin: 20mm; @bottom-right { content: "Folha " counter(page); font-size: 8pt; color: #888; } }
 `;
 
 // Gerador de QR code autocontido (sem lib externa), portado do SGCD.
