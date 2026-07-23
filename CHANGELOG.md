@@ -5,6 +5,18 @@
 
 ---
 
+## [1.40.0] — 2026-07-22
+
+### Adicionado
+- O modal de envio de e-mail mostra **de qual configuração o e-mail vai sair** (a sua ou a do sistema) e por qual remetente — e avisa antes de tentar quando **nenhum SMTP está configurado**, em vez de deixar a falha para o momento do envio.
+
+### Corrigido
+- **Falhas silenciosas na comunicação com o servidor.** Vários pontos checavam `r.ok` sem antes verificar se a chamada devolveu resposta — e a camada de API devolve `null` quando a sessão expira (401) ou a rede falha. O resultado era um `TypeError` engolido: o botão simplesmente não fazia nada, sem mensagem alguma. Todos os pontos passaram a usar a guarda que o próprio código já adotava em outros lugares.
+- **Sessão deslizante.** A sessão (60s) era renovada **apenas** pelo `/api/auth/ping`, um `setInterval` que o navegador estrangula em aba de segundo plano — quem ficasse redigindo com a aba atrás perdia a sessão e a ação seguinte falhava com 401. Agora **qualquer requisição autenticada renova** a sessão. O backup automático não muda: navegador fechado não faz requisições, então a sessão ociosa continua expirando em 60s.
+- **`API.req` do SGDP havia perdido o `try/catch`** do `base.js` ao ser sobrescrito (o SGDP guarda a sessão em `S.token`): uma falha de rede virava exceção sem tratamento e a ação morria calada. Agora avisa "Falha de comunicação com o servidor"; sessão expirada avisa explicitamente.
+
+---
+
 ## [1.39.6] — 2026-07-22
 
 ### Corrigido

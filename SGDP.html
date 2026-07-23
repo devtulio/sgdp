@@ -1014,6 +1014,7 @@ tr:hover td { background: var(--gray-50); }
       <button class="btn-close" aria-label="Fechar" onclick="fecharModal('modal-email')">✕</button>
     </div>
     <div class="modal-body">
+      <div id="email-origem-smtp" style="display:none;font-size:.78rem;margin-bottom:12px;padding:8px 10px;border-radius:6px"></div>
       <div class="form-group">
         <label for="f-email-to">Para</label>
         <input id="f-email-to" type="email" placeholder="destinatario@exemplo.com">
@@ -1182,7 +1183,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.39.6';
+const SGDP_VERSION = '1.40.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1207,12 +1208,26 @@ API.req = async function (method, path, body, form = false) {
   if (body && !form) h['Content-Type'] = 'application/json';
   const opts = { method, headers: h };
   if (body) opts.body = form ? body : JSON.stringify(body);
-  const r = await fetch(path, opts);
+  let r;
+  try {
+    r = await fetch(path, opts);
+  } catch (e) {
+    // Sem este catch a exceção do fetch subia sem tratamento e a ação em curso
+    // (enviar e-mail, por exemplo) morria em silêncio — o base.js já avisava,
+    // mas esta sobrescrita do SGDP tinha perdido o tratamento.
+    console.error('[API]', method, path, e.message);
+    toast('Falha de comunicação com o servidor. Verifique a rede e tente de novo.', 'error');
+    return null;
+  }
   // 401 no próprio login é "senha incorreta", não sessão expirada — deixa o
   // chamador (fazerLogin) tratar a resposta em vez de disparar sair() aqui
   // (achado durante a migração pro esqueleto: essa exclusão já existe no
   // base.js canônico e nos outros 3 sistemas, mas faltava aqui).
-  if (r.status === 401 && path !== '/api/auth/login') { sair(); return null; }
+  if (r.status === 401 && path !== '/api/auth/login') {
+    sair();
+    toast('Sua sessão expirou. Entre novamente e repita a operação.', 'error');
+    return null;
+  }
   return r;
 };
 
@@ -2041,7 +2056,7 @@ async function gerarRelatorioIntegridade() {
     _cabecalhoOficial('Relatório de Backup e Integridade'),
     API.get('/api/relatorio/integridade'),
   ]);
-  if (!r.ok) { toast((await API.json(r))?.error || 'Erro ao gerar relatório.', 'error'); return; }
+  if (!r || !r.ok) { toast((await API.json(r))?.error || 'Erro ao gerar relatório.', 'error'); return; }
   const d = await API.json(r);
 
   const c = d.contagens;
@@ -2621,12 +2636,12 @@ async function salvarDocumento() {
   if (S.editId) {
     r = await API.put(`/api/documentos/${S.editId}`, payload);
     doc = await API.json(r);
-    if (!r.ok) { toast(doc?.error || 'Erro ao salvar.', 'error'); return; }
+    if (!r || !r.ok) { toast(doc?.error || 'Erro ao salvar.', 'error'); return; }
     toast('Documento atualizado.', 'success');
   } else {
     r = await API.post('/api/documentos', payload);
     doc = await API.json(r);
-    if (!r.ok) { toast(doc?.error || 'Erro ao salvar.', 'error'); return; }
+    if (!r || !r.ok) { toast(doc?.error || 'Erro ao salvar.', 'error'); return; }
     toast('Documento criado.', 'success');
   }
 
@@ -2653,7 +2668,7 @@ async function excluirDoc(id, label) {
   if (!ok) return;
   const r = await API.del(`/api/documentos/${id}`);
   const d = await API.json(r);
-  if (!r.ok) { toast(d?.error || 'Erro ao excluir.', 'error'); return; }
+  if (!r || !r.ok) { toast(d?.error || 'Erro ao excluir.', 'error'); return; }
   toast('Documento enviado à lixeira.', 'success');
   if (['lei','decreto','portaria','parecer','oficio'].includes(S.view)) {
     await renderDocumentosLista(S.pag.page);
@@ -2714,7 +2729,7 @@ async function renderLixeira() {
 
 async function restaurarLembrete(id) {
   const r = await API.post(`/api/lixeira/lembretes/${id}/restaurar`, {});
-  if (!r.ok) { toast('Erro ao restaurar.', 'error'); return; }
+  if (!r || !r.ok) { toast('Erro ao restaurar.', 'error'); return; }
   toast('Lembrete restaurado.', 'success');
   renderLixeira();
   _atualizarBadgeAgenda();
@@ -2724,14 +2739,14 @@ async function purgarLembrete(id, label) {
   const ok = await confirmar(`Excluir o lembrete <strong>${esc(label)}</strong> permanentemente?<br><br>Esta ação não pode ser desfeita.`, 'Excluir de vez');
   if (!ok) return;
   const r = await API.del(`/api/lixeira/lembretes/${id}`);
-  if (!r.ok) { toast('Erro ao excluir.', 'error'); return; }
+  if (!r || !r.ok) { toast('Erro ao excluir.', 'error'); return; }
   toast('Lembrete excluído permanentemente.', 'success');
   renderLixeira();
 }
 
 async function restaurarDoc(id) {
   const r = await API.post(`/api/lixeira/${id}/restaurar`, {});
-  if (!r.ok) { toast('Erro ao restaurar.', 'error'); return; }
+  if (!r || !r.ok) { toast('Erro ao restaurar.', 'error'); return; }
   toast('Documento restaurado.', 'success');
   renderLixeira();
 }
@@ -2740,7 +2755,7 @@ async function purgarDoc(id, label) {
   const ok = await confirmar(`Excluir <strong>${label}</strong> permanentemente?<br><br>Esta ação não pode ser desfeita.`, 'Excluir de vez');
   if (!ok) return;
   const r = await API.del(`/api/lixeira/${id}`);
-  if (!r.ok) { toast('Erro ao excluir.', 'error'); return; }
+  if (!r || !r.ok) { toast('Erro ao excluir.', 'error'); return; }
   toast('Documento excluído permanentemente.', 'success');
   renderLixeira();
 }
@@ -2785,7 +2800,7 @@ async function salvarLembrete() {
   const prazo  = document.getElementById('f-lembrete-prazo').value;
   if (!titulo || !prazo) { toast('Preencha título e prazo.', 'error'); return; }
   const r = await API.post('/api/lembretes', { titulo, data_prazo: prazo });
-  if (!r.ok) { toast('Erro ao salvar lembrete.', 'error'); return; }
+  if (!r || !r.ok) { toast('Erro ao salvar lembrete.', 'error'); return; }
   fecharModal('modal-lembrete');
   toast('Lembrete criado.', 'success');
   renderAgenda();
@@ -2907,14 +2922,14 @@ async function _criarVinculo(destinoId) {
   document.getElementById('vinc-busca').value = '';
   const r = await API.post(`/api/documentos/${S.vincDocId}/vinculos`, { destino_id: destinoId, tipo });
   const d = await API.json(r);
-  if (!r.ok) { toast(d?.error || 'Erro ao criar vínculo.', 'error'); return; }
+  if (!r || !r.ok) { toast(d?.error || 'Erro ao criar vínculo.', 'error'); return; }
   toast('Vínculo adicionado.', 'success');
   await _renderVinculos();
 }
 
 async function excluirVinculo(id) {
   const r = await API.del(`/api/vinculos/${id}`);
-  if (!r.ok) { toast('Erro ao remover vínculo.', 'error'); return; }
+  if (!r || !r.ok) { toast('Erro ao remover vínculo.', 'error'); return; }
   toast('Vínculo removido.', 'success');
   await _renderVinculos();
 }
@@ -2928,6 +2943,27 @@ function abrirModalEmail(id, label) {
   _rteSetContent('f-email-body', '');
   _rteMount(document.getElementById('modal-email'));  // gera a toolbar do editor (base.js)
   abrirModal('modal-email');
+  _mostrarOrigemSmtp();
+}
+
+// Mostra de qual configuração o e-mail vai sair (própria ou do sistema) e por
+// qual remetente — e avisa antes de tentar quando não há SMTP algum.
+async function _mostrarOrigemSmtp() {
+  const el = document.getElementById('email-origem-smtp');
+  if (!el) return;
+  el.style.display = 'none';
+  const r = await API.get('/api/auth/me/smtp/efetivo');
+  const d = await API.json(r);
+  if (!r || !r.ok || !d) return;
+  const de = d.remetente ? `${d.nome_remetente ? d.nome_remetente + ' ' : ''}&lt;${esc(d.remetente)}&gt;` : '(remetente não definido)';
+  if (d.origem === 'nenhum') {
+    el.style.background = '#fef2f2'; el.style.border = '1px solid #fecaca'; el.style.color = '#991b1b';
+    el.innerHTML = '⚠️ <strong>Nenhum SMTP configurado</strong> — o envio vai falhar. Configure em Configurações → Segurança (Meu E-mail) ou peça ao administrador para configurar o e-mail do sistema.';
+  } else {
+    el.style.background = 'var(--gray-50)'; el.style.border = '1px solid var(--gray-200)'; el.style.color = 'var(--gray-600)';
+    el.innerHTML = `✉ Enviando pelo <strong>${d.origem === 'pessoal' ? 'seu e-mail' : 'e-mail do sistema'}</strong> — de ${de}`;
+  }
+  el.style.display = '';
 }
 
 async function enviarEmailDoc() {
@@ -2943,7 +2979,7 @@ async function enviarEmailDoc() {
   };
   const r = await API.post(`/api/documentos/${S.emailDocId}/email`, body);
   const d = await API.json(r);
-  if (!r.ok) { toast(d?.error || 'Erro ao enviar e-mail.', 'error'); return; }
+  if (!r || !r.ok) { toast(d?.error || 'Erro ao enviar e-mail.', 'error'); return; }
   fecharModal('modal-email');
   toast('E-mail enviado.', 'success');
 }
@@ -2990,7 +3026,7 @@ async function importarCsv() {
   if (!_csvRows.length) return;
   const r = await API.post('/api/import/csv', { rows: _csvRows });
   const d = await API.json(r);
-  if (!r.ok) { toast(d?.error || 'Erro ao importar.', 'error'); return; }
+  if (!r || !r.ok) { toast(d?.error || 'Erro ao importar.', 'error'); return; }
   fecharModal('modal-csv');
   toast(`${d.importados} documento(s) importado(s).${d.erros.length ? ' ' + d.erros.length + ' erro(s).' : ''}`,
         d.erros.length ? 'error' : 'success');
@@ -3074,7 +3110,7 @@ async function removerArquivoDoc(did) {
   const ok = await confirmar('Remover o PDF anexado a este documento?', 'Remover');
   if (!ok) return;
   const r = await API.del(`/api/documentos/${did}/arquivo`);
-  if (!r.ok) { toast('Erro ao remover arquivo.', 'error'); return; }
+  if (!r || !r.ok) { toast('Erro ao remover arquivo.', 'error'); return; }
   S.existingArq = null;
   resetUpload();
   toast('Arquivo removido.', 'success');
@@ -3229,7 +3265,7 @@ async function salvarUsuario() {
     r = await API.post('/api/usuarios', { username, nome, senha, admin, email, cpf, cargo, matricula, departamento });
   }
   d = await API.json(r);
-  if (!r.ok) { toast(d?.error || 'Erro ao salvar.', 'error'); return; }
+  if (!r || !r.ok) { toast(d?.error || 'Erro ao salvar.', 'error'); return; }
   toast(S.editUid ? 'Usuário atualizado.' : 'Usuário criado.', 'success');
   fecharModal('modal-usuario');
   await renderUsuarios();
@@ -3240,7 +3276,7 @@ async function excluirUsuario(id, nome) {
   if (!ok) return;
   const r = await API.del(`/api/usuarios/${id}`);
   const d = await API.json(r);
-  if (!r.ok) { toast(d?.error || 'Erro ao excluir.', 'error'); return; }
+  if (!r || !r.ok) { toast(d?.error || 'Erro ao excluir.', 'error'); return; }
   toast('Usuário excluído.', 'success');
   await renderUsuarios();
 }
@@ -3564,7 +3600,7 @@ async function sincronizarBackup(file) {
 
   const r = await API.post('/api/backup/sync-preview', backup);
   const d = await API.json(r);
-  if (!r.ok) { toast(d?.error || 'Erro ao ler o backup.', 'error'); return; }
+  if (!r || !r.ok) { toast(d?.error || 'Erro ao ler o backup.', 'error'); return; }
 
   if (d.novos === 0 && d.conflitos.length === 0 && !d.novos_auditoria) {
     toast('Nenhuma novidade — este backup não contém dados diferentes dos seus.', 'info');
@@ -3594,7 +3630,7 @@ async function sincronizarBackup(file) {
   await API.post('/api/backups/db/now', {});
   const r2 = await API.post('/api/backup/sync-apply', { backup, aceitar });
   const d2 = await API.json(r2);
-  if (!r2.ok) { toast(d2?.error || 'Erro ao sincronizar.', 'error'); return; }
+  if (!r2 || !r2.ok) { toast(d2?.error || 'Erro ao sincronizar.', 'error'); return; }
   toast(`Sincronizado: ${d2.novos} novo(s), ${d2.conflitos_aplicados} conflito(s) aplicado(s), ${d2.auditoria_importada || 0} evento(s) de auditoria.`, 'success');
   await navegar('dashboard');
 }
@@ -4130,7 +4166,7 @@ async function testarSmtp() {
   el.textContent = '⏳ Enviando e-mail de teste...';
   const r = await API.post('/api/config/smtp/test', {});
   const d = await API.json(r);
-  if (!r.ok) {
+  if (!r || !r.ok) {
     el.textContent = '❌ ' + (d?.error || 'Falha ao enviar e-mail de teste.');
     el.style.color = 'var(--red)';
     return;
@@ -4247,7 +4283,7 @@ function previewBrasao(input) {
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       const url = canvas.toDataURL('image/png');
       const r = await API.put('/api/settings/brasao', { brasao_dataurl: url });
-      if (!r.ok) { toast('Erro ao salvar o brasão no servidor.', 'error'); return; }
+      if (!r || !r.ok) { toast('Erro ao salvar o brasão no servidor.', 'error'); return; }
       S_brasaoDataUrl = url;
       const prev = document.getElementById('cfg-brasao-preview');
       if (prev) { prev.src = url; prev.style.display = 'inline-block'; }
@@ -4264,7 +4300,7 @@ function previewBrasao(input) {
 
 async function removerBrasao() {
   const r = await API.put('/api/settings/brasao', { brasao_dataurl: '' });
-  if (!r.ok) { toast('Erro ao remover o brasão.', 'error'); return; }
+  if (!r || !r.ok) { toast('Erro ao remover o brasão.', 'error'); return; }
   S_brasaoDataUrl = '';
   document.getElementById('cfg-brasao-preview').style.display = 'none';
   document.getElementById('btn-remove-brasao').style.display = 'none';

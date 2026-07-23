@@ -1,4 +1,4 @@
-# SGDP v1.39.6 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.40.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.39.6'
+SERVER_VERSION = '1.40.0'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -705,6 +705,9 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
         elif p == '/api/auth/me/smtp':
             self._me_smtp_get(s)
+
+        elif p == '/api/auth/me/smtp/efetivo':
+            self._me_smtp_efetivo(s)
 
         elif re.fullmatch(r'/api/usuarios/\d+/smtp', p):
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
@@ -1925,6 +1928,22 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if payload is None: self._json(404, {'error': 'Usuário não encontrado'}); return
         self._json(200, payload)
 
+    def _me_smtp_efetivo(self, s):
+        """Diz qual config SMTP vai valer para este usuário (a própria ou a do
+        sistema) e por qual remetente o e-mail sai — sem devolver a senha.
+        Serve para a tela de envio não deixar dúvida sobre 'qual config está valendo'."""
+        with get_db() as conn:
+            row = conn.execute('SELECT smtp_host, smtp_user FROM usuarios WHERE id=?', (s['user_id'],)).fetchone()
+        propria = bool(row and (row['smtp_host'] or '').strip())
+        cfg = get_user_smtp(s['user_id'])
+        host = (cfg.get('smtp_host') or '').strip()
+        self._json(200, {
+            'origem': 'pessoal' if propria else ('sistema' if host else 'nenhum'),
+            'host': host,
+            'remetente': (cfg.get('smtp_user') or '').strip(),
+            'nome_remetente': (cfg.get('smtp_from_name') or '').strip(),
+        })
+
     def _me_smtp_put(self, body, s):
         data = json.loads(body) if body else {}
         fields = _smtp_fields_from(data)
@@ -2243,7 +2262,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 
     def _auth(self):
         s = get_session(self._token())
-        if not s: self._json(401, {'error': 'Não autenticado'})
+        if not s:
+            self._json(401, {'error': 'Não autenticado'})
+            return s
+        # Sessão deslizante — ver comentário equivalente nos sistemas irmãos:
+        # renovar só no ping deixava a sessão morrer com a aba em segundo plano.
+        renew_session(self._token())
         return s
 
     def log_message(self, fmt, *args):
