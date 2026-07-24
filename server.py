@@ -1,4 +1,4 @@
-# SGDP v1.40.5 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.41.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.40.5'
+SERVER_VERSION = '1.41.0'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -582,6 +582,16 @@ def pode_editar_doc(doc, s):
         return doc['criado_por'] == s['user_id']
     return doc['criado_por_departamento'] == s['departamento']
 
+def pode_gerir_lixeira(row, s):
+    """Restaurar ou apagar de vez o que está na Lixeira: só quem criou, ou admin.
+
+    Mais restrito que pode_editar_doc de propósito — este não libera o mesmo
+    departamento. A purga apaga o registro e o PDF do disco, sem volta; antes
+    daqui não havia verificação nenhuma e qualquer usuário destruía documento
+    (inclusive sigiloso) de qualquer outro.
+    """
+    return bool(s['admin']) or row['criado_por'] == s['user_id']
+
 def _sync_tags(conn, did, tag_names):
     """Substitui as tags do documento pela lista informada (cria as que não existem)."""
     nomes = sorted({t.strip() for t in (tag_names or []) if t.strip()})
@@ -760,11 +770,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif re.fullmatch(r'/api/documentos/\d+', p):
             self._get_doc(int(p.split('/')[-1]), s)
         elif re.fullmatch(r'/api/documentos/\d+/revisoes', p):
-            self._list_revisoes(int(p.split('/')[3]))
+            self._list_revisoes(int(p.split('/')[3]), s)
         elif re.fullmatch(r'/api/documentos/\d+/vinculos', p):
-            self._list_vinculos(int(p.split('/')[3]))
+            self._list_vinculos(int(p.split('/')[3]), s)
         elif re.fullmatch(r'/api/documentos/\d+/cadeia', p):
-            self._cadeia_normativa(int(p.split('/')[3]))
+            self._cadeia_normativa(int(p.split('/')[3]), s)
 
         elif p == '/api/lixeira':
             self._list_lixeira(qs, s)
@@ -1255,8 +1265,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         item = dict(updated); item['tags'] = tags
         self._json(200, item)
 
-    def _list_revisoes(self, did):
+    def _list_revisoes(self, did, s):
+        # O histórico guarda a ementa de cada versão: sem checar quem pede, era
+        # possível ler o conteúdo de um documento sigiloso alheio por aqui.
         with get_db() as conn:
+            doc = conn.execute('SELECT sigiloso, criado_por FROM documentos WHERE id=?', (did,)).fetchone()
+            if not doc or not pode_ver_doc(doc, s):
+                self._json(404, {'error': 'Documento não encontrado'}); return
             rows = conn.execute(
                 '''SELECT r.*, u.nome editado_por_nome FROM documento_revisoes r
                    LEFT JOIN usuarios u ON r.editado_por=u.id
@@ -1269,16 +1284,23 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             items.append(item)
         self._json(200, {'items': items})
 
-    def _list_vinculos(self, did):
+    def _list_vinculos(self, did, s):
+        # Um documento público vinculado a um sigiloso trazia a ementa do sigiloso
+        # na resposta — o vínculo virava porta de entrada para o conteúdo.
+        vis = '' if s['admin'] else 'AND (d.sigiloso=0 OR d.criado_por=?)'
+        pv  = [] if s['admin'] else [s['user_id']]
         with get_db() as conn:
+            doc = conn.execute('SELECT sigiloso, criado_por FROM documentos WHERE id=?', (did,)).fetchone()
+            if not doc or not pode_ver_doc(doc, s):
+                self._json(404, {'error': 'Documento não encontrado'}); return
             diretos = conn.execute(
-                '''SELECT v.id, v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
-                   FROM documento_vinculos v JOIN documentos d ON v.destino_id=d.id
-                   WHERE v.origem_id=?''', (did,)).fetchall()
+                f'''SELECT v.id, v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
+                    FROM documento_vinculos v JOIN documentos d ON v.destino_id=d.id
+                    WHERE v.origem_id=? {vis}''', [did, *pv]).fetchall()
             inversos = conn.execute(
-                '''SELECT v.id, v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
-                   FROM documento_vinculos v JOIN documentos d ON v.origem_id=d.id
-                   WHERE v.destino_id=?''', (did,)).fetchall()
+                f'''SELECT v.id, v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
+                    FROM documento_vinculos v JOIN documentos d ON v.origem_id=d.id
+                    WHERE v.destino_id=? {vis}''', [did, *pv]).fetchall()
         items = [
             {**dict(r), 'label': TIPOS_VINCULO[r['tipo']][0], 'direcao': 'direto'} for r in diretos
         ] + [
@@ -1286,14 +1308,24 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         ]
         self._json(200, {'items': items})
 
-    def _cadeia_normativa(self, did, max_prof=6):
+    def _cadeia_normativa(self, did, s, max_prof=6):
         """Percorre a cadeia de vínculos (nos dois sentidos) a partir de um documento,
-        em largura, até max_prof níveis — protegido contra ciclos por visitados."""
+        em largura, até max_prof níveis — protegido contra ciclos por visitados.
+
+        Recebe a sessão porque o sigilo tem de valer aqui também: antes esta função
+        nem via o usuário, e devolvia a ementa de qualquer documento sigiloso — pelo
+        id direto e, pior, através de um documento público vinculado a ele.
+        """
+        vis = '' if s['admin'] else 'AND (d.sigiloso=0 OR d.criado_por=?)'
+        pv  = [] if s['admin'] else [s['user_id']]
         with get_db() as conn:
             raiz = conn.execute(
-                'SELECT id,tipo,numero,ano,ementa FROM documentos WHERE id=?', (did,)).fetchone()
+                'SELECT id,tipo,numero,ano,ementa,sigiloso,criado_por FROM documentos WHERE id=?',
+                (did,)).fetchone()
             if not raiz: self._json(404, {'error': 'Documento não encontrado'}); return
-            docs_info = {did: dict(raiz)}
+            if not pode_ver_doc(raiz, s): self._json(404, {'error': 'Documento não encontrado'}); return
+            raiz_out = {k: v for k, v in dict(raiz).items() if k not in ('sigiloso', 'criado_por')}
+            docs_info = {did: raiz_out}
             arestas = []
             arestas_vistas = set()
             visitados = {did}
@@ -1302,13 +1334,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 atual_id, prof = fila.pop(0)
                 if prof >= max_prof: continue
                 diretos = conn.execute(
-                    '''SELECT v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
-                       FROM documento_vinculos v JOIN documentos d ON v.destino_id=d.id
-                       WHERE v.origem_id=?''', (atual_id,)).fetchall()
+                    f'''SELECT v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
+                        FROM documento_vinculos v JOIN documentos d ON v.destino_id=d.id
+                        WHERE v.origem_id=? {vis}''', [atual_id, *pv]).fetchall()
                 inversos = conn.execute(
-                    '''SELECT v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
-                       FROM documento_vinculos v JOIN documentos d ON v.origem_id=d.id
-                       WHERE v.destino_id=?''', (atual_id,)).fetchall()
+                    f'''SELECT v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
+                        FROM documento_vinculos v JOIN documentos d ON v.origem_id=d.id
+                        WHERE v.destino_id=? {vis}''', [atual_id, *pv]).fetchall()
                 for r in diretos:
                     chave = (atual_id, r['doc_id'], r['tipo'])
                     docs_info[r['doc_id']] = {'id': r['doc_id'], 'tipo': r['doc_tipo'], 'numero': r['doc_numero'],
@@ -1329,7 +1361,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                                          'label': TIPOS_VINCULO[r['tipo']][0]})
                     if r['doc_id'] not in visitados:
                         visitados.add(r['doc_id']); fila.append((r['doc_id'], prof + 1))
-        self._json(200, {'raiz': dict(raiz), 'arestas': arestas, 'docs': list(docs_info.values())})
+        self._json(200, {'raiz': raiz_out, 'arestas': arestas, 'docs': list(docs_info.values())})
 
     def _create_vinculo(self, did, body, s):
         data = json.loads(body) if body else {}
@@ -1347,7 +1379,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 conn.commit()
             except sqlite3.IntegrityError:
                 self._json(409, {'error': 'Esse vínculo já existe'}); return
-        self._list_vinculos(did)
+        self._list_vinculos(did, s)
 
     def _delete_vinculo(self, vid, s):
         with get_db() as conn:
@@ -1387,10 +1419,15 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             for row in lembretes_expirados:
                 conn.execute('DELETE FROM lembretes WHERE id=?', (row['id'],))
             conn.commit()
+            # O sigilo vale na Lixeira como vale no acervo: sem este filtro a
+            # listagem devolvia a linha inteira (ementa, partes, observações) de
+            # documentos sigilosos de outros procuradores.
+            vis = '' if s['admin'] else 'AND (d.sigiloso=0 OR d.criado_por=?)'
+            pv = [] if s['admin'] else [s['user_id']]
             rows = conn.execute(
-                '''SELECT d.*, u.nome criado_por_nome FROM documentos d
-                   LEFT JOIN usuarios u ON d.criado_por=u.id
-                   WHERE d.excluido_em IS NOT NULL ORDER BY d.excluido_em DESC'''
+                f'''SELECT d.*, u.nome criado_por_nome FROM documentos d
+                    LEFT JOIN usuarios u ON d.criado_por=u.id
+                    WHERE d.excluido_em IS NOT NULL {vis} ORDER BY d.excluido_em DESC''', pv
             ).fetchall()
             lembretes = conn.execute(
                 '''SELECT l.*, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano
@@ -1412,6 +1449,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with get_db() as conn:
             row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
             if not row or not row['excluido_em']: self._json(404, {'error': 'Não encontrado na lixeira'}); return
+            if not pode_gerir_lixeira(row, s):
+                self._json(403, {'error': 'Só quem criou o documento (ou o administrador) pode restaurá-lo'}); return
             conn.execute('UPDATE documentos SET excluido_em=NULL WHERE id=?', (did,))
             audit(conn, s['user_id'], s['nome'], 'restaurar', did, f"{row['tipo']} nº {row['numero']}/{row['ano']}")
             conn.commit()
@@ -1421,6 +1460,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with get_db() as conn:
             row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
             if not row or not row['excluido_em']: self._json(404, {'error': 'Não encontrado na lixeira'}); return
+            if not pode_gerir_lixeira(row, s):
+                self._json(403, {'error': 'Só quem criou o documento (ou o administrador) pode excluí-lo em definitivo'}); return
             audit(conn, s['user_id'], s['nome'], 'excluir_permanente', did, f"{row['tipo']} nº {row['numero']}/{row['ano']}")
             self._purgar_doc(conn, did, row['arquivo_id'])
             conn.commit()
@@ -1634,6 +1675,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with get_db() as conn:
             row = conn.execute('SELECT * FROM lembretes WHERE id=?', (lid,)).fetchone()
             if not row or not row['excluido_em']: self._json(404, {'error': 'Não encontrado na lixeira'}); return
+            if not pode_gerir_lixeira(row, s):
+                self._json(403, {'error': 'Só quem criou o lembrete (ou o administrador) pode restaurá-lo'}); return
             conn.execute('UPDATE lembretes SET excluido_em=NULL WHERE id=?', (lid,))
             audit(conn, s['user_id'], s['nome'], 'restaurar_lembrete', detalhes=row['titulo'])
             conn.commit()
@@ -1643,6 +1686,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with get_db() as conn:
             row = conn.execute('SELECT * FROM lembretes WHERE id=?', (lid,)).fetchone()
             if not row or not row['excluido_em']: self._json(404, {'error': 'Não encontrado na lixeira'}); return
+            if not pode_gerir_lixeira(row, s):
+                self._json(403, {'error': 'Só quem criou o lembrete (ou o administrador) pode excluí-lo em definitivo'}); return
             conn.execute('DELETE FROM lembretes WHERE id=?', (lid,))
             audit(conn, s['user_id'], s['nome'], 'excluir_permanente_lembrete', detalhes=row['titulo'])
             conn.commit()

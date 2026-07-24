@@ -1141,6 +1141,95 @@ class TestNuncaEncerraSozinho(SGDPTestCase):
         self.assertEqual(status, 200, 'sessão expirou com atraso que o TTL antigo (15s) não sobreviveria')
 
 
+class TestSigiloEPermissaoLixeira(SGDPTestCase):
+    """Regressão do eixo permissão/sigilo (auditoria 2026-07-24).
+
+    O sistema tinha os helpers de visibilidade, mas só 6 rotas os chamavam. As
+    demais liam documento sem filtro — e a Lixeira não verificava nada, então
+    qualquer procurador apagava em definitivo (com o PDF) o documento sigiloso
+    de qualquer outro.
+    """
+
+    SEGREDO = 'EMENTA-SIGILOSA-DE-TESTE'
+
+    def _dois_procuradores(self):
+        adm = self.login()
+        for u in ('sig_a', 'sig_b'):
+            self.request('POST', '/api/usuarios',
+                         {'username': u, 'nome': u, 'senha': 'senha123', 'admin': False}, token=adm)
+        toks = []
+        for u in ('sig_a', 'sig_b'):
+            st, log = self.request('POST', '/api/auth/login', {'username': u, 'password': 'senha123'})
+            self.assertEqual(st, 200, log)
+            toks.append(log['token'])
+        return adm, toks[0], toks[1]
+
+    def _cria_sigiloso(self, token):
+        st, doc = self.request('POST', '/api/documentos', {
+            'tipo': 'parecer', 'ementa': self.SEGREDO, 'data': '2026-07-24',
+            'ano': 2026, 'sigiloso': True}, token=token)
+        self.assertEqual(st, 201, doc)
+        self.assertTrue(doc['sigiloso'], 'documento não ficou sigiloso — teste inválido')
+        return doc['id']
+
+    def _sem_vazar(self, resposta):
+        return self.SEGREDO not in json.dumps(resposta, ensure_ascii=False)
+
+    def test_cadeia_nao_vaza_sigiloso_alheio(self):
+        _, a, b = self._dois_procuradores()
+        sid = self._cria_sigiloso(a)
+        st, resp = self.request('GET', f'/api/documentos/{sid}/cadeia', token=b)
+        self.assertEqual(st, 404)
+        self.assertTrue(self._sem_vazar(resp))
+
+    def test_cadeia_de_documento_publico_nao_revela_sigiloso_vinculado(self):
+        _, a, b = self._dois_procuradores()
+        sid = self._cria_sigiloso(a)
+        st, pub = self.request('POST', '/api/documentos', {
+            'tipo': 'portaria', 'ementa': 'Portaria pública', 'data': '2026-07-24', 'ano': 2026}, token=a)
+        self.request('POST', f"/api/documentos/{pub['id']}/vinculos",
+                     {'destino_id': sid, 'tipo': 'altera'}, token=a)
+        st, resp = self.request('GET', f"/api/documentos/{pub['id']}/cadeia", token=b)
+        self.assertEqual(st, 200)
+        self.assertTrue(self._sem_vazar(resp), 'vínculo expôs a ementa do sigiloso')
+        st, resp = self.request('GET', f"/api/documentos/{pub['id']}/vinculos", token=b)
+        self.assertTrue(self._sem_vazar(resp), 'lista de vínculos expôs a ementa do sigiloso')
+
+    def test_revisoes_nao_vazam_sigiloso_alheio(self):
+        _, a, b = self._dois_procuradores()
+        sid = self._cria_sigiloso(a)
+        self.request('PUT', f'/api/documentos/{sid}', {'ementa': self.SEGREDO + ' v2'}, token=a)
+        st, resp = self.request('GET', f'/api/documentos/{sid}/revisoes', token=b)
+        self.assertEqual(st, 404)
+        self.assertTrue(self._sem_vazar(resp))
+
+    def test_lixeira_nao_lista_sigiloso_alheio(self):
+        _, a, b = self._dois_procuradores()
+        sid = self._cria_sigiloso(a)
+        self.request('DELETE', f'/api/documentos/{sid}', token=a)
+        st, resp = self.request('GET', '/api/lixeira', token=b)
+        self.assertEqual(st, 200)
+        self.assertTrue(self._sem_vazar(resp), 'Lixeira expôs documento sigiloso de outro procurador')
+
+    def test_nao_purga_nem_restaura_documento_alheio(self):
+        adm, a, b = self._dois_procuradores()
+        sid = self._cria_sigiloso(a)
+        self.request('DELETE', f'/api/documentos/{sid}', token=a)
+
+        self.assertEqual(self.request('POST', f'/api/lixeira/{sid}/restaurar', token=b)[0], 403)
+        self.assertEqual(self.request('DELETE', f'/api/lixeira/{sid}', token=b)[0], 403)
+        with server.get_db() as conn:
+            ainda = conn.execute('SELECT 1 FROM documentos WHERE id=?', (sid,)).fetchone()
+        self.assertIsNotNone(ainda, 'documento alheio foi destruído')
+
+        # o autor e o admin continuam podendo
+        self.assertEqual(self.request('POST', f'/api/lixeira/{sid}/restaurar', token=a)[0], 200)
+        self.request('DELETE', f'/api/documentos/{sid}', token=a)
+        self.assertEqual(self.request('POST', f'/api/lixeira/{sid}/restaurar', token=adm)[0], 200)
+        self.request('DELETE', f'/api/documentos/{sid}', token=a)
+        self.assertEqual(self.request('DELETE', f'/api/lixeira/{sid}', token=a)[0], 200)
+
+
 class TestBackupPreservaUsuario(SGDPTestCase):
     """Regressão do eixo perda de dado (auditoria 2026-07-24).
 

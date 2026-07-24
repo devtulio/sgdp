@@ -5,6 +5,17 @@
 
 ---
 
+## [1.41.0] — 2026-07-24
+
+### Corrigido
+- **Qualquer procurador podia apagar em definitivo o documento de outro.** A Lixeira não verificava quem estava pedindo: bastava conhecer o número do documento para excluí-lo de vez — o registro saía do banco e o **PDF era apagado do disco**, sem volta. Valia inclusive para documentos **sigilosos** de outra pessoa. Agora restaurar e excluir em definitivo são ações de **quem criou o documento, ou do administrador**; o mesmo passou a valer para os lembretes.
+- **A Lixeira mostrava os documentos sigilosos de todos**, com ementa, partes e observações. Passou a respeitar o sigilo, como o restante do sistema: cada procurador vê os documentos não sigilosos e os próprios sigilosos; o administrador vê tudo.
+- **A Cadeia normativa ignorava o sigilo por completo.** Era possível ler a ementa de um parecer sigiloso alheio abrindo a cadeia dele — e também de forma indireta, porque um documento público vinculado a um sigiloso trazia a ementa do sigiloso junto. Documentos que o usuário não pode ver agora simplesmente não entram na cadeia.
+- **A lista de vínculos** de um documento público revelava a ementa do documento sigiloso vinculado a ele.
+- **O histórico de alterações** (revisões) de um documento sigiloso podia ser aberto por qualquer usuário, e cada versão guarda a ementa.
+
+---
+
 ## [1.40.5] — 2026-07-24
 
 ### Corrigido
