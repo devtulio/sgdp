@@ -2,6 +2,7 @@
 # banco/uploads/backups temporários e bate nos endpoints REST via http.client.
 # python -m unittest discover -s tests   (ou: python tests/test_server.py)
 import http.client
+import io
 import itertools
 import json
 import os
@@ -13,6 +14,7 @@ import tempfile
 import threading
 import unittest
 import uuid
+import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import server  # noqa: E402
@@ -339,7 +341,7 @@ class TestBackup(SGDPTestCase):
 
         status, data = self.request('GET', '/api/backup', token=token)
         self.assertEqual(status, 200)
-        self.assertIn('sgdp_version', data)
+        self.assertEqual(data.get('_sgx'), 'SGDP')   # envelope padronizado da família
         self.assertTrue(any(d['ementa'] == 'Portaria para backup' for d in data['documentos']))
 
     def test_sync_preview_identifica_novo_e_conflito_por_chave_natural(self):
@@ -1356,16 +1358,16 @@ class TestBackupPreservaUsuario(SGDPTestCase):
     def test_restaurar_backup_gera_ponto_de_recuperacao(self):
         token = self.login()
         _, backup = self.request('GET', '/api/backup', token=token)
-        # Limpa os .db antes: o nome do backup carimba só até o segundo, e vários
+        # Limpa os Cofres antes: o nome do backup carimba só até o segundo, e vários
         # testes na mesma seção reescreveriam o mesmo arquivo — sem isso o teste
         # falharia por colisão de nome, não por ausência do ponto de recuperação.
         for f in os.listdir(server.BACKUP_DIR):
-            if f.endswith('.db'):
+            if f.startswith('DB_SGDP_BACKUP_'):
                 os.remove(os.path.join(server.BACKUP_DIR, f))
         status, _ = self.request('POST', '/api/backup/restore', backup, token=token)
         self.assertEqual(status, 200)
-        self.assertTrue([f for f in os.listdir(server.BACKUP_DIR) if f.endswith('.db')],
-                        'restaurar backup não gerou cópia do banco anterior')
+        self.assertTrue([f for f in os.listdir(server.BACKUP_DIR) if f.startswith('DB_SGDP_BACKUP_')],
+                        'restaurar backup não gerou cópia do banco anterior (Cofre .zip)')
 
 
 class TestSenhaPadraoObrigatoria(SGDPTestCase):
@@ -1531,6 +1533,102 @@ class TestSenhaPadraoMarcadaNoBoot(SGDPTestCase):
     def test_boot_nao_mexe_em_quem_ja_trocou(self):
         self.assertEqual(self._cria_e_reinicia('OutraSenha#2026'), 0,
                          'exigiu troca de quem já tinha saído da senha padrão')
+
+
+class TestBackupPadronizado(SGDPTestCase):
+    """Padronização do fluxo de backup (2026-07): envelope único _sgx/schema/
+    exportedAt, Cofre .zip com anexos, leitura retrocompatível dos formatos antigos.
+    Endpoints destrutivos — cada teste reconstrói o que precisa e confere só isso."""
+
+    def _raw(self, method, path, data, token):
+        conn = http.client.HTTPConnection('127.0.0.1', PORT, timeout=15)
+        hdrs = {'Content-Length': str(len(data))}
+        if token: hdrs['Authorization'] = f'Bearer {token}'
+        conn.request(method, path, body=data, headers=hdrs)
+        resp = conn.getresponse(); body = resp.read(); conn.close()
+        try: return resp.status, json.loads(body)
+        except ValueError: return resp.status, body
+
+    def _doc_com_pdf(self, token):
+        st, doc = self.request('POST', '/api/documentos',
+                               {'tipo': 'parecer', 'data': '2026-07-24', 'ementa': 'Doc do Cofre', 'assunto': 'Outros'}, token=token)
+        self.assertEqual(st, 201, doc)
+        st, _ = self.upload_pdf(token, doc['id'], content=b'%PDF-1.4 anexo do cofre')
+        self.assertEqual(st, 200)
+        return doc['id']
+
+    def test_export_tem_envelope_novo_sem_segredo(self):
+        token = self.login()
+        with server.get_db() as conn:
+            conn.execute("INSERT OR REPLACE INTO sys_settings VALUES ('smtp_pass','SEGREDO')")
+            conn.commit()
+        st, j = self.request('GET', '/api/backup', token=token)
+        self.assertEqual(st, 200)
+        self.assertEqual(j.get('_sgx'), 'SGDP')
+        self.assertEqual(j.get('schema'), server._BACKUP_SCHEMA)
+        self.assertIn('exportedAt', j)
+        self.assertNotIn('smtp_pass', j.get('settings', {}))
+        self.assertTrue(j.get('usuarios'), 'SGDP deve levar usuarios no JSON')
+        self.assertTrue(all('smtp_pass' not in u for u in j['usuarios']))
+
+    def test_cofre_e_zip_com_anexos_e_restaura(self):
+        token = self.login()
+        self._doc_com_pdf(token)
+        st, d = self.request('POST', '/api/backups/db/now', {}, token=token)
+        self.assertEqual(st, 200, d)
+        self.assertTrue(d['name'].endswith('.zip'), d['name'])
+        st, raw = self.request('GET', f"/api/backups/db/download?name={d['name']}", token=token)
+        self.assertEqual(st, 200)
+        self.assertEqual(raw[:4], b'PK\x03\x04')
+        with zipfile.ZipFile(io.BytesIO(raw)) as z:
+            nomes = z.namelist()
+        self.assertIn('banco.db', nomes)
+        self.assertTrue(any(n.startswith('uploads/') for n in nomes), nomes)
+
+        # zera tudo (inclui apagar uploads) e restaura o pacote → docs + anexo voltam
+        self.assertEqual(self.request('POST', '/api/factory-reset', {}, token=token)[0], 200)
+        self.assertEqual(self._raw('POST', '/api/backups/db/restore', raw, token)[0], 200)
+        st, listado = self.request('GET', '/api/documentos?tipo=parecer', token=token)
+        self.assertTrue(any(x['ementa'] == 'Doc do Cofre' for x in listado['items']))
+        with server.get_db() as conn:
+            disco = conn.execute('SELECT nome_disco FROM arquivos ORDER BY id DESC').fetchone()['nome_disco']
+        self.assertTrue(os.path.isfile(os.path.join(server.UPLOADS_DIR, disco)), 'anexo não voltou ao disco')
+
+    def test_restore_aceita_db_legado_sem_mexer_nos_anexos(self):
+        token = self.login()
+        self._doc_com_pdf(token)
+        # um .db cru (formato antigo do Cofre), gerado do banco atual. Fecha as
+        # conexões à mão: o `with sqlite3.connect` encerra a transação, não a conexão,
+        # e no Windows o arquivo aberto bloqueia o os.remove.
+        legado = os.path.join(server.BACKUP_DIR, 'legado_teste.db')
+        s = sqlite3.connect(server.DB_PATH); k = sqlite3.connect(legado)
+        try:
+            with k: s.backup(k)
+        finally:
+            s.close(); k.close()
+        with open(legado, 'rb') as f:
+            db_bytes = f.read()
+        os.remove(legado)
+        antes = set(os.listdir(server.UPLOADS_DIR))
+        st, d = self._raw('POST', '/api/backups/db/restore', db_bytes, token)
+        self.assertEqual(st, 200, d)
+        self.assertEqual(set(os.listdir(server.UPLOADS_DIR)), antes, '.db legado não deve tocar nos uploads')
+
+    def test_envelope_antigo_ainda_restaura(self):
+        token = self.login()
+        antigo = {'sgdp_version': '1.0.0', 'exported_at': '2025-01-01T00:00:00',
+                  'documentos': [{'tipo': 'lei', 'numero': 7, 'ano': 2099, 'data': '2099-01-01',
+                                  'ementa': 'Do envelope antigo', 'assunto': 'Outros', 'sigiloso': 0}],
+                  'usuarios': [], 'contadores': [], 'arquivos': []}
+        st, d = self.request('POST', '/api/backup/restore', antigo, token=token)
+        self.assertEqual(st, 200, d)
+        st, listado = self.request('GET', '/api/documentos?tipo=lei&ano=2099', token=token)
+        self.assertTrue(any(x['ementa'] == 'Do envelope antigo' for x in listado['items']))
+
+    def test_arquivos_invalidos_recusados(self):
+        token = self.login()
+        self.assertEqual(self.request('POST', '/api/backup/restore', {'foo': 1}, token=token)[0], 400)
+        self.assertEqual(self._raw('POST', '/api/backups/db/restore', b'lixo qualquer', token)[0], 400)
 
 
 if __name__ == '__main__':

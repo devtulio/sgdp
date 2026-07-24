@@ -1183,7 +1183,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.43.2';
+const SGDP_VERSION = '1.44.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -2091,7 +2091,7 @@ ${cab}
 <table class="field-table">
   <tr><td class="lbl">Pasta de backup</td><td style="font-size:9pt">${esc(d.backup_path)}</td></tr>
   <tr><td class="lbl">Backups mantidos (config.)</td><td>${d.auto_backup_keep}</td></tr>
-  <tr><td class="lbl">Backups .db no disco</td><td>${d.backups_db_count} arquivo(s) — ${fmtSize(d.backups_db_size_bytes)}</td></tr>
+  <tr><td class="lbl">Backups do banco no disco</td><td>${d.backups_db_count} arquivo(s) — ${fmtSize(d.backups_db_size_bytes)}</td></tr>
   <tr><td class="lbl">Backups .json no disco</td><td>${d.backups_json_count} arquivo(s)</td></tr>
   <tr><td class="lbl">Tamanho do banco de dados</td><td>${fmtSize(d.db_size_bytes)}</td></tr>
   <tr><td class="lbl">Tamanho da pasta de PDFs</td><td>${fmtSize(d.uploads_size_bytes)} (${d.uploads_count} arquivo(s))</td></tr>
@@ -3497,13 +3497,13 @@ async function renderBackup(container) {
             </label>
           </div>
           <div style="border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:6px">
-            <div style="font-size:0.6875rem;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px">Banco de dados (.db)</div>
+            <div style="font-size:0.6875rem;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px">Banco + anexos (.zip)</div>
             <button class="btn btn-outline btn-sm" onclick="exportarBackupDB()" style="justify-content:flex-start">
               ${_ICONE_DOWN} Exportar backup
             </button>
             <label class="btn btn-outline btn-sm" style="cursor:pointer;justify-content:flex-start">
               ${_ICONE_UP} Restaurar backup
-              <input type="file" accept=".db" style="display:none" onchange="restaurarBackupDB(this.files[0]).then(()=>this.value='')">
+              <input type="file" accept=".zip,.db" style="display:none" onchange="restaurarBackupDB(this.files[0]).then(()=>this.value='')">
             </label>
           </div>
         </div>
@@ -3528,7 +3528,7 @@ async function renderBackup(container) {
           </label>
           <div style="flex:1">
             <div style="font-size:0.8125rem;font-weight:600;color:var(--gray-700)">Backup automático ao fechar o sistema</div>
-            <p style="font-size:0.6875rem;color:var(--gray-500);margin:3px 0 8px;line-height:1.5">Cria um backup do banco (sgdp.db) sempre que o sistema for encerrado.</p>
+            <p style="font-size:0.6875rem;color:var(--gray-500);margin:3px 0 8px;line-height:1.5">Cria um backup do banco e dos anexos (pacote .zip) sempre que o sistema for encerrado.</p>
             <div id="bkp-auto-sub" style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:var(--gray-50);border-radius:var(--radius);border:1px solid var(--gray-100);transition:opacity .15s;opacity:${enabled?'1':'.45'}">
               <div style="display:flex;align-items:center;gap:8px">
                 <label for="bkp-auto-keep" style="font-size:0.75rem;color:var(--gray-600);white-space:nowrap">Backups mantidos</label>
@@ -3607,7 +3607,7 @@ async function sincronizarBackup(file) {
   let backup;
   try { backup = JSON.parse(await file.text()); }
   catch (_) { toast('Arquivo inválido.', 'error'); return; }
-  if (!backup.sgdp_version) { toast('Não é um backup SGDP.', 'error'); return; }
+  if (backup._sgx !== 'SGDP' && !backup.sgdp_version) { toast('Não é um backup SGDP.', 'error'); return; }
 
   const r = await API.post('/api/backup/sync-preview', backup);
   const d = await API.json(r);
@@ -3624,7 +3624,7 @@ async function sincronizarBackup(file) {
     d.novos_auditoria && `${d.novos_auditoria} evento(s) de auditoria`,
   ].filter(Boolean).join(', ');
   const ok = await confirmar(
-    `Backup exportado em ${d.exported_at ? new Date(d.exported_at).toLocaleString('pt-BR') : '—'}.<br><br>` +
+    `Backup exportado em ${(d.exportedAt || d.exported_at) ? new Date(d.exportedAt || d.exported_at).toLocaleString('pt-BR') : '—'}.<br><br>` +
     `Serão somados automaticamente: ${resumo}.<br><br>` +
     (d.conflitos.length ? 'Na próxima tela você escolhe, um a um, qual versão manter.' : 'Nenhum conflito a revisar.') +
     '<br><br>Será feito um backup de segurança do banco atual antes de aplicar qualquer alteração.',
@@ -3703,8 +3703,8 @@ async function exportarBackupDB() {
     { headers: { Authorization: `Bearer ${S.token}` } });
   const blob = await dl.blob();
   await salvarArquivo(blob, d.name,
-    [{ description: 'Banco de dados SQLite', accept: { 'application/octet-stream': ['.db'] } }]);
-  toast('Backup do banco exportado.', 'success');
+    [{ description: 'Pacote de backup (banco + anexos)', accept: { 'application/zip': ['.zip'] } }]);
+  toast('Backup do banco e anexos exportado.', 'success');
   document.getElementById('bkp-auto-last').textContent = new Date().toLocaleString('pt-BR');
 }
 

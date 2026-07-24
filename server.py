@@ -1,4 +1,4 @@
-# SGDP v1.43.2 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.44.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.43.2'
+SERVER_VERSION = '1.44.0'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -902,7 +902,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             cfg = _get_backup_cfg()
             bdir = cfg['path']
             files = sorted(
-                (f for f in os.listdir(bdir) if f.startswith('DB_SGDP_BACKUP_') and f.endswith('.db')),
+                (f for f in os.listdir(bdir) if f.startswith('DB_SGDP_BACKUP_') and f.endswith(_COFRE_EXTS)),
                 reverse=True
             ) if os.path.isdir(bdir) else []
             items = [{'name': f, 'size': os.path.getsize(os.path.join(bdir, f)), 'ts': sgx_base.backup_ts(f)} for f in files]
@@ -914,7 +914,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         elif p.startswith('/api/backups/db/download'):
             if not s['admin']: self._json(403, {'error': 'Acesso restrito'}); return
             name = qs.get('name', [None])[0]
-            if not name or not name.startswith('DB_SGDP_BACKUP_') or not name.endswith('.db') or '/' in name or '\\' in name:
+            if not name or not name.startswith('DB_SGDP_BACKUP_') or not name.endswith(_COFRE_EXTS) or '/' in name or '\\' in name:
                 self._json(400, {'error': 'Nome inválido'}); return
             fp = os.path.join(_get_backup_cfg()['path'], name)
             if not os.path.exists(fp): self._json(404, {'error': 'Não encontrado'}); return
@@ -1583,7 +1583,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         cfg = _get_backup_cfg()
         bdir = cfg['path']
         backups_db = sorted(
-            (f for f in os.listdir(bdir) if f.startswith('DB_SGDP_BACKUP_') and f.endswith('.db')),
+            (f for f in os.listdir(bdir) if f.startswith('DB_SGDP_BACKUP_') and f.endswith(_COFRE_EXTS)),
             reverse=True
         ) if os.path.isdir(bdir) else []
         backups_json = sorted(
@@ -2125,30 +2125,38 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self._json(200, {'ok': True})
 
     def _restore_db_backup(self, s):
-        import tempfile
+        import tempfile, shutil
         length = int(self.headers.get('Content-Length', 0))
         raw = self.rfile.read(length)
-        if len(raw) < 16 or raw[:16] != b'SQLite format 3\x00':
-            self._json(400, {'error': 'Arquivo não é um banco SQLite válido'}); return
-        tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        tmpdir = tempfile.mkdtemp()
         try:
-            tmp.write(raw); tmp.close()
-            with sqlite3.connect(tmp.name, factory=_ConnAutoClose) as tc:
+            try:
+                dbfile, anexos = sgx_base.abrir_cofre(raw, tmpdir)   # .zip novo ou .db legado
+            except ValueError as e:
+                self._json(400, {'error': str(e)}); return
+
+            with sqlite3.connect(dbfile, factory=_ConnAutoClose) as tc:
                 tables = {r[0] for r in tc.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
             if not {'documentos', 'arquivos', 'usuarios'}.issubset(tables):
                 self._json(400, {'error': 'Banco inválido: tabelas obrigatórias ausentes'}); return
-            _do_db_backup()  # backup do atual antes de restaurar
-            with sqlite3.connect(tmp.name, factory=_ConnAutoClose) as src, sqlite3.connect(DB_PATH, factory=_ConnAutoClose) as dst:
+
+            _do_db_backup()  # ponto de recuperação (captura banco + anexos atuais) antes de substituir
+            with sqlite3.connect(dbfile, factory=_ConnAutoClose) as src, sqlite3.connect(DB_PATH, factory=_ConnAutoClose) as dst:
                 src.backup(dst)
+            if anexos is not None:   # só o pacote .zip repõe a pasta de anexos; .db legado não mexe
+                shutil.rmtree(UPLOADS_DIR, ignore_errors=True)
+                os.makedirs(UPLOADS_DIR, exist_ok=True)
+                for base in anexos:
+                    shutil.move(os.path.join(tmpdir, base), os.path.join(UPLOADS_DIR, base))
             with get_db() as conn:
-                audit(conn, s['user_id'], s['nome'], 'restaurar_db', detalhes='Banco restaurado a partir de arquivo .db')
+                audit(conn, s['user_id'], s['nome'], 'restaurar_db',
+                      detalhes='Banco + anexos restaurados (.zip)' if anexos is not None else 'Banco restaurado (.db legado, sem anexos)')
                 conn.commit()
             self._json(200, {'ok': True})
         except Exception as e:
             self._json(500, {'error': str(e)})
         finally:
-            try: os.remove(tmp.name)
-            except: pass
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     def _factory_reset(self, s):
         _do_db_backup()
@@ -2168,25 +2176,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
     # ── Backup / Restore ──────────────────────────────────────────────────────
 
     def _export_backup(self):
-        import base64
         with get_db() as conn:
-            docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
-            # Todas as colunas menos smtp_pass — ver _usuarios_para_backup. A lista
-            # fixa que existia aqui ficava para trás a cada migração (email, cpf,
-            # cargo, matricula, must_change_password e as smtp_* entraram por
-            # ALTER TABLE) e o backup saía sem elas.
-            users = _usuarios_para_backup(conn)
-            conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
-            auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
-            arqs  = []
-            for arq in conn.execute('SELECT * FROM arquivos').fetchall():
-                p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
-                if os.path.isfile(p):
-                    with open(p, 'rb') as f:
-                        arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.17.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
-                  'documentos': docs, 'usuarios': users, 'contadores': conts, 'arquivos': arqs,
-                  'auditoria': auditoria}
+            backup = _montar_backup(conn)
         body = json.dumps(backup, ensure_ascii=False, default=str).encode('utf-8')
         self.send_response(200)
         self._cors()
@@ -2204,12 +2195,15 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             backup = json.loads(self.rfile.read(length).decode('utf-8'))
         except Exception:
             self._json(400, {'error': 'Arquivo inválido'}); return
-        if 'sgdp_version' not in backup: self._json(400, {'error': 'Não é um backup SGDP'}); return
+        if not _eh_backup_deste(backup): self._json(400, {'error': 'Não é um backup SGDP'}); return
         _do_db_backup()  # ponto de recuperação antes de substituir tudo — como no _restaurar_db e no _factory_reset
         with get_db() as conn:
             conn.execute('DELETE FROM documentos')
             conn.execute('DELETE FROM arquivos')
             conn.execute('DELETE FROM contadores')
+            for k, v in (backup.get('settings') or {}).items():
+                if k in _NAO_EXPORTAR: continue   # segredos/backup_path: mantém o do banco atual
+                conn.execute('INSERT OR REPLACE INTO sys_settings VALUES (?,?)', (k, v))
             for arq in backup.get('arquivos', []):
                 nome_disco = f"{secrets.token_hex(16)}.pdf"
                 with open(os.path.join(UPLOADS_DIR, nome_disco), 'wb') as f:
@@ -2250,7 +2244,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             backup = json.loads(self.rfile.read(length).decode('utf-8'))
         except Exception:
             self._json(400, {'error': 'Arquivo inválido'}); return None
-        if 'sgdp_version' not in backup: self._json(400, {'error': 'Não é um backup SGDP'}); return None
+        if not _eh_backup_deste(backup): self._json(400, {'error': 'Não é um backup SGDP'}); return None
         return backup
 
     def _diff_sync(self, backup):
@@ -2292,14 +2286,14 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         novos_audit = self._diff_audit(backup)
         self._json(200, {
             'novos': len(novos), 'conflitos': conflitos, 'novos_auditoria': len(novos_audit),
-            'exported_at': backup.get('exported_at'),
+            'exportedAt': _backup_exported_at(backup),
         })
 
     def _sync_apply(self, s):
         data = json.loads(self._body())
         backup = data.get('backup')
         aceitar = set(data.get('aceitar') or [])
-        if not backup or 'sgdp_version' not in backup:
+        if not _eh_backup_deste(backup):
             self._json(400, {'error': 'Backup inválido'}); return
         novos, conflitos = self._diff_sync(backup)
         arqs_backup = {a['id']: a for a in backup.get('arquivos', [])}
@@ -2407,6 +2401,52 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
+# ── Backup: contrato e montagem ────────────────────────────────────────────────
+# Padrão da família (ver padronização 2026-07): envelope único `_sgx`/`schema`/
+# `exportedAt`, lido de forma retrocompatível (aceita o antigo `sgdp_version`).
+# A mecânica pesada (Cofre .zip, rotação) fica logo abaixo; ao portar aos irmãos
+# a parte genérica sobe para o sgx_base.
+_SGX_SIGLA = 'SGDP'
+_BACKUP_SCHEMA = 2
+# Flag por sistema: o SGDP leva `usuarios` no JSON portátil (é multiusuário e
+# sincroniza contas entre procuradoras). Os irmãos de admin único não levam.
+_BACKUP_INCLUI_USUARIOS = True
+# Credenciais e caminhos que NÃO viajam no JSON portátil: o arquivo sai do
+# servidor. smtp_pass é senha viva; backup_path é local da máquina de origem e
+# não deve reconfigurar o destino. Ausente no arquivo = mantém o valor do banco.
+_CHAVES_SIGILOSAS = ('smtp_pass', 'portal_transparencia_key')
+_NAO_EXPORTAR = _CHAVES_SIGILOSAS + ('backup_path',)
+
+def _eh_backup_deste(data):
+    return sgx_base.eh_backup(data, _SGX_SIGLA)
+
+def _backup_exported_at(data):
+    return sgx_base.backup_exported_at(data)
+
+def _montar_backup(conn):
+    """Payload único do backup JSON portátil — antes duplicado (e divergente)
+    entre _export_backup e _do_json_backup."""
+    import base64
+    docs      = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
+    conts     = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
+    auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
+    settings  = {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()
+                 if r['key'] not in _NAO_EXPORTAR}
+    arqs = []
+    for arq in conn.execute('SELECT * FROM arquivos').fetchall():
+        p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
+        if os.path.isfile(p):
+            with open(p, 'rb') as f:
+                arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
+    payload = {'_sgx': _SGX_SIGLA, 'schema': _BACKUP_SCHEMA,
+               'exportedAt': time.strftime('%Y-%m-%dT%H:%M:%S'),
+               'documentos': docs, 'contadores': conts, 'arquivos': arqs,
+               'settings': settings, 'auditoria': auditoria}
+    if _BACKUP_INCLUI_USUARIOS:
+        payload['usuarios'] = _usuarios_para_backup(conn)
+    return payload
+
+
 # ── Watchdog ──────────────────────────────────────────────────────────────────
 
 def _get_backup_cfg():
@@ -2429,26 +2469,12 @@ def _get_backup_cfg():
     }
 
 def _do_json_backup(cfg=None):
-    import base64
     if cfg is None: cfg = _get_backup_cfg()
     bdir = cfg['path']; os.makedirs(bdir, exist_ok=True)
     name = time.strftime('SIS_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.json')
     try:
         with get_db() as conn:
-            docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
-            users = _usuarios_para_backup(conn)
-            conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
-            settings = {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()}
-            auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
-            arqs = []
-            for arq in conn.execute('SELECT * FROM arquivos').fetchall():
-                p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
-                if os.path.isfile(p):
-                    with open(p, 'rb') as f:
-                        arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
-        backup = {'sgdp_version': '1.17.0', 'exported_at': time.strftime('%Y-%m-%dT%H:%M:%S'),
-                  'documentos': docs, 'usuarios': users, 'contadores': conts,
-                  'arquivos': arqs, 'settings': settings, 'auditoria': auditoria}
+            backup = _montar_backup(conn)
         with open(os.path.join(bdir, name), 'w', encoding='utf-8') as f:
             json.dump(backup, f, ensure_ascii=False, default=str)
         print(f'Backup JSON: {name}')
@@ -2456,13 +2482,18 @@ def _do_json_backup(cfg=None):
     except Exception as e:
         print(f'Erro no backup JSON: {e}'); return None
 
+# Cofre = pacote .zip com o banco + a pasta de anexos. Antes era só o .db, e os
+# PDFs (que vivem em uploads/, fora do banco) ficavam de fora — um restore do
+# .db recuperava os documentos mas não os arquivos. O restore aceita também o
+# .db legado (sem anexos), para os backups já gravados em produção continuarem
+# válidos. ponytail: zipfile da stdlib, sem dependência.
 def _do_db_backup(cfg=None):
     if cfg is None: cfg = _get_backup_cfg()
     bdir = cfg['path']; os.makedirs(bdir, exist_ok=True)
-    name = time.strftime('DB_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.db')
+    name = time.strftime('DB_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.zip')
+    dst = os.path.join(bdir, name)
     try:
-        with sqlite3.connect(DB_PATH, factory=_ConnAutoClose) as src, sqlite3.connect(os.path.join(bdir, name), factory=_ConnAutoClose) as bk:
-            src.backup(bk)
+        sgx_base.escrever_cofre(DB_PATH, UPLOADS_DIR, dst)
         with get_db() as conn:
             conn.execute("INSERT OR REPLACE INTO sys_settings VALUES ('auto_backup_last',?)",
                          (time.strftime('%Y-%m-%dT%H:%M:%S'),))
@@ -2470,14 +2501,21 @@ def _do_db_backup(cfg=None):
         print(f'Backup DB: {name}')
         return name
     except Exception as e:
-        print(f'Erro no backup DB: {e}'); return None
+        print(f'Erro no backup DB: {e}')
+        try: os.remove(dst)
+        except OSError: pass
+        return None
+
+# Prefixo do Cofre casa tanto o .zip novo quanto o .db legado (mesmo grupo lógico
+# de rotação e de listagem).
+_COFRE_EXTS = ('.zip', '.db')
 
 def _rotate_backups(cfg=None):
     if cfg is None: cfg = _get_backup_cfg()
     bdir = cfg['path']; keep = cfg['keep']
     if not os.path.isdir(bdir): return
-    for prefix, ext in [('DB_SGDP_BACKUP_', '.db'), ('SIS_SGDP_BACKUP_', '.json')]:
-        files = sorted(f for f in os.listdir(bdir) if f.startswith(prefix) and f.endswith(ext))
+    for prefix, exts in [('DB_SGDP_BACKUP_', _COFRE_EXTS), ('SIS_SGDP_BACKUP_', ('.json',))]:
+        files = sorted(f for f in os.listdir(bdir) if f.startswith(prefix) and f.endswith(exts))
         for old in files[:-keep]:
             fp = os.path.join(bdir, old)
             for attempt in range(6):  # tenta por até ~10s (OneDrive pode manter o arquivo aberto)
