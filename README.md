@@ -6,6 +6,8 @@
 
 O **SGDP** é uma aplicação web multiusuário para a **Procuradoria-Geral municipal** gerenciar seus documentos jurídicos — Leis, Decretos, Portarias, Pareceres e Ofícios. O sistema controla numeração automática, armazena os PDFs assinados digitalmente e oferece busca, auditoria e backup completo.
 
+Compartilha a arquitetura (servidor Python stdlib + SQLite + frontend single-file) com os sistemas irmãos **SGCD**, **SGCA** e **SGEA**.
+
 Funciona em rede local: um único computador executa o servidor e todos os procuradores acessam pelo navegador via IP ou `localhost`.
 
 ---
@@ -82,14 +84,12 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 
 ### Menu de inicialização
 
-O `Iniciar SGDP.bat` abre um menu simples no terminal:
+O `Iniciar SGDP.bat` abre um menu no terminal:
 
 | Opção | Descrição |
 |-------|-----------|
-| **[1] Diagnóstico** | Verifica IP local, porta 3001, firewall e acessibilidade pela rede — sem iniciar o servidor |
-| **[2] Iniciar Servidor** | Sobe o servidor e mantém rodando continuamente (Ctrl+C para parar) |
-
-O servidor não encerra sozinho por inatividade nem ao fechar o navegador — só ao interromper o processo (Ctrl+C ou fechando a janela do terminal).
+| **[1] Diagnóstico** | Verifica e corrige automaticamente rede, porta e firewall (pede elevação de Administrador quando necessário) |
+| **[2] Iniciar Servidor** | Sobe o servidor e mantém rodando continuamente — atende uso individual e em rede. Só encerra com **Ctrl+C** no terminal ou fechando a janela |
 
 ### Acesso em rede local
 
@@ -140,6 +140,24 @@ SGDP/
 ├── CHANGELOG.md
 └── MANUAL.html
 ```
+
+---
+
+## Documentos Gerados pelo Sistema
+
+| Documento | Descrição |
+|-----------|-----------|
+| **Documento (Lei / Decreto / Portaria / Parecer / Ofício)** | Peça formatada para impressão ou PDF a partir do registro |
+| **Certidão de Documento** | Certidão de existência e teor de um documento |
+| **Certidão Negativa de Pendências** | Declaração de inexistência de pendências |
+| **Certidões em Lote** | Emissão de certidões de vários documentos de uma vez |
+| **Relatório de Cadeia Normativa** | Vínculos entre normas (altera, revoga, regulamenta) |
+| **Relatório de Etiquetas** | Etiquetas para organização física dos documentos |
+| **Relatório de Pendências** | Documentos com pendências |
+| **Relatório de Produtividade** | Produção por período e por autor |
+| **Relatório de Integridade** | Estado do banco, backups e contagens |
+
+Todos os documentos abrem em janela separada com botão "🖨 Imprimir / Salvar PDF".
 
 ---
 
