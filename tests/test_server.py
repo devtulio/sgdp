@@ -1226,6 +1226,36 @@ class TestBackupPreservaUsuario(SGDPTestCase):
             self.assertEqual(str(depois.get(campo) or ''), valor,
                              f'backup antigo apagou {campo}, que ele nem continha')
 
+    def test_restaurar_preserva_todas_as_colunas_do_documento(self):
+        # A lista fixa de colunas do restore cobria 14 das 26 e ia ficando para
+        # trás a cada migração: sumiam assunto, o vínculo com o processo, o
+        # registro de assinatura, o excluido_em (documento voltava da Lixeira) e
+        # o par oficio_interno/oficio_interno_departamento, que faz parte da
+        # chave única de numeração.
+        token = self.login()
+        status, doc = self.request('POST', '/api/documentos', {
+            'tipo': 'portaria', 'ementa': 'Designa fiscal de contrato', 'data': '2026-07-24',
+            'ano': 2026, 'assunto': 'Pessoal', 'processo_pa': 'PA 123/2026',
+            'processo_tipo': 'licitacao', 'processo_ref': 'DL 45/2026',
+            'ato_tipo': 'designacao', 'cargo': 'Fiscal de Contrato'}, token=token)
+        self.assertEqual(status, 201, doc)
+        _, lixo = self.request('POST', '/api/documentos', {
+            'tipo': 'parecer', 'ementa': 'Parecer excluído', 'data': '2026-07-24', 'ano': 2026},
+            token=token)
+        self.request('DELETE', f"/api/documentos/{lixo['id']}", token=token)
+        with server.get_db() as conn:
+            conn.execute("UPDATE documentos SET assinado_por=1, assinado_em='2026-07-24T10:00:00',"
+                         " assinatura_cert='CERT-TESTE' WHERE id=?", (doc['id'],))
+            conn.commit()
+            antes = {r['id']: dict(r) for r in conn.execute('SELECT * FROM documentos')}
+
+        _, backup = self.request('GET', '/api/backup', token=token)
+        self.assertEqual(self.request('POST', '/api/backup/restore', backup, token=token)[0], 200)
+
+        with server.get_db() as conn:
+            depois = {r['id']: dict(r) for r in conn.execute('SELECT * FROM documentos')}
+        self.assertEqual(depois, antes, 'restaurar backup alterou colunas dos documentos')
+
     def test_restaurar_backup_gera_ponto_de_recuperacao(self):
         token = self.login()
         _, backup = self.request('GET', '/api/backup', token=token)

@@ -1,4 +1,4 @@
-# SGDP v1.40.4 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.40.5 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.40.4'
+SERVER_VERSION = '1.40.5'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -2136,14 +2136,21 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                     f.write(base64.b64decode(arq['data_b64']))
                 conn.execute('INSERT INTO arquivos (id,nome_original,nome_disco,tamanho,enviado_por,enviado_em) VALUES (?,?,?,?,?,?)',
                              (arq['id'], arq['nome_original'], nome_disco, arq['tamanho'], arq.get('enviado_por'), arq.get('enviado_em')))
+            # Colunas conforme a tabela, não uma lista fixa: a que existia aqui
+            # cobria 14 das 26 e ia ficando para trás a cada migração, então
+            # restaurar descartava assunto, o vínculo com o processo (processo_pa,
+            # processo_tipo, processo_ref), ato_tipo, cargo, o registro de
+            # assinatura, o excluido_em (documento voltava da Lixeira) e o par
+            # oficio_interno/oficio_interno_departamento — que faz parte da chave
+            # única de numeração, e sem ele a sequência de ofício interno de dois
+            # departamentos podia colidir.
+            cols_doc = [r[1] for r in conn.execute('PRAGMA table_info(documentos)')]
             for doc in backup.get('documentos', []):
+                vindas = [c for c in cols_doc if c in doc]
                 conn.execute(
-                    'INSERT OR REPLACE INTO documentos '
-                    '(id,tipo,numero,ano,data,ementa,partes,observacoes,arquivo_id,sigiloso,criado_por,atualizado_por,criado_em,atualizado_em)'
-                    ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                    (doc['id'],doc['tipo'],doc['numero'],doc['ano'],doc['data'],doc['ementa'],
-                     doc.get('partes'),doc.get('observacoes'),doc.get('arquivo_id'),int(bool(doc.get('sigiloso'))),
-                     doc.get('criado_por'),doc.get('atualizado_por'),doc.get('criado_em'),doc.get('atualizado_em')))
+                    f'INSERT OR REPLACE INTO documentos ({",".join(vindas)}) '
+                    f'VALUES ({",".join("?" * len(vindas))})',
+                    [int(bool(doc[c])) if c == 'sigiloso' else doc[c] for c in vindas])
             for c in backup.get('contadores', []):
                 conn.execute('INSERT OR REPLACE INTO contadores VALUES (?,?,?)', (c['tipo'],c['ano'],c['ultimo']))
             for u in backup.get('usuarios', []):

@@ -5,6 +5,13 @@
 
 ---
 
+## [1.40.5] — 2026-07-24
+
+### Corrigido
+- **Restaurar um backup descartava metade das informações de cada documento.** A restauração gravava 14 das 26 colunas do documento — a lista era fixa e foi ficando para trás a cada novidade do sistema. Depois de restaurar, sumiam: o **assunto**, o **vínculo com o processo administrativo** (número do PA, tipo e referência), o **tipo de ato** e o **cargo**, o **registro de assinatura** (quem assinou, quando e o certificado), a marca de exclusão (**documento voltava da Lixeira para o acervo**) e a indicação de **ofício interno com o departamento** — esta última faz parte da chave de numeração, então perdê-la podia fazer a sequência de ofício interno de dois departamentos colidir. Agora a restauração grava todas as colunas que o arquivo trouxer.
+
+---
+
 ## [1.40.4] — 2026-07-24
 
 ### Corrigido
