@@ -1451,5 +1451,49 @@ class TestConflitoDeEdicao(SGDPTestCase):
         self.assertEqual(st, 200)
 
 
+class TestNumeracaoSimultanea(SGDPTestCase):
+    """Eixo concorrência (auditoria 2026-07-24).
+
+    Dois procuradores criando ao mesmo tempo liam o mesmo "próximo número" e o
+    segundo tomava 409, tendo de repetir tudo à mão — em 36 criações paralelas,
+    4 caíam. Quando o sistema é quem atribui o número, ele agora tenta o
+    seguinte sozinho; quando o usuário digitou o número, o 409 continua.
+    """
+
+    def test_criacoes_simultaneas_nao_perdem_documento(self):
+        import threading
+        token = self.login()
+        resultados, trava = [], threading.Lock()
+
+        def cria(i):
+            st, d = self.request('POST', '/api/documentos', {
+                'tipo': 'portaria', 'ementa': f'Simultânea {i}',
+                'data': '2026-07-24', 'ano': 2026}, token=token)
+            with trava:
+                resultados.append((st, d.get('numero')))
+
+        ths = [threading.Thread(target=cria, args=(i,)) for i in range(6)]
+        for t in ths: t.start()
+        for t in ths: t.join()
+
+        criados = [n for st, n in resultados if st == 201]
+        self.assertEqual(len(criados), 6, f'documentos perdidos por colisão: {resultados}')
+        self.assertEqual(len(set(criados)), 6, f'números duplicados: {sorted(criados)}')
+
+    def test_numero_escolhido_pelo_usuario_ainda_recusa(self):
+        # Aqui a colisão é informação, não sorteio: o usuário precisa saber que
+        # aquele número já existe, em vez de receber outro em silêncio.
+        token = self.login()
+        st, _ = self.request('POST', '/api/documentos', {
+            'tipo': 'decreto', 'numero': 777, 'ementa': 'Primeiro',
+            'data': '2026-07-24', 'ano': 2026}, token=token)
+        self.assertEqual(st, 201)
+        st, resp = self.request('POST', '/api/documentos', {
+            'tipo': 'decreto', 'numero': 777, 'ementa': 'Repetido',
+            'data': '2026-07-24', 'ano': 2026}, token=token)
+        self.assertEqual(st, 409, 'número digitado pelo usuário não deveria ser trocado sozinho')
+        self.assertIn('777', resp.get('error', ''))
+
+
 if __name__ == '__main__':
     unittest.main()

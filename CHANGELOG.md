@@ -5,6 +5,13 @@
 
 ---
 
+## [1.43.1] — 2026-07-24
+
+### Corrigido
+- **Documento perdido quando duas pessoas criavam ao mesmo tempo.** Ambas recebiam o mesmo "próximo número" e a segunda era recusada com "já existe", tendo de refazer o cadastro à mão — em 36 criações simultâneas, 4 caíam. Agora, quando é o sistema que atribui o número, ele tenta o seguinte sozinho. Se o número foi digitado por você, o aviso continua: nesse caso a coincidência é informação que você precisa ver.
+
+---
+
 ## [1.43.0] — 2026-07-24
 
 ### Corrigido

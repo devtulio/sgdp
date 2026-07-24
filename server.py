@@ -1,4 +1,4 @@
-# SGDP v1.43.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.43.1 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.43.0'
+SERVER_VERSION = '1.43.1'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -1193,29 +1193,42 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         oficio_interno_departamento = s['departamento'] if oficio_interno else ''
         tipo_contador = f"oficio_interno_{s['departamento']}" if oficio_interno else tipo
         with get_db() as conn:
-            numero = int(data['numero']) if data.get('numero') not in (None, '') else proximo_numero(conn, tipo_contador, ano)
-            try:
-                cur = conn.execute(
-                    'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,sigiloso,oficio_interno,oficio_interno_departamento,criado_por,atualizado_por)'
-                    ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                    (tipo, numero, ano, data_d, ementa,
-                     data.get('partes') or '', data.get('observacoes') or '',
-                     data.get('assunto') or 'Outros',
-                     data.get('processo_pa') or '', data.get('processo_tipo') or '', data.get('processo_ref') or '',
-                     data.get('ato_tipo') or '', data.get('cargo') or '',
-                     sigiloso, oficio_interno, oficio_interno_departamento,
-                     s['user_id'], s['user_id'])
-                )
-                # captura o rowid ANTES de bump_contador — que pode fazer seu próprio
-                # INSERT em contadores na primeira vez que o tipo/ano é usado, o que
-                # sobrescreveria um last_insert_rowid() consultado depois dele
-                did = cur.lastrowid
-                bump_contador(conn, tipo_contador, ano, numero)
-                if 'tags' in data: _sync_tags(conn, did, data['tags'])
-                audit(conn, s['user_id'], s['nome'], 'criar', did, f"{tipo} nº {numero}/{ano}")
-                conn.commit()
-            except sqlite3.IntegrityError:
-                self._json(409, {'error': f'Já existe {tipo} nº {numero}/{ano}'}); return
+            # Número escolhido pelo usuário x atribuído pelo sistema: só o segundo
+            # pode ser trocado sozinho. Com dois procuradores criando ao mesmo
+            # tempo, ambos liam o mesmo "próximo número" e o segundo tomava 409,
+            # tendo de repetir tudo à mão — em 36 criações paralelas, 4 caíam.
+            # Quando o usuário digitou o número, o 409 continua: aí a colisão é
+            # informação que ele precisa ver, não sorteio a refazer.
+            numero_escolhido = data.get('numero') not in (None, '')
+            numero = int(data['numero']) if numero_escolhido else proximo_numero(conn, tipo_contador, ano)
+            did = None
+            for tentativa in range(6):
+                try:
+                    cur = conn.execute(
+                        'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,sigiloso,oficio_interno,oficio_interno_departamento,criado_por,atualizado_por)'
+                        ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                        (tipo, numero, ano, data_d, ementa,
+                         data.get('partes') or '', data.get('observacoes') or '',
+                         data.get('assunto') or 'Outros',
+                         data.get('processo_pa') or '', data.get('processo_tipo') or '', data.get('processo_ref') or '',
+                         data.get('ato_tipo') or '', data.get('cargo') or '',
+                         sigiloso, oficio_interno, oficio_interno_departamento,
+                         s['user_id'], s['user_id'])
+                    )
+                    # captura o rowid ANTES de bump_contador — que pode fazer seu próprio
+                    # INSERT em contadores na primeira vez que o tipo/ano é usado, o que
+                    # sobrescreveria um last_insert_rowid() consultado depois dele
+                    did = cur.lastrowid
+                    bump_contador(conn, tipo_contador, ano, numero)
+                    if 'tags' in data: _sync_tags(conn, did, data['tags'])
+                    audit(conn, s['user_id'], s['nome'], 'criar', did, f"{tipo} nº {numero}/{ano}")
+                    conn.commit()
+                    break
+                except sqlite3.IntegrityError:
+                    conn.rollback()
+                    if numero_escolhido or tentativa == 5:
+                        self._json(409, {'error': f'Já existe {tipo} nº {numero}/{ano}'}); return
+                    numero = proximo_numero(conn, tipo_contador, ano)
             row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
             tags = _tags_map(conn, [did]).get(did, [])
         item = dict(row); item['tags'] = tags
