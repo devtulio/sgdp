@@ -5,6 +5,16 @@
 
 ---
 
+## [1.40.3] — 2026-07-24
+
+### Corrigido
+- **Restaurar um backup apagava a configuração de e-mail de cada usuário.** O arquivo de backup guardava 8 das 21 colunas do cadastro de usuários, e a restauração regravava a linha só com essas 8 — o que estava fora da lista virava vazio. Sumiam e-mail, CPF, cargo, matrícula e **toda a configuração de SMTP pessoal, inclusive a senha**. Quem restaurasse um backup precisava reconfigurar o envio de e-mail de todo mundo, sem nenhum aviso de que isso tinha acontecido. Agora o backup leva todas as colunas e a restauração preserva o que o arquivo não traz.
+- **Backup antigo não destrói mais a configuração atual.** Um arquivo gerado antes desta versão não contém as colunas de SMTP; ao ser restaurado, elas agora **mantêm o valor que está no banco** em vez de serem zeradas.
+- **Restaurar backup não gerava ponto de recuperação.** Era o único caminho destrutivo do sistema sem essa proteção — restaurar o banco (.db) e o reset de fábrica já faziam. Se o arquivo restaurado viesse incompleto, não havia para onde voltar. Agora uma cópia do banco anterior é gravada antes de qualquer alteração.
+- **Restaurar backup deslogava todos os usuários**, inclusive quem estava fazendo a restauração, porque a regravação do cadastro derrubava as sessões em cascata. A sessão agora sobrevive à operação.
+
+---
+
 ## [1.40.2] — 2026-07-23
 
 ### Alterado

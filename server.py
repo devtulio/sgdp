@@ -1,4 +1,4 @@
-# SGDP v1.40.2 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.40.3 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.40.2'
+SERVER_VERSION = '1.40.3'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -426,6 +426,32 @@ def get_config():
         return {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()}
 
 _USER_SMTP_COLS = ('smtp_host', 'smtp_port', 'smtp_secure', 'smtp_require_tls', 'smtp_ignore_ssl', 'smtp_user', 'smtp_pass', 'smtp_from_name')
+
+
+def _restaurar_usuario(conn, u):
+    """Grava um usuário vindo de um backup JSON preservando o que o arquivo não traz.
+
+    Não usa INSERT OR REPLACE: o REPLACE apaga a linha inteira e recria só com as
+    colunas listadas, então um backup antigo (gerado quando o export levava 8 das
+    21 colunas) zerava e-mail, cpf, cargo, matrícula e as 8 smtp_* — inclusive a
+    senha do e-mail pessoal. Aqui a coluna ausente no arquivo mantém o valor atual
+    do banco. De quebra evita o DELETE implícito do REPLACE, que derrubava todas as
+    sessões por ON DELETE CASCADE em sessions e deslogava quem estava restaurando.
+    """
+    colunas = {r[1] for r in conn.execute('PRAGMA table_info(usuarios)')} - {'id'}
+    vindas = {c: u[c] for c in colunas if c in u}
+    vindas.setdefault('departamento', DEPARTAMENTOS[0])
+    vindas['departamento'] = vindas['departamento'] or DEPARTAMENTOS[0]
+    vindas.setdefault('ativo', 1)
+
+    existe = conn.execute('SELECT 1 FROM usuarios WHERE id=?', (u['id'],)).fetchone()
+    if existe:
+        sets = ','.join(f'{c}=?' for c in vindas)
+        conn.execute(f'UPDATE usuarios SET {sets} WHERE id=?', [*vindas.values(), u['id']])
+    else:
+        cols = ['id', *vindas]
+        conn.execute(f"INSERT INTO usuarios ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",
+                     [u['id'], *vindas.values()])
 
 def get_user_smtp(user_id):
     """Config SMTP do usuário logado. Se ele não tiver host próprio configurado,
@@ -2052,8 +2078,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         import base64
         with get_db() as conn:
             docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
-            users = [dict(r) for r in conn.execute(
-                'SELECT id,username,nome,senha_hash,admin,ativo,departamento,criado_em FROM usuarios').fetchall()]
+            # SELECT * de propósito: a lista fixa de colunas que existia aqui foi
+            # ficando para trás a cada migração (email, cpf, cargo, matricula,
+            # must_change_password e as 8 smtp_* entraram depois, por ALTER TABLE)
+            # e o backup saía sem elas — inclusive sem a config de e-mail pessoal.
+            users = [dict(r) for r in conn.execute('SELECT * FROM usuarios').fetchall()]
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
             auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
             arqs  = []
@@ -2083,6 +2112,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             self._json(400, {'error': 'Arquivo inválido'}); return
         if 'sgdp_version' not in backup: self._json(400, {'error': 'Não é um backup SGDP'}); return
+        _do_db_backup()  # ponto de recuperação antes de substituir tudo — como no _restaurar_db e no _factory_reset
         with get_db() as conn:
             conn.execute('DELETE FROM documentos')
             conn.execute('DELETE FROM arquivos')
@@ -2104,9 +2134,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             for c in backup.get('contadores', []):
                 conn.execute('INSERT OR REPLACE INTO contadores VALUES (?,?,?)', (c['tipo'],c['ano'],c['ultimo']))
             for u in backup.get('usuarios', []):
-                conn.execute('INSERT OR REPLACE INTO usuarios (id,username,nome,senha_hash,admin,ativo,departamento,criado_em) VALUES (?,?,?,?,?,?,?,?)',
-                             (u['id'],u['username'],u['nome'],u['senha_hash'],u['admin'],u.get('ativo',1),
-                              u.get('departamento') or DEPARTAMENTOS[0],u.get('criado_em')))
+                _restaurar_usuario(conn, u)
             # Backups antigos podem trazer uma chave 'signatures' — ignorada de propósito
             # (assinatura digital removida).
             ndoc = len(backup.get('documentos', []))
@@ -2302,8 +2330,7 @@ def _do_json_backup(cfg=None):
     try:
         with get_db() as conn:
             docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
-            users = [dict(r) for r in conn.execute(
-                'SELECT id,username,nome,senha_hash,admin,ativo,departamento,criado_em FROM usuarios').fetchall()]
+            users = [dict(r) for r in conn.execute('SELECT * FROM usuarios').fetchall()]  # SELECT *: ver _export_backup
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
             settings = {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()}
             auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]

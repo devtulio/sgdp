@@ -1141,5 +1141,88 @@ class TestNuncaEncerraSozinho(SGDPTestCase):
         self.assertEqual(status, 200, 'sessão expirou com atraso que o TTL antigo (15s) não sobreviveria')
 
 
+class TestBackupPreservaUsuario(SGDPTestCase):
+    """Regressão do eixo perda de dado (auditoria 2026-07-24).
+
+    O export listava 8 das 21 colunas de `usuarios` e o import fazia
+    INSERT OR REPLACE com as mesmas 8 — o REPLACE apaga a linha inteira e
+    recria, então restaurar um backup zerava e-mail, cpf, cargo, matrícula e
+    as 8 smtp_*, inclusive a senha do e-mail pessoal de cada procurador.
+    """
+
+    CAMPOS = {'email': 'proc@orindiuva.sp.gov.br', 'cpf': '111.222.333-44',
+              'cargo': 'Procuradora-Geral', 'matricula': '9977'}
+    SMTP = {'smtp_host': 'smtp.orindiuva.sp.gov.br', 'smtp_port': '587',
+            'smtp_user': 'proc@orindiuva.sp.gov.br', 'smtp_pass': 'senha-do-email',
+            'smtp_from_name': 'Procuradoria'}
+
+    def _preparar(self, token, uid):
+        self.request('PUT', f'/api/usuarios/{uid}', dict(self.CAMPOS), token=token)
+        self.request('PUT', '/api/auth/me/smtp', dict(self.SMTP), token=token)
+
+    def _linha(self, uid):
+        with server.get_db() as conn:
+            return dict(conn.execute('SELECT * FROM usuarios WHERE id=?', (uid,)).fetchone())
+
+    def test_backup_leva_todas_as_colunas_de_usuarios(self):
+        token = self.login()
+        _, eu = self.request('GET', '/api/auth/me', token=token)
+        uid = eu['id'] if isinstance(eu, dict) and 'id' in eu else 1
+        self._preparar(token, uid)
+        status, backup = self.request('GET', '/api/backup', token=token)
+        self.assertEqual(status, 200, backup)
+        with server.get_db() as conn:
+            colunas = {r[1] for r in conn.execute('PRAGMA table_info(usuarios)')}
+        do_backup = set(backup['usuarios'][0])
+        self.assertEqual(colunas - do_backup, set(),
+                         'backup de usuarios não leva todas as colunas da tabela')
+
+    def test_restaurar_backup_preserva_smtp_e_dados_do_usuario(self):
+        token = self.login()
+        _, eu = self.request('GET', '/api/auth/me', token=token)
+        uid = eu['id'] if isinstance(eu, dict) and 'id' in eu else 1
+        self._preparar(token, uid)
+        _, backup = self.request('GET', '/api/backup', token=token)
+
+        status, _ = self.request('POST', '/api/backup/restore', backup, token=token)
+        self.assertEqual(status, 200)
+        depois = self._linha(uid)
+        for campo, valor in {**self.CAMPOS, **self.SMTP}.items():
+            self.assertEqual(str(depois.get(campo) or ''), valor,
+                             f'{campo} não sobreviveu à restauração do backup')
+
+    def test_backup_antigo_nao_apaga_colunas_que_nao_traz(self):
+        # Compatibilidade: arquivo gerado antes da correção só tem 8 colunas.
+        # Coluna ausente deve manter o valor atual do banco, não virar nulo.
+        token = self.login()
+        _, eu = self.request('GET', '/api/auth/me', token=token)
+        uid = eu['id'] if isinstance(eu, dict) and 'id' in eu else 1
+        self._preparar(token, uid)
+        _, backup = self.request('GET', '/api/backup', token=token)
+        antigas = ('id', 'username', 'nome', 'senha_hash', 'admin', 'ativo', 'departamento', 'criado_em')
+        backup['usuarios'] = [{c: u[c] for c in antigas} for u in backup['usuarios']]
+
+        status, _ = self.request('POST', '/api/backup/restore', backup, token=token)
+        self.assertEqual(status, 200)
+        depois = self._linha(uid)
+        for campo, valor in {**self.CAMPOS, **self.SMTP}.items():
+            self.assertEqual(str(depois.get(campo) or ''), valor,
+                             f'backup antigo apagou {campo}, que ele nem continha')
+
+    def test_restaurar_backup_gera_ponto_de_recuperacao(self):
+        token = self.login()
+        _, backup = self.request('GET', '/api/backup', token=token)
+        # Limpa os .db antes: o nome do backup carimba só até o segundo, e vários
+        # testes na mesma seção reescreveriam o mesmo arquivo — sem isso o teste
+        # falharia por colisão de nome, não por ausência do ponto de recuperação.
+        for f in os.listdir(server.BACKUP_DIR):
+            if f.endswith('.db'):
+                os.remove(os.path.join(server.BACKUP_DIR, f))
+        status, _ = self.request('POST', '/api/backup/restore', backup, token=token)
+        self.assertEqual(status, 200)
+        self.assertTrue([f for f in os.listdir(server.BACKUP_DIR) if f.endswith('.db')],
+                        'restaurar backup não gerou cópia do banco anterior')
+
+
 if __name__ == '__main__':
     unittest.main()
