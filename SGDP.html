@@ -1183,7 +1183,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.40.1';
+const SGDP_VERSION = '1.40.2';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1418,7 +1418,7 @@ async function _atualizarBadgeNotif() {
 
 // ── Navegação ─────────────────────────────────────────────────────────────────
 // ── Views (padrão SGCD: blocos estáticos, mostrar/esconder via .active) ────────
-function _hideAllViews() { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); }
+// _hideAllViews() vem do base.js compartilhado (a cópia local era idêntica).
 function setNavActive(view) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === view));
 }
@@ -1535,7 +1535,7 @@ const SGDP_DOC_CSS = `
   .btn-print { display: block; margin: 0 auto 20pt; padding: 8pt 24pt; background: #1a3a6b; color: #fff; border: none; border-radius: 4px; font-size: 11pt; cursor: pointer; letter-spacing: .5px; }
   .btn-print:hover { background: #102855; }
   @media print { body { padding: 0; } .no-print { display: none !important; } }
-  @page { size: A4; margin: 20mm; @bottom-right { content: "Folha " counter(page); font-size: 8pt; color: #888; } }
+  ${DOC_PAGE_CSS}
 `;
 
 // Gerador de QR code autocontido (sem lib externa), portado do SGCD.
@@ -4466,16 +4466,12 @@ function playNotify() {
 }
 
 // ── Toasts ────────────────────────────────────────────────────────────────────
-function toast(msg, type = 'info') {
-  if (type === 'success') playSuccess();
-  else if (type === 'error') playError();
+// Gancho de som do toast() do base.js (ver comentário lá): a implementação do
+// toast é única e compartilhada; só o retorno sonoro é próprio deste sistema.
+function _toastSom(t) {
+  if (t === 'success') playSuccess();
+  else if (t === 'error') playError();
   else playNotify();
-  const box = document.getElementById('toast');
-  const el = document.createElement('div');
-  el.className = `toast-msg ${type}`;
-  el.textContent = msg;
-  box.appendChild(el);
-  setTimeout(() => el.remove(), 4000);
 }
 
 // ── Utilitários ───────────────────────────────────────────────────────────────
@@ -4691,13 +4687,7 @@ function _loginCanvasStart() {
   _lcRaf = requestAnimationFrame(frame);
 }
 
-function _loginCanvasStop() {
-  if (_lcRaf) { cancelAnimationFrame(_lcRaf); _lcRaf = null; }
-  const canvas = document.getElementById('pin-canvas');
-  if (canvas?._lcCleanup) { canvas._lcCleanup(); canvas._lcCleanup = null; }
-  _lcNodes = [];
-  _lcMouse = { x: -9999, y: -9999 };
-}
+// _loginCanvasStop() vem do base.js compartilhado (a cópia local era idêntica).
 
 document.addEventListener('click', e => {
   const t = e.target.closest('button, .btn, .nav-item, .cfg-tab, .btn-sair');
