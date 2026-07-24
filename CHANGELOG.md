@@ -5,6 +5,13 @@
 
 ---
 
+## [1.42.0] — 2026-07-24
+
+### Corrigido
+- **A troca da senha padrão passou a valer no servidor.** A tela de "troque a senha no primeiro acesso" era só do navegador: quem conversasse diretamente com o sistema entrava com a senha padrão — que está no manual e no README — e usava tudo, inclusive as telas de administrador, enquanto ninguém tivesse trocado. Agora, com a troca pendente, o servidor só aceita as chamadas necessárias para exibir e concluir a própria troca; qualquer outra é recusada.
+
+---
+
 ## [1.41.0] — 2026-07-24
 
 ### Corrigido

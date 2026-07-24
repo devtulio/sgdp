@@ -1,4 +1,4 @@
-# SGDP v1.41.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.42.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.41.0'
+SERVER_VERSION = '1.42.0'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -509,7 +509,8 @@ def get_session(token):
     with get_db() as conn:
         row = conn.execute(
             '''SELECT s.token, s.user_id, s.expires,
-                      u.nome, u.username, u.cpf, u.email, u.cargo, u.matricula, u.admin, u.ativo, u.departamento
+                      u.nome, u.username, u.cpf, u.email, u.cargo, u.matricula, u.admin, u.ativo, u.departamento,
+                      u.must_change_password
                FROM sessions s JOIN usuarios u ON u.id=s.user_id
                WHERE s.token=? AND s.expires>? AND u.ativo=1''',
             (token, time.time())
@@ -2358,6 +2359,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if not s:
             self._json(401, {'error': 'Não autenticado'})
             return s
+        # Troca de senha obrigatória valia só no navegador — ver
+        # sgx_base.rota_liberada_sem_trocar_senha.
+        if s.get('must_change_password') and not sgx_base.rota_liberada_sem_trocar_senha(
+                self.path, self.command, s['user_id']):
+            self._json(403, {'error': 'Troque a senha padrão antes de usar o sistema.'})
+            return None
         # Sessão deslizante — ver comentário equivalente nos sistemas irmãos:
         # renovar só no ping deixava a sessão morrer com a aba em segundo plano.
         renew_session(self._token())
