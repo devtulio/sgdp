@@ -1,4 +1,4 @@
-# SGDP v1.43.1 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.43.2 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.43.1'
+SERVER_VERSION = '1.43.2'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -391,6 +391,8 @@ def init_db():
             )
             conn.commit()
             print('Usuário padrão criado: admin / admin123 — troque a senha no primeiro acesso.')
+        if sgx_base.marcar_senha_padrao(conn):
+            print('Atenção: há conta com a senha padrão — o sistema exigirá a troca no próximo acesso.')
 
 def _fts_match_query(text):
     """Converte texto livre em uma query FTS5 (AND de prefixos por palavra)."""
