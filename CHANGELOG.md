@@ -5,6 +5,13 @@
 
 ---
 
+## [1.45.0] — 2026-07-24
+
+### Segurança
+- **A senha de fábrica não pode mais ser definida como nova senha.** Ao trocar a senha, `admin123` (a padrão publicada no manual) é recusada — antes era possível "trocar" para ela e assim contornar a exigência de sair da senha padrão.
+
+---
+
 ## [1.44.0] — 2026-07-24
 
 ### Alterado

@@ -1631,5 +1631,25 @@ class TestBackupPadronizado(SGDPTestCase):
         self.assertEqual(self._raw('POST', '/api/backups/db/restore', b'lixo qualquer', token)[0], 400)
 
 
+class TestRecusaSenhaPadrao(SGDPTestCase):
+    """Não deixa definir a senha de fábrica como NOVA senha, nos dois caminhos de
+    troca do SGDP (PUT /api/usuarios e PUT /api/auth/senha). Ver sgx_base.eh_senha_padrao."""
+
+    def test_update_usuario_recusa_padrao(self):
+        tok = self.login()
+        with server.get_db() as conn:
+            uid = conn.execute("SELECT id FROM usuarios WHERE username='admin'").fetchone()['id']
+        st, r = self.request('PUT', f'/api/usuarios/{uid}', {'senha': 'admin123'}, token=tok)
+        self.assertEqual(st, 400, r)
+        self.assertIn('padrão', (r or {}).get('error', ''))
+
+    def test_auth_senha_recusa_padrao(self):
+        tok = self.login()
+        st, r = self.request('PUT', '/api/auth/senha',
+                             {'atual': 'admin123', 'nova': 'admin123', 'confirma': 'admin123'}, token=tok)
+        self.assertEqual(st, 400, r)
+        self.assertIn('padrão', (r or {}).get('error', ''))
+
+
 if __name__ == '__main__':
     unittest.main()

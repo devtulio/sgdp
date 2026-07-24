@@ -1,4 +1,4 @@
-# SGDP v1.44.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.45.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.44.0'
+SERVER_VERSION = '1.45.0'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -2012,6 +2012,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if 'ativo' in data: fields['ativo'] = int(bool(data['ativo']))
         if data.get('senha'):
             if len(data['senha']) < 6: self._json(400, {'error': 'Senha mínima: 6 caracteres'}); return
+            if sgx_base.eh_senha_padrao(data['senha']):
+                self._json(400, {'error': 'Escolha uma senha diferente da padrão de fábrica.'}); return
             fields['senha_hash'] = _hash_password(data['senha'])
             fields['must_change_password'] = 0
         fields.update(_smtp_fields_from(data))  # admin pode editar a config SMTP do usuário
@@ -2099,6 +2101,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         if not atual:    self._json(400, {'error': 'Digite a senha atual'}); return
         if not nova:     self._json(400, {'error': 'Digite a nova senha'}); return
         if len(nova) < 6: self._json(400, {'error': 'Senha mínima: 6 caracteres'}); return
+        if sgx_base.eh_senha_padrao(nova): self._json(400, {'error': 'Escolha uma senha diferente da padrão de fábrica.'}); return
         if nova != confirma: self._json(400, {'error': 'As senhas não coincidem'}); return
         with get_db() as conn:
             row = conn.execute('SELECT senha_hash FROM usuarios WHERE id=?', (s['user_id'],)).fetchone()
