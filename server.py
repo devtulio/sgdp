@@ -1,4 +1,4 @@
-# SGDP v1.42.1 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.43.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.42.1'
+SERVER_VERSION = '1.43.0'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -551,6 +551,14 @@ def _ano_contador(tipo, ano):
     # Lei/Decreto: série única pra sempre (ano sentinela 0, que nunca ocorre
     # de verdade) em vez de um contador por ano — numeração histórica contínua.
     return 0 if tipo in TIPOS_NUMERACAO_CONTINUA else ano
+
+def _now_precise():
+    # Precisão de milissegundo, só para o atualizado_em que a checagem de
+    # conflito compara. Com precisão de segundo, duas edições no mesmo segundo
+    # geram o mesmo carimbo e o servidor NÃO detecta o conflito real.
+    # Continua parseável por new Date() no cliente.
+    t = time.time()
+    return time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(t)) + f'.{int((t % 1) * 1000):03d}'
 
 def proximo_numero(conn, tipo, ano):
     ano = _ano_contador(tipo, ano)
@@ -1223,7 +1231,18 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             ).fetchone()
             if not row: self._json(404, {'error': 'Não encontrado'}); return
             if not pode_editar_doc(row, s): self._json(403, {'error': 'Sem permissão para editar este documento'}); return
-            fields = {'atualizado_por': s['user_id'], 'atualizado_em': time.strftime('%Y-%m-%dT%H:%M:%S')}
+            # Detecção de conflito: a tela devolve o atualizado_em de quando
+            # carregou o documento. Se não bater com o que está salvo agora,
+            # outro procurador gravou nesse meio-tempo — recusa em vez de apagar
+            # em silêncio o texto dele (mesmo desenho já usado no SGCD).
+            base = data.pop('_baseUpdatedAt', None)
+            if base is not None and base != row['atualizado_em']:
+                self._json(409, {
+                    'error': 'Este documento foi alterado por outro usuário. Recarregue antes de salvar.',
+                    'current': dict(row),
+                })
+                return
+            fields = {'atualizado_por': s['user_id'], 'atualizado_em': _now_precise()}
             for f in ('ementa', 'partes', 'observacoes', 'data', 'assunto', 'processo_pa', 'processo_tipo', 'processo_ref', 'ato_tipo', 'cargo'):
                 if f in data: fields[f] = data[f]
             # sigiloso é sensível: mesmo quem só tem permissão de edição por

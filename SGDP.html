@@ -1183,7 +1183,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.42.1';
+const SGDP_VERSION = '1.43.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -2518,6 +2518,9 @@ async function abrirEditarDoc(id) {
   const doc = await API.json(r);
   if (!doc || !r.ok) { toast('Erro ao carregar documento.', 'error'); return; }
   S.editId = id;
+  // Versão carregada, devolvida ao servidor no salvar: se outro procurador
+  // gravar nesse meio-tempo, a resposta vem 409 em vez de apagar o texto dele.
+  S.editBase = doc.atualizado_em;
   S.pendingFile = null;
   S.existingArq = doc.arquivo_id ? { id: doc.arquivo_id, nome: doc.arquivo_nome, tamanho: doc.arquivo_tamanho } : null;
   document.getElementById('modal-doc-titulo').textContent = `Editar ${TIPOS_LABELS[doc.tipo]}`;
@@ -2634,9 +2637,17 @@ async function salvarDocumento() {
 
   let r, doc;
   if (S.editId) {
-    r = await API.put(`/api/documentos/${S.editId}`, payload);
+    r = await API.put(`/api/documentos/${S.editId}`, { ...payload, _baseUpdatedAt: S.editBase });
     doc = await API.json(r);
+    if (r && r.status === 409) {
+      await customConfirm(
+        (doc?.error || 'Este documento foi alterado por outro usuário.') +
+        ' Suas alterações não foram gravadas. Feche e abra o documento de novo para ver a versão atual.',
+        { title: 'Alterado por outro usuário', icon: '⚠️', okLabel: 'Entendi', okClass: 'btn-primary', cancelLabel: 'Fechar' });
+      return;
+    }
     if (!r || !r.ok) { toast(doc?.error || 'Erro ao salvar.', 'error'); return; }
+    S.editBase = doc?.atualizado_em || S.editBase;
     toast('Documento atualizado.', 'success');
   } else {
     r = await API.post('/api/documentos', payload);

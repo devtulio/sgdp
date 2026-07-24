@@ -5,6 +5,13 @@
 
 ---
 
+## [1.43.0] — 2026-07-24
+
+### Corrigido
+- **Duas pessoas editando o mesmo documento: a última apagava o trabalho da primeira, em silêncio.** Ambas recebiam confirmação de sucesso e nenhuma era avisada. Agora o sistema compara a versão que estava aberta com a que está gravada: se outro procurador salvou nesse meio-tempo, a gravação é recusada e aparece um aviso pedindo para fechar e abrir o documento de novo. O mesmo mecanismo que o SGCD já usava.
+
+---
+
 ## [1.42.1] — 2026-07-24
 
 ### Corrigido

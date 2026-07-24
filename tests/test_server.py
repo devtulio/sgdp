@@ -12,6 +12,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import server  # noqa: E402
@@ -1404,6 +1405,50 @@ class TestSenhaPadraoObrigatoria(SGDPTestCase):
         self.assertEqual(st, 200)
         self.assertEqual(self.request('GET', '/api/documentos', token=log['token'])[0], 200,
                          'sistema continuou bloqueado depois de trocar a senha')
+
+
+class TestConflitoDeEdicao(SGDPTestCase):
+    """Eixo concorrência (auditoria 2026-07-24).
+
+    Três procuradores usam o mesmo acervo. Sem detecção de conflito, dois
+    editando o mesmo documento recebiam 200 e a última gravação apagava o
+    texto da outra, em silêncio — medido antes da correção.
+    """
+
+    def _doc(self, token):
+        st, d = self.request('POST', '/api/documentos', {
+            'tipo': 'parecer', 'ementa': 'Original', 'data': '2026-07-24', 'ano': 2026}, token=token)
+        self.assertEqual(st, 201, d)
+        return d['id'], d['atualizado_em']
+
+    def test_edicao_a_partir_de_versao_velha_e_recusada(self):
+        token = self.login()
+        did, base = self._doc(token)
+        st, _ = self.request('PUT', f'/api/documentos/{did}',
+                             {'ementa': 'Versão A', '_baseUpdatedAt': base}, token=token)
+        self.assertEqual(st, 200)
+        st, resp = self.request('PUT', f'/api/documentos/{did}',
+                                {'ementa': 'Versão B', '_baseUpdatedAt': base}, token=token)
+        self.assertEqual(st, 409, 'segunda gravação sobrescreveu a primeira')
+        self.assertIn('current', resp)
+        st, atual = self.request('GET', f'/api/documentos/{did}', token=token)
+        self.assertEqual(atual['ementa'], 'Versão A', 'o texto da primeira pessoa foi perdido')
+
+    def test_recarregar_e_salvar_funciona(self):
+        token = self.login()
+        did, base = self._doc(token)
+        self.request('PUT', f'/api/documentos/{did}', {'ementa': 'V1', '_baseUpdatedAt': base}, token=token)
+        st, atual = self.request('GET', f'/api/documentos/{did}', token=token)
+        st, _ = self.request('PUT', f'/api/documentos/{did}',
+                             {'ementa': 'V2', '_baseUpdatedAt': atual['atualizado_em']}, token=token)
+        self.assertEqual(st, 200, 'recarregar e salvar deveria funcionar')
+
+    def test_sem_base_continua_gravando(self):
+        # Retrocompatível: cliente que não envia a base segue funcionando.
+        token = self.login()
+        did, _ = self._doc(token)
+        st, _ = self.request('PUT', f'/api/documentos/{did}', {'ementa': 'Sem base'}, token=token)
+        self.assertEqual(st, 200)
 
 
 if __name__ == '__main__':
