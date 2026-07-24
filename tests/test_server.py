@@ -1174,8 +1174,25 @@ class TestBackupPreservaUsuario(SGDPTestCase):
         with server.get_db() as conn:
             colunas = {r[1] for r in conn.execute('PRAGMA table_info(usuarios)')}
         do_backup = set(backup['usuarios'][0])
-        self.assertEqual(colunas - do_backup, set(),
+        # smtp_pass fica de fora de propósito — ver test_backup_nao_leva_senha_de_email
+        self.assertEqual(colunas - do_backup, {'smtp_pass'},
                          'backup de usuarios não leva todas as colunas da tabela')
+
+    def test_backup_nao_leva_senha_de_email(self):
+        # O arquivo JSON sai do servidor e o manual orienta enviá-lo a outro
+        # procurador para sincronizar; a senha do e-mail pessoal é guardada em
+        # texto puro e a API nunca a devolve (só smtp_pass_set). Não pode vazar
+        # pelo backup — e não precisa: a restauração preserva a que está no banco.
+        token = self.login()
+        _, eu = self.request('GET', '/api/auth/me', token=token)
+        uid = eu['id'] if isinstance(eu, dict) and 'id' in eu else 1
+        self._preparar(token, uid)
+        _, backup = self.request('GET', '/api/backup', token=token)
+        bruto = json.dumps(backup, ensure_ascii=False)
+        self.assertNotIn(self.SMTP['smtp_pass'], bruto,
+                         'senha do e-mail pessoal vazou no arquivo de backup')
+        for u in backup['usuarios']:
+            self.assertNotIn('smtp_pass', u)
 
     def test_restaurar_backup_preserva_smtp_e_dados_do_usuario(self):
         token = self.login()

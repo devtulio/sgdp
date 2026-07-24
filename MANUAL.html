@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.40.3</title>
+<title>Manual Operacional — SGDP v1.40.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -84,7 +84,7 @@
       size: A4;
       margin: 20mm 20mm 25mm;
       @top-center {
-        content: "SGDP v1.40.3 — Manual Operacional";
+        content: "SGDP v1.40.4 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -111,7 +111,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.40.3</div>
+    <div class="cover-version">Versão 1.40.4</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -565,6 +565,7 @@
   </table>
 
   <h3 id="s6-3">6.3 Backup e restauração</h3>
+  <p><strong>O que vai em cada backup.</strong> O arquivo <strong>JSON</strong> guarda documentos, contadores, auditoria e as contas de usuário — mas <strong>não</strong> a senha do e-mail pessoal de cada procurador, que nunca sai do servidor. Restaurar não a perde: o que o arquivo não traz é preservado como já está no sistema. Como o JSON contém as contas, trate-o como arquivo sensível ao enviá-lo a outra máquina (ver 6.4). Para recuperação completa depois de perda de disco, use o <strong>backup do banco (.db)</strong>, gerado automaticamente em Configurações → Backup.</p>
   <p>
     Acesse a aba <strong>Dados</strong> em Configurações. O sistema mantém dois tipos de backup,
     lado a lado, guardados na mesma pasta (configurável pelo botão <em>Selecionar pasta</em>):
@@ -804,6 +805,10 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.40.4 — Julho/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul><li>Corrigido: a <strong>senha do e-mail pessoal saía dentro do arquivo de backup</strong> — efeito colateral da correção anterior, que passou a levar todas as colunas do cadastro. O campo foi excluído do backup; restaurar continua preservando a configuração que já está no sistema.</li></ul>
 
   <h3>v1.40.3 — Julho/2026</h3>
   <p><strong>Corrigido</strong></p>

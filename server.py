@@ -1,4 +1,4 @@
-# SGDP v1.40.3 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
+# SGDP v1.40.4 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
 import socketserver
 import socket
@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.40.3'
+SERVER_VERSION = '1.40.4'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -426,6 +426,19 @@ def get_config():
         return {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()}
 
 _USER_SMTP_COLS = ('smtp_host', 'smtp_port', 'smtp_secure', 'smtp_require_tls', 'smtp_ignore_ssl', 'smtp_user', 'smtp_pass', 'smtp_from_name')
+
+
+def _usuarios_para_backup(conn):
+    """Linhas de `usuarios` como vão para o arquivo de backup JSON.
+
+    Tudo, menos `smtp_pass`: essa é a senha viva do e-mail pessoal, guardada em
+    texto puro, e a API nunca a devolve (só `smtp_pass_set`). O arquivo JSON sai
+    do servidor — o manual inclusive orienta enviá-lo a outro procurador para
+    sincronizar —, então mandar a senha junto furaria a própria regra do sistema.
+    Restaurar não perde nada: _restaurar_usuario preserva o que o arquivo não traz.
+    """
+    return [{k: v for k, v in dict(r).items() if k != 'smtp_pass'}
+            for r in conn.execute('SELECT * FROM usuarios').fetchall()]
 
 
 def _restaurar_usuario(conn, u):
@@ -2078,11 +2091,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         import base64
         with get_db() as conn:
             docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
-            # SELECT * de propósito: a lista fixa de colunas que existia aqui foi
-            # ficando para trás a cada migração (email, cpf, cargo, matricula,
-            # must_change_password e as 8 smtp_* entraram depois, por ALTER TABLE)
-            # e o backup saía sem elas — inclusive sem a config de e-mail pessoal.
-            users = [dict(r) for r in conn.execute('SELECT * FROM usuarios').fetchall()]
+            # Todas as colunas menos smtp_pass — ver _usuarios_para_backup. A lista
+            # fixa que existia aqui ficava para trás a cada migração (email, cpf,
+            # cargo, matricula, must_change_password e as smtp_* entraram por
+            # ALTER TABLE) e o backup saía sem elas.
+            users = _usuarios_para_backup(conn)
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
             auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
             arqs  = []
@@ -2330,7 +2343,7 @@ def _do_json_backup(cfg=None):
     try:
         with get_db() as conn:
             docs  = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
-            users = [dict(r) for r in conn.execute('SELECT * FROM usuarios').fetchall()]  # SELECT *: ver _export_backup
+            users = _usuarios_para_backup(conn)
             conts = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
             settings = {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()}
             auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]

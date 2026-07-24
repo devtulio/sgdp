@@ -5,6 +5,16 @@
 
 ---
 
+## [1.40.4] — 2026-07-24
+
+### Corrigido
+- **A senha do e-mail pessoal saía dentro do arquivo de backup.** A correção da v1.40.3, ao fazer o backup levar todas as colunas do cadastro de usuários, levou junto a senha de SMTP — que é guardada em texto puro e que a interface nunca exibe nem devolve. Como o manual orienta enviar esse arquivo a outro procurador para sincronizar, a senha podia circular fora do servidor. O backup passou a excluir esse campo. **Restaurar não perde a configuração:** o que o arquivo não traz é preservado como já está no sistema.
+
+### Alterado
+- **Manual:** a seção de Backup agora explica o que vai em cada arquivo — o JSON contém as contas de usuário (trate-o como sensível), mas não a senha de e-mail; para recuperação completa depois de perda de disco, o backup do banco (.db).
+
+---
+
 ## [1.40.3] — 2026-07-24
 
 ### Corrigido
