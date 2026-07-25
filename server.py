@@ -2736,6 +2736,7 @@ def _selecionar_modo():
 
 if __name__ == '__main__':
     _selecionar_modo()
+    sgx_base.instalar_captura_de_falhas(_DATA_DIR, 'SGDP')  # crash log que sobrevive à janela fechar
     init_db()
     _check_db_integrity()
     _rotate_backups(_get_backup_cfg())
@@ -2773,3 +2774,11 @@ if __name__ == '__main__':
             srv.serve_forever()
         except KeyboardInterrupt:
             print('\n  Encerrando servidor...')
+        except Exception:
+            import traceback as _tb
+            _log.error('Servidor caiu (serve_forever): %s', _tb.format_exc())
+            print('\n  ERRO FATAL no servidor — registrado em SGDP_crash.log.')
+            print('  Pressione Enter para fechar.')
+            try: input()
+            except Exception: pass
+            raise
