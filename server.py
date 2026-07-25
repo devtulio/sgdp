@@ -1,6 +1,5 @@
 # SGDP v1.45.0 — Servidor local: SQLite, autenticação, REST API, uploads de PDF
 import http.server
-import socketserver
 import socket
 import sys
 import os
@@ -2748,41 +2747,40 @@ if __name__ == '__main__':
     threading.Thread(target=_backup_loop,  daemon=True).start()
     threading.Thread(target=_lembrete_notify_loop, daemon=True).start()
 
-    socketserver.ThreadingTCPServer.allow_reuse_address = True
-    with socketserver.ThreadingTCPServer(('', PORT), SGDPHandler) as srv:
-        print(f'  Servidor: http://localhost:{PORT}/SGDP.html')
-        import socket as _socket
-        try:
-            ip_local = _socket.gethostbyname(_socket.gethostname())
-        except Exception:
-            ip_local = 'desconhecido'
-        print(f'  Rede:     http://{ip_local}:{PORT}/SGDP.html')
-        print()
+    print(f'  Servidor: http://localhost:{PORT}/SGDP.html')
+    import socket as _socket
+    try:
+        ip_local = _socket.gethostbyname(_socket.gethostname())
+    except Exception:
+        ip_local = 'desconhecido'
+    print(f'  Rede:     http://{ip_local}:{PORT}/SGDP.html')
+    print()
 
-        browser = _find_browser()
-        if browser:
-            profile_dir = os.path.join(os.environ.get('TEMP', os.path.expanduser('~')), 'SGDP-Profile')
-            subprocess.Popen([
-                browser,
-                f'--app=http://localhost:{PORT}/SGDP.html',
-                '--start-maximized',
-                '--disable-background-mode',
-                f'--user-data-dir={profile_dir}',
-            ])
-            print('  App aberto no navegador.')
-        else:
-            print(f'  Chrome/Edge não encontrado. Abra manualmente: http://localhost:{PORT}/SGDP.html')
+    browser = _find_browser()
+    if browser:
+        profile_dir = os.path.join(os.environ.get('TEMP', os.path.expanduser('~')), 'SGDP-Profile')
+        subprocess.Popen([
+            browser,
+            f'--app=http://localhost:{PORT}/SGDP.html',
+            '--start-maximized',
+            '--disable-background-mode',
+            f'--user-data-dir={profile_dir}',
+        ])
+        print('  App aberto no navegador.')
+    else:
+        print(f'  Chrome/Edge não encontrado. Abra manualmente: http://localhost:{PORT}/SGDP.html')
 
-        print('  Aguardando conexões... (Ctrl+C para encerrar)')
-        try:
-            srv.serve_forever()
-        except KeyboardInterrupt:
-            print('\n  Encerrando servidor...')
-        except Exception:
-            import traceback as _tb
-            _log.error('Servidor caiu (serve_forever): %s', _tb.format_exc())
-            print('\n  ERRO FATAL no servidor — registrado em SGDP_crash.log.')
-            print('  Pressione Enter para fechar.')
-            try: input()
-            except Exception: pass
-            raise
+    print('  Aguardando conexões... (Ctrl+C para encerrar)')
+    try:
+        # Servidor de produção (waitress, puro-Python vendorizado) — ver sgx_base.servir_wsgi.
+        sgx_base.servir_wsgi(SGDPHandler, '', PORT)
+    except KeyboardInterrupt:
+        print('\n  Encerrando servidor...')
+    except Exception:
+        import traceback as _tb
+        _log.error('Servidor caiu (serve_wsgi): %s', _tb.format_exc())
+        print('\n  ERRO FATAL no servidor — registrado em SGDP_crash.log.')
+        print('  Pressione Enter para fechar.')
+        try: input()
+        except Exception: pass
+        raise
