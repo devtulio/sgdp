@@ -2610,7 +2610,8 @@ def _send_daily_summary():
     cfg = get_config()
     if not (cfg.get('smtp_host') and cfg.get('smtp_user') and cfg.get('smtp_pass') and cfg.get('smtp_to')):
         return
-    hoje = time.strftime('%Y-%m-%d')
+    hoje = time.strftime('%Y-%m-%d')       # chave de dedup (não exibir)
+    hoje_br = time.strftime('%d/%m/%Y')    # exibição pt-BR
     if cfg.get('alert_email_last_sent') == hoje:
         return
 
@@ -2648,10 +2649,10 @@ def _send_daily_summary():
         for titulo, dias in sorted(vencendo, key=lambda x: x[1]):
             txt = 'vence hoje' if dias == 0 else f'vence em {dias} dia(s)'
             linhas.append(f'  - {titulo} — {txt}')
-    corpo = f'Resumo automático do SGDP — {hoje}\n\n' + '\n'.join(linhas)
+    corpo = f'Resumo automático do SGDP — {hoje_br}\n\n' + '\n'.join(linhas)
 
     try:
-        _send_plain_email(cfg, cfg['smtp_to'], f'SGDP — Resumo de pendências ({hoje})', corpo)
+        _send_plain_email(cfg, cfg['smtp_to'], f'SGDP — Resumo de pendências ({hoje_br})', corpo)
         print(f'  [ALERTAS] E-mail de resumo enviado ({len(vencidos)} vencido(s), {len(vencendo)} vencendo)', flush=True)
     except Exception as e:
         sgx_base.registrar_operacional(_log, 'email-resumo', f'Falha ao enviar e-mail de resumo diário: {e}')
