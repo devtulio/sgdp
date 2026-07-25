@@ -108,7 +108,7 @@ http://192.168.x.x:3001/SGDP.html
 
 Cada procurador faz login com sua própria conta — o servidor atende acessos simultâneos e todos enxergam os mesmos dados.
 
-Se a conexão não funcionar, execute **`Diagnostico SGDP.bat`** (ou a opção **[3]** do `Iniciar SGDP.bat`) na máquina servidora: ele descobre o IP e verifica a acessibilidade pela rede.
+Se a conexão não funcionar, execute **`Diagnostico SGDP.bat`** (ou a opção **[1]** do `Iniciar SGDP.bat`) na máquina servidora: ele descobre o IP e verifica a acessibilidade pela rede.
 
 > ⚠️ **Uso restrito à rede interna.** A comunicação é HTTP simples (sem criptografia de transporte) — adequado para uma LAN interna confiável, mas **nunca exponha a porta do sistema à internet** (redirecionamento de porta no roteador, DMZ etc.). Para acesso remoto, use a VPN institucional.
 
