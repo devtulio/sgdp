@@ -373,8 +373,6 @@ tr:hover td { background: var(--gray-50); }
 .arquivo-info .arq-nome { flex: 1; font-size: 0.8125rem; font-weight: 500; color: var(--green); word-break: break-all; }
 .arquivo-info .arq-size { font-size: 0.6875rem; color: var(--green); opacity: .7; white-space: nowrap; }
 
-/* ── Auditoria ───────────────────────────────────────────────────────────── */
-.audit-table td { font-size: 0.75rem; }
 /* ── Toasts ──────────────────────────────────────────────────────────────── */
 #toast { position: fixed; bottom: 24px; right: 24px; z-index: 300;
   display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
@@ -3353,7 +3351,7 @@ async function renderAuditoria() {
       <button class="btn btn-outline btn-sm" onclick="_auditLimparFiltros()">Limpar</button>
     </div>
     <div class="table-wrap">
-      <table class="audit-table">
+      <table class="list-table">
         <thead><tr><th>Data/hora</th><th>Usuário</th><th>Ação</th><th>Detalhes</th></tr></thead>
         <tbody id="audit-body"><tr><td colspan="4" style="text-align:center;padding:32px;color:var(--gray-400)">Carregando…</td></tr></tbody>
       </table>
