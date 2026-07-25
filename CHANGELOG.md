@@ -5,7 +5,7 @@
 
 ---
 
-## [Não versionado]
+## [1.46.2] — 2026-07-25
 
 ### Alterado
 - **Padronização visual:** a tabela da **Trilha de Auditoria** passa a usar o mesmo estilo de tabela canônico das demais listas do sistema (cabeçalho, espaçamento e zebra iguais). Sem mudança de comportamento.
