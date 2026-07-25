@@ -5,6 +5,19 @@
 
 ---
 
+## [1.46.3] — 2026-07-25
+
+### Documentação
+- **Auditoria do manual, do README e do changelog.** Corrigidas informações que não correspondiam ao sistema: a **duração da sessão** (o manual e o README diziam 8 horas; na prática a sessão se mantém sozinha enquanto a aba está aberta e expira cerca de um minuto depois de fechada — é isso que dispara o backup de fim de sessão), o **backup do banco** (é um pacote .zip com banco + anexos desde a 1.44.0, não um .db), a **aba de backup** (chama-se Dados, não Backup), a localização do **brasão** (aba Organização, não Interface) e resíduos do módulo de assinatura, removido na 1.36.0.
+- **O que existia sem documentação entrou no manual e no README:** o Painel Inicial (Dashboard), a aba **Organização** (órgão, autoridade responsável e Diário Oficial), a tela **Erros recentes do sistema**, o **aviso de edição simultânea**, a configuração **Backups mantidos**, a recusa da senha de fábrica na troca e a faixa de aviso de servidor desatualizado.
+- **Correções de precisão:** o backup periódico de 24 h gera apenas o pacote do banco (o de fim de sessão gera os dois); as abas Interface e Segurança não são exclusivas de administrador; o README não descreve mais um gerador de documento que não existe (o que há é a impressão do PDF anexado); e "nenhuma dependência externa" virou "nada a instalar" (o waitress vem vendorizado no projeto).
+- **Histórico de Versões do manual** completado com sete versões que faltavam (1.36.1, 1.20.5, 1.20.3, 1.20.2, 1.20.1, 1.12.3 e 1.6.0) e corrigido o conteúdo trocado entre 1.12.3 e 1.12.4.
+
+### Corrigido
+- **CHANGELOG:** um bloco inteiro de versões (1.12.2 a 1.7.0) aparecia duplicado no arquivo, com uma das cópias truncada. A cópia foi removida.
+
+---
+
 ## [1.46.2] — 2026-07-25
 
 ### Alterado
@@ -748,94 +761,6 @@ Correções de uma auditoria de acessibilidade dedicada (leitura de código + c�
 ### Corrigido
 - **Canvas não iniciava** — `_loginCanvasStart()` era chamado antes do layout terminar; corrigido com `requestAnimationFrame()` para garantir dimensões válidas do container
 - **Canvas não voltava após logout** — `sair()` exibia a tela de login mas não reiniciava a animação; corrigido com chamada a `_loginCanvasStart()` via `requestAnimationFrame`
-
----
-
-## [1.12.2] — 2026-07-04
-
-### Corrigido
-- **Configurações não centralizada no modo Compacta** — a classe `.cfg-wrap`, introduzida na correção anterior (v1.12.1) para o modo Expandida, ficou sem `margin: 0 auto`, deixando o painel de Configurações alinhado à esquerda no modo Compacta (padrão).
-
----
-
-## [1.12.1] — 2026-07-04
-
-### Corrigido
-- **Configurações não expandia com Largura do Conteúdo = Expandida** — o painel de Configurações (e a aba Backup) tinha `max-width:700px` fixo, ignorando a opção escolhida. Corrigido usando a mesma classe/toggle das demais telas.
-
----
-
-## [1.12.0] — 2026-07-04
-
-### Adicionado
-- **Largura do conteúdo** — Configurações → Interface: Compacta (padrão) ou Expandida
-- **Cor de destaque** — Configurações → Interface: Institucional, Azul, Verde ou Roxo; altera botões, links e destaques em todo o sistema
-- Mesma lógica e paleta de cores do SGCD, para paridade visual entre os dois sistemas
-
----
-
-## [1.11.0] — 2026-07-04
-
-### Adicionado
-- **Suíte de testes automatizados** (`tests/test_server.py`) — testa login, CRUD de documentos, numeração automática, lembretes, auditoria, backup e sincronização usando `unittest` da stdlib
-- **Fallback de Python portátil** — `Iniciar SGDP.bat` extrai automaticamente uma versão embarcável do Python (`python-3.12.9-embed-amd64.zip`) quando não há Python instalado no sistema, sem exigir instalação ou privilégio de administrador
-
-### Corrigido
-- **Numeração incorreta em documentos com tipo/ano inéditos** — `_create_doc` capturava o id via `SELECT last_insert_rowid()` depois de `bump_contador()`, que na primeira vez que um tipo/ano é usado também insere na tabela de contadores, sobrescrevendo o id capturado. Encontrado pela nova suíte de testes.
-- **Vazamento de conexões SQLite** — `get_db()` nunca fechava a conexão ao sair do `with`; corrigido com subclasse de conexão que fecha automaticamente.
-
----
-
-## [1.10.1] — 2026-07-04
-
-### Corrigido
-- **Manual desatualizado** — o corpo do `MANUAL.html` não descrevia Assunto/campos específicos, Importação CSV, Sincronização de backup, Personalização (brasão/sons), configuração de e-mail, diagnóstico de rede, Relatório Gerencial, Agenda e Lixeira, embora já lançados. Seções adicionadas e sumário/histórico renumerados.
-- README: adicionada seção "Contribuição" apontando para `CONTRIBUTING.md`
-
----
-
-## [1.10.0] — 2026-07-04
-
-### Adicionado
-- **Sincronização de backup entre agentes** — mescla o backup (JSON) de outra instalação com os dados atuais; documentos casam por (tipo, número, ano), não pelo id interno; revisão de conflitos um a um antes de aplicar; backup de segurança automático
-- **Botão "Imprimir / Salvar PDF"** no Manual Operacional, igual ao SGCD
-
----
-
-## [1.9.1] — 2026-07-04
-
-### Corrigido
-- **Botão "Fechar Sistema" não fechava a janela** — `navegar()` empilhava uma entrada de histórico do navegador a cada troca de tela (`location.hash = view`); o Chrome só permite `window.close()` via script em janelas sem histórico acumulado. Trocado para `history.replaceState()`, que preserva a tela após F5 sem impedir o fechamento da janela.
-
----
-
-## [1.9.0] — 2026-07-04
-
-### Corrigido
-- **Alinhamento da sidebar** — logo, brasão e nome do órgão agora centralizados, paridade visual com o SGCD
-- **Botão "Imprimir / Salvar PDF"** no modal de visualização de PDF, igual ao padrão de documentos do SGCD
-- **Novo ícone do sistema** — `sgdp.ico` regenerado a partir de `SGDP_Icone_documento_juridico.png` (multi-resolução 16–256px) + favicon na aba do navegador
-
----
-
-## [1.8.0] — 2026-07-04
-
-### Alterado
-- **Brasão armazenado no servidor** — antes salvo em `localStorage` (por navegador), agora persistido em `sys_settings` via `GET`/`PUT /api/settings/brasao`. Num sistema multiusuário em rede, todos os procuradores passam a ver o mesmo brasão, independente do computador; mesma lógica de armazenamento usada no SGCD.
-
----
-
-## [1.7.0] — 2026-07-04
-
-### Adicionado
-- **Lixeira** — exclusão de documentos passa a ser reversível (soft-delete); itens ficam disponíveis para restauração por 30 dias antes da purga automática; nova tela "Lixeira" na sidebar com Restaurar e Excluir de vez
-- **Agenda** — lembretes com título e prazo, vinculáveis opcionalmente a um documento; badge na sidebar com contagem de pendências vencidas; marcação de concluído via checkbox
-- **Envio de documentos por e-mail** — botão ✉ na listagem de cada tipo de documento abre modal para enviar o PDF assinado anexado por e-mail; configuração de servidor SMTP (host, porta, usuário, senha, remetente) em Configurações → Segurança
-- **Importação de documentos via CSV** — botão "Importar CSV" na listagem de cada tipo; aceita colunas `numero,ano,data,ementa,partes,observacoes,assunto`; numeração automática quando `numero` não informado; relatório de linhas importadas e erros
-
-### Alterado
-- Exclusão de documento agora envia para a lixeira em vez de apagar e remover o PDF imediatamente
-- Dashboard, listas e Relatório Gerencial passam a ignorar documentos na lixeira
 
 ---
 

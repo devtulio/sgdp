@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.46.2</title>
+<title>Manual Operacional — SGDP v1.46.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -84,7 +84,7 @@
       size: A4;
       margin: 20mm 20mm 25mm;
       @top-center {
-        content: "SGDP v1.46.2 — Manual Operacional";
+        content: "SGDP v1.46.3 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -111,7 +111,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.46.2</div>
+    <div class="cover-version">Versão 1.46.3</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -150,15 +150,18 @@
     <div class="toc-item h3"><a href="#s4-6">4.6 Documentos sigilosos e departamentos</a></div>
     <div class="toc-item h3"><a href="#s4-7">4.7 Histórico de revisões</a></div>
     <div class="toc-item h3"><a href="#s4-8">4.8 Etiquetas e vínculos entre documentos</a></div>
-    <div class="toc-item h2"><a href="#s5">5. Busca e Filtros</a></div>
+    <div class="toc-item h2"><a href="#s5">5. Painel Inicial, Busca e Filtros</a></div>
+    <div class="toc-item h3"><a href="#s5-1">5.1 Painel inicial (Dashboard)</a></div>
+    <div class="toc-item h3"><a href="#s5-2">5.2 Busca e filtros nas listagens</a></div>
     <div class="toc-item h2"><a href="#s6">6. Administração</a></div>
     <div class="toc-item h3"><a href="#s6-1">6.1 Gestão de usuários</a></div>
     <div class="toc-item h3"><a href="#s6-2">6.2 Auditoria</a></div>
     <div class="toc-item h3"><a href="#s6-3">6.3 Backup e restauração</a></div>
     <div class="toc-item h3"><a href="#s6-4">6.4 Sincronização de backup entre agentes</a></div>
-    <div class="toc-item h3"><a href="#s6-5">6.5 Personalização (tema, fonte, brasão, sons)</a></div>
+    <div class="toc-item h3"><a href="#s6-5">6.5 Personalização (tema, largura, cor, fonte, sons)</a></div>
     <div class="toc-item h3"><a href="#s6-6">6.6 Configuração de e-mail (SMTP)</a></div>
-    <div class="toc-item h3"><a href="#s6-7">6.7 Diagnóstico de rede</a></div>
+    <div class="toc-item h3"><a href="#s6-7">6.7 Diagnóstico e erros do sistema</a></div>
+    <div class="toc-item h3"><a href="#s6-8">6.8 Organização (dados do órgão e brasão)</a></div>
     <div class="toc-item h2"><a href="#s7">7. Relatório Gerencial</a></div>
     <div class="toc-item h2"><a href="#s8">8. Agenda</a></div>
     <div class="toc-item h2"><a href="#s9">9. Lixeira</a></div>
@@ -219,7 +222,7 @@
     <li><strong>Python 3.8 ou superior</strong> — disponível em <code>python.org</code>; marcar "Add Python to PATH" na instalação</li>
     <li><strong>Google Chrome</strong> ou <strong>Microsoft Edge</strong> atualizado</li>
     <li>Windows 10 ou 11</li>
-    <li>Nenhuma dependência externa — apenas a biblioteca padrão do Python</li>
+    <li>Nada a instalar além do Python — o sistema usa a biblioteca padrão e traz o servidor <code>waitress</code> junto, dentro da própria pasta do projeto</li>
   </ul>
 
   <h3 id="s2-2">2.2 Primeiros passos</h3>
@@ -229,7 +232,7 @@
     <li>Um menu aparece no terminal com duas opções: <strong>[1] Diagnóstico</strong> ou <strong>[2] Iniciar Servidor</strong> — escolha <strong>2</strong> (ou apenas aguarde: o padrão é iniciar o servidor)</li>
     <li>O navegador abrirá automaticamente na tela de login</li>
     <li>Use as credenciais iniciais: usuário <code>admin</code> / senha <code>admin123</code></li>
-    <li>O sistema <strong>exige a troca de senha</strong> no primeiro acesso — não é possível continuar sem definir uma senha nova</li>
+    <li>O sistema <strong>exige a troca de senha</strong> no primeiro acesso — não é possível continuar sem definir uma senha nova. A senha de fábrica (<code>admin123</code>) <strong>não é aceita</strong> como senha nova: escolha uma diferente</li>
     <li>Cadastre os demais procuradores na tela de Usuários</li>
   </ol>
 
@@ -283,8 +286,11 @@
     </tbody>
   </table>
   <p>
-    As sessões de login têm duração de <strong>8 horas</strong>. Ao expirar, o sistema retorna
-    automaticamente à tela de login. O logout manual encerra a sessão imediatamente.
+    A sessão de login <strong>se mantém sozinha enquanto a aba do sistema estiver aberta</strong> —
+    o navegador renova a sessão automaticamente enquanto você trabalha, sem tempo máximo de uso.
+    Ao fechar a aba (ou perder a conexão com o servidor), a sessão expira sozinha
+    <strong>cerca de um minuto depois</strong>, e é esse encerramento que dispara o backup
+    automático de fim de sessão. O logout manual encerra a sessão imediatamente.
   </p>
   <p>
     Além do perfil, cada usuário pertence a um <strong>Departamento</strong> fixo —
@@ -323,6 +329,13 @@
       <tr><td>PDF Assinado</td><td>Não</td><td>Arquivo PDF do documento já assinado digitalmente</td></tr>
     </tbody>
   </table>
+
+  <div class="nota">
+    <strong>Edição simultânea:</strong> se outro procurador salvar o mesmo documento enquanto a sua
+    tela de edição estiver aberta, a sua gravação é <strong>recusada</strong> e o sistema avisa que
+    as alterações não foram gravadas, pedindo para fechar e abrir o documento de novo para ver a
+    versão atual. É proteção contra sobrescrever, sem aviso, o trabalho do colega.
+  </div>
 
   <h3 id="s4-2">4.2 Numeração automática</h3>
   <p>
@@ -496,7 +509,20 @@
 
 <!-- ── SEÇÃO 5–6 ───────────────────────────────────────────────────────────────── -->
 <div class="page">
-  <h2 id="s5">5. Busca e Filtros</h2>
+  <h2 id="s5">5. Painel Inicial, Busca e Filtros</h2>
+
+  <h3 id="s5-1">5.1 Painel inicial (Dashboard)</h3>
+  <p>
+    O <strong>Dashboard</strong> é a primeira tela após o login e o resumo do sistema. Ele traz:
+  </p>
+  <ul>
+    <li><strong>Um card por tipo de documento</strong> (Lei, Decreto, Portaria, Parecer e Ofício) com o total cadastrado, quantos são do ano corrente e o <strong>último número/ano</strong> registrado daquele tipo (ex: "Último: 012/2026"). Clicar no card abre a listagem do tipo.</li>
+    <li><strong>Documentos recentes</strong>, em tabela com tipo, número, data, ementa, a coluna <strong>Origem</strong> (departamento de quem cadastrou, ver 4.6) e a indicação de PDF anexado.</li>
+    <li><strong>Busca global (Ctrl+K)</strong> — pesquisa em todos os tipos de documento ao mesmo tempo, de qualquer tela (ver 5.2).</li>
+    <li><strong>Notificações</strong> — o ícone de sino no topo da barra lateral mostra um contador e lista os documentos que ainda estão <em>sem PDF assinado anexado</em>; clicar em um item abre o documento para edição.</li>
+  </ul>
+
+  <h3 id="s5-2">5.2 Busca e filtros nas listagens</h3>
   <p>
     Em cada tela de listagem (Leis, Decretos etc.) há uma barra de ferramentas com:
   </p>
@@ -516,15 +542,20 @@
   </p>
 
   <h2 id="s6">6. Administração</h2>
-  <p>As telas de administração são visíveis apenas para usuários com perfil <strong>Administrador</strong>.</p>
+  <p>
+    As telas de administração são visíveis apenas para usuários com perfil <strong>Administrador</strong> —
+    com duas exceções, disponíveis a <em>todos</em> os usuários dentro de Configurações: a aba
+    <strong>Interface</strong> (preferências visuais, ver 6.5) e, na aba <strong>Segurança</strong>,
+    a configuração <strong>Meu E-mail (SMTP)</strong> e a troca da própria senha (ver 6.6).
+  </p>
 
   <h3 id="s6-1">6.1 Gestão de usuários</h3>
-  <p>Acesse <strong>Usuários</strong> na barra lateral para:</p>
+  <p>Acesse <strong>Configurações → aba Usuários</strong> para:</p>
   <ul>
     <li><strong>Criar usuário:</strong> clique em <em>+ Novo Usuário</em>; informe nome completo, nome de login (sem espaços), senha (mínimo 6 caracteres), <strong>departamento</strong> (Procuradoria-Geral ou Gabinete — ver 4.6) e se é administrador. CPF, e-mail, cargo e matrícula são opcionais.</li>
     <li><strong>Editar:</strong> altere qualquer campo, inclusive senha, departamento e perfil. O nome de login não pode ser alterado após a criação.</li>
     <li><strong>Desativar:</strong> desmarque "Conta ativa" para bloquear o acesso sem excluir o histórico do usuário.</li>
-    <li><strong>Excluir:</strong> remove o cadastro permanentemente. Não é possível excluir seu próprio usuário, nem um usuário que já criou, editou ou assinou algum documento (ou tem qualquer outra ação registrada na auditoria) — nesses casos, use <strong>Desativar</strong> para preservar o histórico.</li>
+    <li><strong>Excluir:</strong> remove o cadastro permanentemente. Não é possível excluir seu próprio usuário, nem um usuário que já criou ou editou algum documento (ou tem qualquer outra ação registrada na auditoria) — nesses casos, use <strong>Desativar</strong> para preservar o histórico.</li>
   </ul>
 
   <div class="aviso">
@@ -559,13 +590,13 @@
       <tr><td>Excluir / Restaurar / Excluir lembrete (perm.)</td><td>Mesmo ciclo de Lixeira dos documentos, aplicado a lembretes (ver Seção 9)</td></tr>
       <tr><td>Alterar config. / brasão / SMTP</td><td>Mudança nas Configurações do sistema (Organização, brasão do município ou servidor de e-mail)</td></tr>
       <tr><td>Sincronizar / Restaurar backup</td><td>Sincronização com outra instalação ou restauração de um backup <code>.json</code> (ver 6.3 e 6.4)</td></tr>
-      <tr><td>Restaurar banco</td><td>Restauração a partir de um backup <code>.db</code> bruto (apenas administradores)</td></tr>
+      <tr><td>Restaurar banco</td><td>Restauração a partir de um pacote de banco + anexos <code>.zip</code> (ou de um <code>.db</code> legado) — apenas administradores</td></tr>
       <tr><td>Factory Reset</td><td>Apagamento total de documentos, arquivos e histórico (apenas administradores) — os usuários cadastrados <em>não</em> são apagados</td></tr>
     </tbody>
   </table>
 
   <h3 id="s6-3">6.3 Backup e restauração</h3>
-  <p><strong>O que vai em cada backup.</strong> O arquivo <strong>JSON</strong> guarda documentos, contadores, auditoria e as contas de usuário — mas <strong>não</strong> a senha do e-mail pessoal de cada procurador, que nunca sai do servidor. Restaurar não a perde: o que o arquivo não traz é preservado como já está no sistema. Como o JSON contém as contas, trate-o como arquivo sensível ao enviá-lo a outra máquina (ver 6.4). Para recuperação completa depois de perda de disco, use o <strong>backup do banco (.db)</strong>, gerado automaticamente em Configurações → Backup.</p>
+  <p><strong>O que vai em cada backup.</strong> O arquivo <strong>JSON</strong> guarda documentos, contadores, auditoria e as contas de usuário — mas <strong>não</strong> a senha do e-mail pessoal de cada procurador, que nunca sai do servidor. Restaurar não a perde: o que o arquivo não traz é preservado como já está no sistema. Como o JSON contém as contas, trate-o como arquivo sensível ao enviá-lo a outra máquina (ver 6.4). Para recuperação completa depois de perda de disco, use o <strong>backup do banco (pacote .zip, com banco e anexos)</strong>, gerado automaticamente em Configurações → Dados.</p>
   <p>
     Acesse a aba <strong>Dados</strong> em Configurações. O sistema mantém dois tipos de backup,
     lado a lado, guardados na mesma pasta (configurável pelo botão <em>Selecionar pasta</em>):
@@ -574,14 +605,22 @@
     <thead><tr><th>Tipo</th><th>Arquivo</th><th>Conteúdo</th></tr></thead>
     <tbody>
       <tr><td><strong>Sistema (JSON)</strong></td><td><code>SIS_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS.json</code></td><td>Documentos, usuários, contadores e PDFs (codificados em base64) — legível, usado também para <a href="#s6-4">sincronizar entre instalações</a> (6.4)</td></tr>
-      <tr><td><strong>Banco de dados (.db)</strong></td><td><code>DB_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS.db</code></td><td>Cópia binária completa do banco SQLite — restauração mais direta, mas só entre instalações do mesmo sistema</td></tr>
+      <tr><td><strong>Banco + anexos (.zip)</strong></td><td><code>DB_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS.zip</code></td><td>Pacote com a cópia binária completa do banco SQLite <em>e</em> a pasta de anexos — restaurá-lo repõe também os PDFs. Restauração mais direta, mas só entre instalações do mesmo sistema</td></tr>
     </tbody>
   </table>
   <p>
-    Os dois são gerados <strong>automaticamente</strong> (ao final de cada sessão de uso e periodicamente
-    em segundo plano) e também podem ser gerados <strong>manualmente</strong> a qualquer momento, pelos
+    Os dois são gerados <strong>automaticamente</strong> ao final de cada sessão de uso; o backup
+    periódico em segundo plano (a cada 24 horas) gera <strong>apenas o pacote do banco</strong>.
+    Ambos também podem ser gerados <strong>manualmente</strong> a qualquer momento, pelos
     botões <em>Exportar backup</em> de cada card. Para restaurar, use o botão <em>Restaurar backup</em>
-    correspondente e selecione o arquivo (<code>.json</code> ou <code>.db</code>).
+    correspondente e selecione o arquivo (<code>.json</code> para o backup do sistema;
+    <code>.zip</code> — ou um <code>.db</code> antigo, que continua sendo aceito, mas sem os anexos —
+    para o backup do banco).
+  </p>
+  <p>
+    A configuração <strong>Backups mantidos</strong>, no mesmo painel, define quantos arquivos
+    mais recentes são preservados de cada tipo (padrão: 7); ao atingir o limite, os mais antigos
+    são apagados automaticamente.
   </p>
   <p>
     O botão <strong>📊 Relatório de Backup e Integridade</strong> (apenas administradores) mostra um
@@ -621,16 +660,15 @@
     de forma independente.
   </div>
 
-  <h3 id="s6-5">6.5 Personalização (tema, fonte, cor, brasão, sons)</h3>
-  <p>Na aba <strong>Interface</strong> de Configurações:</p>
+  <h3 id="s6-5">6.5 Personalização (tema, largura, cor, fonte, sons)</h3>
+  <p>Na aba <strong>Interface</strong> de Configurações — disponível a todos os usuários:</p>
   <ul>
     <li><strong>Tema de aparência:</strong> claro ou escuro, aplicado imediatamente</li>
     <li><strong>Largura do conteúdo:</strong> compacta (margens laterais confortáveis) ou expandida (aproveita toda a tela útil)</li>
     <li><strong>Cor de destaque:</strong> institucional (padrão), azul, verde ou roxo — muda a cor de botões, links e destaques em todo o sistema</li>
     <li><strong>Tamanho da fonte:</strong> afeta todo o sistema; útil para monitores menores ou acessibilidade</li>
-    <li><strong>Brasão do município:</strong> upload de imagem exibida no topo da barra lateral para todos os procuradores (armazenado no servidor, não apenas no navegador de quem enviou)</li>
   </ul>
-  <p>Essas preferências são individuais — cada procurador escolhe as suas, e ficam salvas no navegador de cada um (exceto o brasão, que é do sistema).</p>
+  <p>Essas preferências são individuais — cada procurador escolhe as suas, e ficam salvas no navegador de cada um. O <strong>brasão do município</strong> não fica aqui: por ser uma configuração do sistema (igual para todos), está na aba <strong>Organização</strong>, visível só para administradores (ver 6.8).</p>
   <p>
     O sistema também toca <strong>sons de notificação</strong> distintos para clique, sucesso, erro
     e alertas — não é configurável, mas pode ser silenciado no volume geral do sistema operacional.
@@ -648,7 +686,7 @@
     Sem nenhuma configuração (nem do usuário, nem do sistema), o botão <strong>✉ Enviar por e-mail</strong> (ver 4.3) exibe uma mensagem de erro orientando a configurá-lo.
   </p>
 
-  <h3 id="s6-7">6.7 Diagnóstico de rede</h3>
+  <h3 id="s6-7">6.7 Diagnóstico e erros do sistema</h3>
   <p>
     A aba <strong>Diagnóstico</strong> em Configurações verifica a integridade dos dados (contagem de
     documentos, arquivos órfãos no disco ou no banco, consistência dos contadores de numeração,
@@ -656,6 +694,32 @@
     3001, regras de firewall), execute <code>Diagnostico SGDP.bat</code> diretamente, ou escolha a
     opção <strong>[1] Diagnóstico</strong> no menu que aparece ao abrir o <code>Iniciar SGDP.bat</code> —
     útil quando outro computador não consegue acessar o sistema pela rede.
+  </p>
+  <p>
+    Na mesma aba, abaixo do diagnóstico, o bloco <strong>Erros recentes do sistema</strong>
+    (apenas administradores) lista os erros registrados pelo sistema, <strong>agrupados por tipo e
+    contagem</strong> — incluindo os que aconteceram no navegador dos usuários e foram reportados
+    ao servidor. O registro é feito em um log rotativo, que não estoura o disco. Travamentos graves,
+    quando ocorrem, ficam gravados à parte em um arquivo <code>*_crash.log</code> na pasta do sistema.
+    Use o botão <strong>↻ Atualizar</strong> para carregar a lista.
+  </p>
+
+  <h3 id="s6-8">6.8 Organização (dados do órgão e brasão)</h3>
+  <p>
+    A aba <strong>Organização</strong> de Configurações (visível apenas para administradores) guarda
+    os dados institucionais que saem no cabeçalho dos documentos e relatórios em papel timbrado:
+  </p>
+  <ul>
+    <li><strong>Nome do órgão</strong> — ex: "Procuradoria-Geral"</li>
+    <li><strong>Município / UF</strong> — ex: "Orindiúva/SP"</li>
+    <li><strong>Autoridade responsável</strong> — nome e cargo (ex: "Procurador-Geral"), usados no cabeçalho do Relatório Gerencial impresso ou exportado</li>
+    <li><strong>Diário Oficial (link)</strong> — endereço do Diário Oficial do município</li>
+    <li><strong>Brasão do Município</strong> — upload da imagem exibida no topo da barra lateral e nos documentos timbrados. Fica armazenada no servidor, e não no navegador de quem enviou, então todos os procuradores veem o mesmo brasão, de qualquer computador</li>
+  </ul>
+  <p>
+    As alterações são gravadas pelo botão <strong>Salvar</strong> no cabeçalho da tela de
+    Configurações; o envio e a remoção do brasão são aplicados na hora. Toda mudança fica registrada
+    na Auditoria (ver 6.2).
   </p>
 </div>
 
@@ -685,12 +749,12 @@
   <ul>
     <li><strong>Pendências e Prazos</strong> — lembretes vencidos/a vencer e documentos sem PDF anexado</li>
     <li><strong>Produtividade por Usuário</strong> — ações (criar/editar/upload) por procurador no período</li>
-    <li><strong>Certidão de Documento</strong> (ícone 📜 na listagem) — ficha completa: campos, etiquetas, vínculos, histórico de revisões e status de assinatura</li>
+    <li><strong>Certidão de Documento</strong> (ícone 📜 na listagem) — ficha completa: campos, etiquetas, vínculos e histórico de revisões</li>
     <li><strong>Certidão Negativa de Pendências</strong> — atesta, a partir da Certidão, a ausência de lembretes pendentes e de PDF faltante para aquele documento (ou lista o que falta, se houver)</li>
     <li><strong>Certidões em lote</strong> — gera as Certidões de todos os documentos do filtro/tipo atual num único PDF</li>
     <li><strong>Cadeia Normativa</strong> (no modal de Vínculos de um documento) — árvore de revogações, alterações, complementos e referências entre documentos</li>
     <li><strong>Relatório de Etiquetas</strong> — documentos agrupados por etiqueta, mais os que não têm nenhuma</li>
-    <li><strong>Backup e Integridade</strong> (apenas administradores, em Configurações → Backup) — estado dos backups, tamanhos e contagens do sistema</li>
+    <li><strong>Backup e Integridade</strong> (apenas administradores, em Configurações → Dados) — estado dos backups, tamanhos e contagens do sistema</li>
   </ul>
 </div>
 
@@ -795,6 +859,15 @@
     salvos em disco (<code>sgdp.db</code>), não na memória do processo.
   </p>
 
+  <h3>Apareceu uma faixa avisando que o servidor está desatualizado</h3>
+  <p>
+    É o aviso de <strong>servidor desatualizado</strong>: o arquivo do sistema foi atualizado, mas o
+    servidor que está rodando na memória ainda é o antigo — funções novas podem não responder até
+    ele ser reiniciado. Feche a janela do terminal do servidor (ou Ctrl+C) e abra novamente o
+    <code>Iniciar SGDP.bat</code>; depois recarregue a página no navegador. Nenhum dado se perde.
+    A faixa também pode ser dispensada, mas o aviso volta enquanto o servidor não for reiniciado.
+  </p>
+
   <h3>Como faço para acessar o sistema fora da rede municipal?</h3>
   <p>
     O SGDP é projetado para uso em rede local (intranet). Para acesso externo, seria necessário
@@ -812,7 +885,11 @@
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
 
-  <h3>v1.46.2 — Julho/2026</h3>
+  <h3>v1.46.3 — Julho/2026</h3>
+<p><strong>Documentação</strong></p>
+<ul><li>Auditoria do manual e do README: duração da sessão, backup em pacote .zip, aba Dados e localização do brasão corrigidos; Painel Inicial, aba Organização, tela de erros recentes, aviso de edição simultânea e rotação de backups passaram a ser documentados.</li></ul>
+
+<h3>v1.46.2 — Julho/2026</h3>
 <p><strong>Alterado</strong></p>
 <ul><li>A tabela da <strong>Trilha de Auditoria</strong> passa a usar o estilo de tabela canônico das demais listas do sistema.</li></ul>
 
@@ -936,6 +1013,12 @@
   <p><strong>Adicionado</strong></p>
   <ul>
     <li><strong>Auditoria registra a geração de documentos</strong> — ao gerar qualquer documento/certidão oficial, a ação "Gerar documento" passa a ser registrada na Auditoria, com o nome do documento nos detalhes. Antes, a geração de documentos não deixava rastro na trilha de auditoria.</li>
+  </ul>
+
+  <h3>v1.36.1 — 18/07/2026</h3>
+  <p><strong>Alterado</strong></p>
+  <ul>
+    <li><strong>Helper de exportação consolidado no código compartilhado</strong> — a lógica do diálogo "Salvar como" deixa de ser duplicada aqui e passa a vir da base comum aos 4 sistemas. Sem mudança de comportamento.</li>
   </ul>
 
   <h3>v1.36.0 — 18/07/2026</h3>
@@ -1175,11 +1258,42 @@
     <li><strong>Troca de senha obrigatória no primeiro acesso</strong> — o admin padrão (criado com <code>admin</code>/<code>admin123</code>) é obrigado a definir uma nova senha antes de acessar o sistema, em vez de depender só do aviso impresso no terminal. Instalações já em uso não são afetadas</li>
   </ul>
 
+  <h3>v1.20.5 — 09/07/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Clicar fora de um modal fechava a janela e descartava os dados digitados</strong> — valia para todos os modais abertos pela função compartilhada (Documento, Usuário, Lembrete, E-mail, Histórico, Vínculos, CSV, Confirmação) e para a Busca Global. Agora só fecham pelo botão Cancelar/✕ ou pela tecla Esc</li>
+  </ul>
+
   <h3>v1.20.4 — 09/07/2026</h3>
   <p><strong>Corrigido</strong></p>
   <ul>
     <li><strong>Título de página desalinhado do conteúdo em modo Compacto</strong> — o cabeçalho de cada tela (título + ações) não respeitava a mesma largura/centralização do conteúdo abaixo, ficando visualmente desconectado em telas largas — mais perceptível em Configurações. Corrigido para os dois seguirem sempre a mesma largura</li>
     <li><strong>Configuração de "Tamanho da fonte" sem efeito</strong> — a preferência (Pequena/Normal/Grande, em Configurações → Interface) não alterava nada visível na tela por uma falha na folha de estilo. Corrigida para funcionar como no SGCD</li>
+  </ul>
+
+  <h3>v1.20.3 — 09/07/2026</h3>
+  <p><strong>Alterado</strong></p>
+  <ul>
+    <li><strong>Senha padrão do usuário admin</strong> — instalações novas passam a ser criadas com <code>admin</code> / <code>admin123</code>, igual ao SGCD/SGCA (era <code>sgdp2024</code>). Instalações já existentes não são alteradas</li>
+  </ul>
+
+  <h3>v1.20.2 — 09/07/2026</h3>
+  <p><strong>Alterado</strong></p>
+  <ul>
+    <li><strong>Tela de Configurações unificada com SGCD/SGCA</strong> — a lista de usuários passa de cards para tabela (Usuário, Nome, Cargo/Matrícula, Admin, Ativo, Ações), e o título "Configurações" ganha os botões "← Voltar" e "Salvar" no mesmo cabeçalho</li>
+    <li><strong>Botão Salvar único</strong> — Interface, Organização, Comunicação (SMTP) e o backup automático deixam de ter botões próprios por seção e passam a ser salvos juntos, com indicação visual de alterações não salvas. Selecionar pasta de backup, exportar/restaurar/sincronizar backup, Factory Reset e troca de senha continuam sendo ações imediatas</li>
+  </ul>
+
+  <h3>v1.20.1 — 09/07/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Backup/restauração perdia os registros de assinatura</strong> — a tabela correspondente não era exportada nem reimportada</li>
+    <li><strong>Factory Reset deixava registros órfãos</strong> — assinaturas e lembretes não eram apagados junto com os documentos</li>
+    <li><strong>Nome de arquivo não sanitizado no download</strong> — o nome original ia direto para o cabeçalho HTTP, permitindo injeção a partir de um nome de arquivo malicioso</li>
+  </ul>
+  <p><strong>Alterado</strong></p>
+  <ul>
+    <li><strong>Avisos (toasts) e telas de carregamento unificados</strong> com o padrão visual do SGCD/SGCA</li>
   </ul>
 
   <h3>v1.20.0 — 09/07/2026</h3>
@@ -1326,6 +1440,13 @@
   </ul>
 
   <h3>v1.12.4 — 06/07/2026</h3>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li><strong>Servidor não iniciava em console sem UTF-8</strong> — as mensagens com caracteres de caixa e emojis quebravam em consoles Windows configurados em cp1252/cp850; a saída do terminal passou a ser forçada em UTF-8, como já era no SGCD/SGCA</li>
+    <li><strong>Escolha do modo travava fora do terminal</strong> — ao ser executado por script/automação (sem teclado disponível), o servidor ficava esperando a seleção do menu; agora assume automaticamente a opção [2] Iniciar Servidor</li>
+  </ul>
+
+  <h3>v1.12.3 — 06/07/2026</h3>
   <p><strong>Adicionado</strong></p>
   <ul>
     <li><strong>Aviso ao fechar com formulário aberto</strong> — o navegador alerta antes de fechar/recarregar a página com o formulário de documento aberto, evitando perda de dados digitados</li>
@@ -1414,6 +1535,18 @@
   <ul>
     <li>Exclusão de documento não é mais imediata — o item vai para a lixeira e o PDF só é removido do disco na exclusão definitiva</li>
     <li>Dashboard, listas e Relatório Gerencial ignoram documentos que estão na lixeira</li>
+  </ul>
+
+  <h3>v1.6.0 — 29/06/2026</h3>
+  <p><strong>Adicionado</strong></p>
+  <ul>
+    <li><strong>Fundo animado na tela de login</strong> — partículas conectadas por linhas que reagem ao movimento do cursor/toque, idêntico ao SGCD</li>
+    <li><strong>Painel de ajuste do efeito</strong> — botão ⚙️ discreto no canto inferior direito da tela de login permite regular quantidade de nós, distância de conexão e velocidade; a preferência fica salva no navegador</li>
+    <li><strong>Card institucional na tela de login</strong> — nome do órgão e município passam a aparecer antes do login, inclusive em acessos pela rede a partir de um navegador novo</li>
+  </ul>
+  <p><strong>Corrigido</strong></p>
+  <ul>
+    <li>O fundo animado não iniciava na primeira carga da página, nem voltava depois do logout</li>
   </ul>
 
   <h3>v1.5.0 — 29/06/2026</h3>

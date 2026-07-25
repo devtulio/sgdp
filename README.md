@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.46.2-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/versão-v1.46.3-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
 
 ## Descrição
 
@@ -24,13 +24,13 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Sons de notificação** — feedback sonoro para cliques, sucesso e erro via Web Audio API
 - **Brasão do município** na sidebar, configurável e persistido no servidor (visível para todos os procuradores)
 - **Upload e visualização de PDF** assinado diretamente no navegador
-- **Login multiusuário** com sessões de 8 horas — até N procuradores simultâneos
+- **Login multiusuário** — a sessão se renova sozinha enquanto a aba está aberta e expira cerca de um minuto depois de fechada; até N procuradores simultâneos
 - **Busca e filtros** por número, ementa, partes envolvidas e ano
 - **Trilha de auditoria** completa de todas as ações (criar, editar, excluir, upload)
 - **Gestão de usuários** com perfil administrador e perfil padrão, cada um com departamento fixo (Procuradoria-Geral ou Gabinete)
 - **Documentos sigilosos** — marcação opcional (só pra Parecer, Portaria e Ofício — Lei e Decreto nunca podem ser sigilosos) que restringe a visibilidade e a edição a quem criou e a administradores; documentos não-sigilosos podem ser editados por qualquer colega do mesmo departamento de quem criou. Coluna "Origem" no Dashboard e nas listagens mostra o departamento de cada documento
 - **Exportação com diálogo "Salvar Como"** — todo botão de exportar/baixar (PDF, CSVs de relatório e auditoria, backups) abre o explorador nativo do Windows na máquina servidora; cai no download tradicional pra Downloads ao acessar por outro computador na rede
-- **Backup e restauração** — exporta JSON com todos os documentos e PDFs; backup automático do banco de dados
+- **Backup e restauração** — exporta JSON com todos os documentos e PDFs; backup automático do banco em **pacote `.zip` (banco + pasta de anexos)**, cuja restauração repõe também os PDFs (backups `.db` antigos continuam sendo aceitos, sem os anexos)
 - **Sincronização de backup entre agentes** — mescla dados de outra instalação (soma o que é novo, revisa o que conflita) sem substituir o banco inteiro
 - **Navegação persistente** — F5 mantém o usuário na tela atual via `location.hash`
 - **Encerramento do sistema** com tela de confirmação e desligamento do servidor
@@ -51,15 +51,17 @@ Funciona em rede local: um único computador executa o servidor e todos os procu
 - **Sincronização de auditoria entre instâncias** — a sincronização de backup também mescla o histórico de auditoria, preservando autor e data originais
 - **Relatórios em papel timbrado** — Pendências e Prazos, Produtividade por Usuário, Certidão de Documento, Certidão Negativa de Pendências, Certidões em lote, Cadeia Normativa, Relatório de Etiquetas e Backup e Integridade (admin), no mesmo padrão documental do SGCD (brasão, Times New Roman, bloco de assinatura manuscrita)
 - **Comparativo entre períodos** no Relatório Gerencial — variação (▲/▼, diferença e percentual) contra o intervalo de mesma duração imediatamente anterior
+- **Aviso de edição simultânea** — se outro procurador salvar o mesmo documento enquanto sua tela está aberta, a gravação é recusada com aviso para reabrir o documento, em vez de sobrescrever o trabalho do colega
+- **Erros recentes** — tela no Diagnóstico (administrador) com os erros registrados em log rotativo, agrupados por tipo e contagem, incluindo os ocorridos no navegador dos usuários; travamentos graves ficam em `*_crash.log`
 
 ---
 
 ## Requisitos
 
-- **Python 3.8+** (apenas biblioteca padrão — sem dependências externas)
+- **Python 3.8+**
 - **Google Chrome** ou **Microsoft Edge** (recomendado)
 - Windows 10/11
-- Nenhuma dependência externa — o SGDP roda 100% com a biblioteca padrão do Python
+- **Nada a instalar além do Python** — o SGDP usa a biblioteca padrão e o servidor **waitress**, que já vem vendorizado na pasta `waitress/` do próprio repositório (não é stdlib, mas não exige `pip install` nem acesso à internet)
 
 > **Servidor sem Python instalado (ex.: Windows Server bloqueado por política de TI):**
 > o `Iniciar SGDP.bat` detecta automaticamente a ausência do Python e extrai uma versão portátil (embarcável, sem instalador) incluída no próprio projeto (`python-3.12.9-embed-amd64.zip`) para `C:\Python312-embed\` — não exige instalação nem privilégio de administrador.
@@ -120,6 +122,12 @@ Se a conexão não funcionar, execute **`Diagnostico SGDP.bat`** (ou a opção *
 SGDP/
 ├── SGDP.html               # Frontend — aplicação web completa
 ├── server.py               # Servidor Python (API REST + SQLite + uploads)
+├── sgx_base.py             # Camada compartilhada da família (sessões, backup, log de erros)
+├── base.css                # Estilos compartilhados da família (cópia distribuída)
+├── base.js                 # Helpers de front compartilhados da família (cópia distribuída)
+├── _esqueleto.sha256       # Manifesto de conferência das cópias compartilhadas (checado no CI)
+├── waitress/               # Servidor WSGI vendorizado (não precisa instalar nada)
+├── scripts/                # Scripts de apoio ao desenvolvimento (lint, verificação do esqueleto)
 ├── tests/                  # Suíte de testes automatizados do backend
 │   ├── test_server.py
 │   └── e2e/                # Testes E2E (Playwright) — navegador real de ponta a ponta
@@ -135,7 +143,7 @@ SGDP/
 ├── sgdp.db                 # Banco de dados SQLite (criado automaticamente)
 ├── uploads/                # PDFs armazenados (criado automaticamente)
 ├── backups/                # Backups automáticos (criado automaticamente)
-├── requirements.txt        # Sem dependências externas (stdlib do Python)
+├── requirements.txt        # Nada a instalar via pip (stdlib + waitress vendorizado)
 ├── README.md
 ├── CHANGELOG.md
 └── MANUAL.html
@@ -147,7 +155,7 @@ SGDP/
 
 | Documento | Descrição |
 |-----------|-----------|
-| **Documento (Lei / Decreto / Portaria / Parecer / Ofício)** | Peça formatada para impressão ou PDF a partir do registro |
+| **PDF assinado do documento** | Impressão ou download do PDF anexado ao registro (o sistema não gera o corpo do documento) |
 | **Certidão de Documento** | Certidão de existência e teor de um documento |
 | **Certidão Negativa de Pendências** | Declaração de inexistência de pendências |
 | **Certidões em Lote** | Emissão de certidões de vários documentos de uma vez |
@@ -164,7 +172,7 @@ Todos os documentos abrem em janela separada com botão "🖨 Imprimir / Salvar 
 ## Segurança
 
 - Senhas armazenadas com **PBKDF2-HMAC-SHA256** e salt aleatório por usuário
-- Sessões invalidadas automaticamente após 8 horas de inatividade
+- Sessões de curta duração, renovadas automaticamente enquanto a aba do sistema está aberta e invalidadas cerca de um minuto após ela ser fechada
 - Acesso à API exige token de sessão em todas as rotas (exceto login e verificação)
 - Upload restrito a PDF, com limite de 50 MB
 - Trilha de auditoria imutável registra todas as ações com usuário e timestamp
@@ -180,13 +188,14 @@ Todos os documentos abrem em janela separada com botão "🖨 Imprimir / Salvar 
 | **HTML5 + CSS3** | Interface da aplicação, temas claro/escuro, layout responsivo |
 | **JavaScript puro (ES6+)** | Toda a lógica de negócio, sem frameworks externos |
 | **Python 3 (stdlib)** | Servidor local: REST API, SQLite, auth, SMTP |
+| **waitress** | Servidor WSGI que atende as requisições — vendorizado em `waitress/`, sem instalação |
 | **SQLite** | Armazenamento persistente dos dados (`sgdp.db`), com índice FTS5 para busca full-text |
 
 ---
 
 ## Desenvolvimento
 
-O sistema em si continua zero-dependência (Python stdlib + HTML puro). Para quem for alterar o código, há um lint opcional que verifica variáveis indefinidas no JavaScript de `SGDP.html`:
+O sistema em si continua sem nada a instalar: Python stdlib + HTML puro, mais o `waitress` já incluído no repositório. Para quem for alterar o código, há um lint opcional que verifica variáveis indefinidas no JavaScript de `SGDP.html`:
 
 ```bash
 npm install   # uma vez, instala apenas o ESLint (ferramenta de dev, não é usada em produção)
