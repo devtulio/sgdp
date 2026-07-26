@@ -5,6 +5,13 @@
 
 ---
 
+## [1.46.4] — 2026-07-25
+
+### Documentação
+- **README:** a frase de abertura ainda descrevia a arquitetura como "servidor Python stdlib". Desde a 1.46.0 o servidor sobe pelo **waitress**, vendorizado na pasta `waitress/` — nada precisa ser instalado, mas não é biblioteca padrão. Correção em paridade com os sistemas irmãos.
+
+---
+
 ## [1.46.3] — 2026-07-25
 
 ### Documentação
