@@ -666,7 +666,7 @@ tr:hover td { background: var(--gray-50); }
       <div class="dash-top">
         <h2 id="doc-titulo">Leis</h2>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-outline" onclick="abrirModalCsv(S.view)">⇪ Importar CSV</button>
+          <button class="btn btn-outline admin-only" onclick="abrirModalCsv(S.view)">⇪ Importar CSV</button>
           <button class="btn btn-primary" onclick="abrirNovoDoc(S.view)">+ <span id="doc-btn-novo-label">Nova Lei</span></button>
         </div>
       </div>
@@ -1198,7 +1198,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.47.1';
+const SGDP_VERSION = '1.47.2';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 

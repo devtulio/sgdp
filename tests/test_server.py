@@ -1696,6 +1696,33 @@ class TestMotorErros(SGDPTestCase):
         self.assertEqual(self.request('GET', '/api/diagnostico/erros', token=comum)[0], 403)
 
 
+class TestImportacaoSoAdmin(SGDPTestCase):
+    """Importação em lote cria vários documentos e consome a numeração automática
+    de cada tipo — restrita ao administrador (a Procuradora-Geral). Cadastrar um
+    documento continua liberado para qualquer procurador."""
+
+    def test_procurador_comum_nao_importa(self):
+        admin = self.login()
+        self.criar_usuario('u_import_comum', departamento='Gabinete', admin_token=admin)
+        comum = self.request('POST', '/api/auth/login',
+                             {'username': 'u_import_comum', 'password': 'senha123'})[1]['token']
+        linhas = {'rows': [{'tipo': 'portaria', 'data': '2026-05-01', 'ementa': 'Portaria importada'}]}
+        st, d = self.request('POST', '/api/import/csv', linhas, token=comum)
+        self.assertEqual(st, 403, d)
+        # mas continua podendo cadastrar um a um
+        st, _ = self.request('POST', '/api/documentos', {
+            'tipo': 'portaria', 'data': '2026-05-01', 'ementa': 'Portaria manual',
+            'assunto': 'Administrativo Geral'}, token=comum)
+        self.assertEqual(st, 201)
+
+    def test_admin_importa(self):
+        admin = self.login()
+        linhas = {'rows': [{'tipo': 'portaria', 'data': '2026-05-02', 'ementa': 'Portaria do admin'}]}
+        st, d = self.request('POST', '/api/import/csv', linhas, token=admin)
+        self.assertEqual(st, 200, d)
+        self.assertEqual(d['importados'], 1)
+
+
 class TestVinculosRespeitamLixeira(SGDPTestCase):
     """Documento na Lixeira continuava aparecendo como vínculo e na cadeia
     normativa dos que ficaram: a exclusão sumia da listagem, mas não daqui."""

@@ -5,6 +5,13 @@
 
 ---
 
+## [1.47.2] — 2026-07-27
+
+### Alterado
+- **A importação de documentos por CSV passou a ser restrita ao administrador** (no caso da Procuradoria, à Procuradora-Geral). É a operação que cria vários documentos de uma vez e consome a numeração automática de cada tipo — um arquivo errado avança contadores que não voltam atrás. **Cadastrar documento a documento continua liberado para todos os procuradores**, e quem não é administrador deixa de ver o botão.
+
+---
+
 ## [1.47.1] — 2026-07-27
 
 ### Corrigido
