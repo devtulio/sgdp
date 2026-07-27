@@ -1696,6 +1696,52 @@ class TestMotorErros(SGDPTestCase):
         self.assertEqual(self.request('GET', '/api/diagnostico/erros', token=comum)[0], 403)
 
 
+class TestVinculosRespeitamLixeira(SGDPTestCase):
+    """Documento na Lixeira continuava aparecendo como vínculo e na cadeia
+    normativa dos que ficaram: a exclusão sumia da listagem, mas não daqui."""
+
+    def _doc(self, token, ementa, tipo='decreto'):
+        st, d = self.request('POST', '/api/documentos', {
+            'tipo': tipo, 'data': '2026-04-01', 'ementa': ementa, 'assunto': 'Administrativo Geral'}, token=token)
+        self.assertEqual(st, 201, d)
+        return d['id']
+
+    def test_documento_excluido_some_dos_vinculos_e_da_cadeia(self):
+        token = self.login()
+        base = self._doc(token, 'Decreto base')
+        alterador = self._doc(token, 'Decreto que altera o base')
+        st, v = self.request('POST', f'/api/documentos/{alterador}/vinculos',
+                             {'destino_id': base, 'tipo': 'altera'}, token=token)
+        self.assertEqual(st, 200, v)
+
+        # com os dois vivos: o vínculo aparece dos dois lados
+        st, d = self.request('GET', f'/api/documentos/{base}/vinculos', token=token)
+        self.assertEqual([x['doc_id'] for x in d['items']], [alterador])
+        st, c = self.request('GET', f'/api/documentos/{base}/cadeia', token=token)
+        self.assertIn(f'"id": {alterador}', json.dumps(c))
+
+        # manda o alterador para a Lixeira
+        self.assertEqual(self.request('DELETE', f'/api/documentos/{alterador}', token=token)[0], 200)
+
+        st, d = self.request('GET', f'/api/documentos/{base}/vinculos', token=token)
+        self.assertEqual(d['items'], [], 'documento na lixeira não pode aparecer como vínculo')
+        st, c = self.request('GET', f'/api/documentos/{base}/cadeia', token=token)
+        self.assertNotIn(f'"id": {alterador}', json.dumps(c),
+                         'documento na lixeira não pode aparecer na cadeia normativa')
+
+    def test_restaurar_traz_o_vinculo_de_volta(self):
+        token = self.login()
+        base = self._doc(token, 'Decreto base 2')
+        outro = self._doc(token, 'Decreto que complementa')
+        self.request('POST', f'/api/documentos/{outro}/vinculos',
+                     {'destino_id': base, 'tipo': 'complementa'}, token=token)
+        self.request('DELETE', f'/api/documentos/{outro}', token=token)
+        self.assertEqual(self.request('GET', f'/api/documentos/{base}/vinculos', token=token)[1]['items'], [])
+        self.assertEqual(self.request('POST', f'/api/lixeira/{outro}/restaurar', token=token)[0], 200)
+        st, d = self.request('GET', f'/api/documentos/{base}/vinculos', token=token)
+        self.assertEqual([x['doc_id'] for x in d['items']], [outro])
+
+
 class TestAcoesEmMassa(SGDPTestCase):
     """Exclusão e restauração em massa de documentos. As permissões são as mesmas
     do botão individual, aplicadas item a item: pode_editar_doc para excluir

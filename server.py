@@ -29,7 +29,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.47.0'
+SERVER_VERSION = '1.47.1'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -1337,14 +1337,17 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             doc = conn.execute('SELECT sigiloso, criado_por FROM documentos WHERE id=?', (did,)).fetchone()
             if not doc or not pode_ver_doc(doc, s):
                 self._json(404, {'error': 'Documento não encontrado'}); return
+            # d.excluido_em IS NULL: documento na Lixeira continuava aparecendo como
+            # vínculo (e na cadeia normativa) de quem ficou — a exclusão sumia da
+            # listagem mas não daqui.
             diretos = conn.execute(
                 f'''SELECT v.id, v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
                     FROM documento_vinculos v JOIN documentos d ON v.destino_id=d.id
-                    WHERE v.origem_id=? {vis}''', [did, *pv]).fetchall()
+                    WHERE v.origem_id=? AND d.excluido_em IS NULL {vis}''', [did, *pv]).fetchall()
             inversos = conn.execute(
                 f'''SELECT v.id, v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
                     FROM documento_vinculos v JOIN documentos d ON v.origem_id=d.id
-                    WHERE v.destino_id=? {vis}''', [did, *pv]).fetchall()
+                    WHERE v.destino_id=? AND d.excluido_em IS NULL {vis}''', [did, *pv]).fetchall()
         items = [
             {**dict(r), 'label': TIPOS_VINCULO[r['tipo']][0], 'direcao': 'direto'} for r in diretos
         ] + [
@@ -1380,11 +1383,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 diretos = conn.execute(
                     f'''SELECT v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
                         FROM documento_vinculos v JOIN documentos d ON v.destino_id=d.id
-                        WHERE v.origem_id=? {vis}''', [atual_id, *pv]).fetchall()
+                        WHERE v.origem_id=? AND d.excluido_em IS NULL {vis}''', [atual_id, *pv]).fetchall()
                 inversos = conn.execute(
                     f'''SELECT v.tipo, d.id doc_id, d.tipo doc_tipo, d.numero doc_numero, d.ano doc_ano, d.ementa doc_ementa
                         FROM documento_vinculos v JOIN documentos d ON v.origem_id=d.id
-                        WHERE v.destino_id=? {vis}''', [atual_id, *pv]).fetchall()
+                        WHERE v.destino_id=? AND d.excluido_em IS NULL {vis}''', [atual_id, *pv]).fetchall()
                 for r in diretos:
                     chave = (atual_id, r['doc_id'], r['tipo'])
                     docs_info[r['doc_id']] = {'id': r['doc_id'], 'tipo': r['doc_tipo'], 'numero': r['doc_numero'],

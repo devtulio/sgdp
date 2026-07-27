@@ -5,6 +5,14 @@
 
 ---
 
+## [1.47.1] — 2026-07-27
+
+### Corrigido
+- **Documento excluído continuava aparecendo nos vínculos e na cadeia normativa dos outros.** Ao enviar um documento para a Lixeira, ele sumia da listagem — mas seguia listado como "revoga", "altera" ou "complementa" na tela de vínculos e na cadeia normativa dos documentos que permaneceram, como se ainda estivesse em vigor. Restaurar o documento traz o vínculo de volta.
+- **Listas dentro das janelas de confirmação voltam a quebrar linha** (antes saíam num parágrafo só) — correção no componente compartilhado pelos quatro sistemas.
+
+---
+
 ## [1.47.0] — 2026-07-27
 
 ### Adicionado
