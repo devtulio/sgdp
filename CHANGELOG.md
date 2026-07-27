@@ -5,6 +5,19 @@
 
 ---
 
+## [1.47.0] — 2026-07-27
+
+### Adicionado
+- **Ações em massa na listagem de documentos.** A primeira coluna passa a ter uma caixa de seleção por linha, com "selecionar todos" no cabeçalho. Com documentos marcados, aparece uma barra com **Excluir** (envia todos para a Lixeira, reversível por 30 dias), **Certidões** (gera a certidão dos selecionados num único documento) e **Exportar CSV** dos selecionados — a tela de documentos não tinha exportação até agora.
+- **Restaurar em massa na Lixeira.** Marque vários documentos e devolva todos de uma vez; o que não puder ser restaurado é listado com o motivo. Excluir de vez continua item a item, por ser a única ação sem volta.
+- **As certidões em lote passam a respeitar a seleção.** Sem nada marcado, o botão continua usando o filtro atual (com o limite de 100); com documentos selecionados, gera exatamente os escolhidos, sem limite.
+
+### Alterado
+- **Documentos que o usuário não pode excluir aparecem com a caixa de seleção esmaecida**, com o motivo ao passar o mouse ("documento de outro departamento" ou "sigiloso de outro procurador"). A listagem sempre mostrou os documentos não sigilosos dos outros departamentos, mas a exclusão é restrita ao próprio departamento — agora isso fica visível antes da tentativa, em vez de virar erro depois.
+- A seleção vale sempre **para a página exibida** (a listagem é paginada de 50 em 50) e o contador diz isso explicitamente.
+
+---
+
 ## [1.46.4] — 2026-07-25
 
 ### Documentação

@@ -1696,5 +1696,88 @@ class TestMotorErros(SGDPTestCase):
         self.assertEqual(self.request('GET', '/api/diagnostico/erros', token=comum)[0], 403)
 
 
+class TestAcoesEmMassa(SGDPTestCase):
+    """Exclusão e restauração em massa de documentos. As permissões são as mesmas
+    do botão individual, aplicadas item a item: pode_editar_doc para excluir
+    (admin, ou mesmo departamento, ou criador se sigiloso) e pode_gerir_lixeira
+    para restaurar (mais restrito: só criador ou admin)."""
+
+    def _doc(self, token, ementa, tipo='portaria', sigiloso=False):
+        st, d = self.request('POST', '/api/documentos', {
+            'tipo': tipo, 'data': '2026-02-01', 'ementa': ementa,
+            'assunto': 'Administrativo Geral', 'sigiloso': sigiloso}, token=token)
+        self.assertEqual(st, 201, d)
+        return d['id']
+
+    def test_exclui_em_massa_e_bloqueia_o_que_nao_pode(self):
+        admin = self.login()
+        self.criar_usuario('u_massa_gab', departamento='Gabinete', admin_token=admin)
+        gab = self.request('POST', '/api/auth/login', {'username': 'u_massa_gab', 'password': 'senha123'})[1]['token']
+
+        meu       = self._doc(gab, 'Portaria do Gabinete')
+        de_outro  = self._doc(admin, 'Portaria da Procuradoria')     # admin é de outro departamento
+        sigiloso  = self._doc(admin, 'Portaria sigilosa', sigiloso=True)
+
+        st, d = self.request('POST', '/api/documentos/bulk-delete',
+                             {'ids': [meu, de_outro, sigiloso]}, token=gab)
+        self.assertEqual(st, 200, d)
+        self.assertEqual(d['excluidos'], [meu])
+        motivos = {b['id']: b['motivo'] for b in d['bloqueados']}
+        self.assertEqual(set(motivos), {de_outro, sigiloso})
+        self.assertIn('departamento', motivos[de_outro].lower())
+        self.assertIn('sigiloso', motivos[sigiloso].lower())
+
+        # o que foi excluído saiu da lista e está na lixeira
+        st, lista = self.request('GET', '/api/documentos?tipo=portaria', token=gab)
+        self.assertNotIn(meu, [x['id'] for x in lista['items']])
+
+    def test_admin_exclui_tudo_e_restaura_em_massa(self):
+        admin = self.login()
+        ids = [self._doc(admin, f'Portaria massa {i}') for i in range(3)]
+        st, d = self.request('POST', '/api/documentos/bulk-delete', {'ids': ids}, token=admin)
+        self.assertEqual(st, 200, d)
+        self.assertEqual(sorted(d['excluidos']), sorted(ids))
+        self.assertEqual(d['bloqueados'], [])
+
+        st, d = self.request('POST', '/api/lixeira/bulk-restaurar', {'ids': ids}, token=admin)
+        self.assertEqual(st, 200, d)
+        self.assertEqual(sorted(d['restaurados']), sorted(ids))
+        st, lista = self.request('GET', '/api/documentos?tipo=portaria', token=admin)
+        vivos = [x['id'] for x in lista['items']]
+        self.assertTrue(all(i in vivos for i in ids))
+
+    def test_restaurar_respeita_permissao_mais_restrita(self):
+        """Quem é do mesmo departamento pode EXCLUIR, mas não pode RESTAURAR."""
+        admin = self.login()
+        self.criar_usuario('u_massa_a', departamento='Gabinete', admin_token=admin)
+        self.criar_usuario('u_massa_b', departamento='Gabinete', admin_token=admin)
+        ta = self.request('POST', '/api/auth/login', {'username': 'u_massa_a', 'password': 'senha123'})[1]['token']
+        tb = self.request('POST', '/api/auth/login', {'username': 'u_massa_b', 'password': 'senha123'})[1]['token']
+
+        do_a = self._doc(ta, 'Portaria do colega A')
+        st, d = self.request('POST', '/api/documentos/bulk-delete', {'ids': [do_a]}, token=tb)
+        self.assertEqual(d['excluidos'], [do_a])          # mesmo departamento: pode excluir
+        st, d = self.request('POST', '/api/lixeira/bulk-restaurar', {'ids': [do_a]}, token=tb)
+        self.assertEqual(d['restaurados'], [])            # mas não pode restaurar
+        self.assertEqual(len(d['bloqueados']), 1)
+
+    def test_ids_invalidos_nao_derrubam_a_rota(self):
+        admin = self.login()
+        st, d = self.request('POST', '/api/documentos/bulk-delete',
+                             {'ids': ['abc', None, 999999, 999999]}, token=admin)
+        self.assertEqual(st, 200, d)
+        self.assertEqual(d['excluidos'], [])
+        self.assertEqual(len(d['bloqueados']), 1)         # 999999 uma vez só, texto/None descartados
+
+    def test_exclusao_em_massa_fica_na_auditoria(self):
+        admin = self.login()
+        did = self._doc(admin, 'Portaria auditada em massa')
+        self.request('POST', '/api/documentos/bulk-delete', {'ids': [did]}, token=admin)
+        st, aud = self.request('GET', '/api/auditoria?per=50', token=admin)
+        self.assertEqual(st, 200, aud)
+        self.assertTrue(any(e['acao'] == 'excluir' and e.get('documento_id') == did for e in aud['items']),
+                        'a exclusão em massa deve deixar rastro por documento')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -237,6 +237,16 @@ body.dark #overlay-pin input {
   padding: 14px 16px; border-bottom: 1px solid var(--gray-200);
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
+/* Barra de ações em massa — mesmo visual dos sistemas irmãos */
+.bulk-bar {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 10px 16px; border-bottom: 1px solid var(--gray-200); background: var(--gray-50);
+}
+.bulk-count { font-weight: 600; margin-right: 4px; }
+.col-check { width: 1%; text-align: center; white-space: nowrap; }
+.col-check input { cursor: pointer; }
+.col-check input[disabled] { cursor: not-allowed; opacity: .45; }
+body.dark .bulk-bar { background: #2a2a2a; border-color: #383838; }
 .select-sm { border: 1px solid var(--gray-300); border-radius: var(--radius);
   padding: 7px 10px; outline: none; background: #fff; }
 .select-sm:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-light); }
@@ -666,8 +676,15 @@ tr:hover td { background: var(--gray-50); }
             style="width:100%;padding-right:28px" oninput="S.filtros.q=this.value;toggleSearchClear(this)" onkeydown="if(event.key==='Enter')renderDocumentosLista(1)"><button onclick="clearSearch('doc-search', ()=>{S.filtros.q='';renderDocumentosLista(1)})" id="doc-search-clear" title="Limpar busca" style="display:none;position:absolute;right:7px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:.85rem;padding:0;line-height:1">✕</button></div>
           <select class="select-sm" id="doc-ano" aria-label="Filtrar por ano" onchange="S.filtros.ano=this.value;renderDocumentosLista(1)"></select>
           <button class="btn btn-outline btn-sm" onclick="renderDocumentosLista(1)">Filtrar</button>
-          <button class="btn btn-outline btn-sm" onclick="gerarCertidoesEmLote()" title="Gera a certidão de todos os documentos que batem com o filtro atual">📜 Certidões em lote</button>
+          <button class="btn btn-outline btn-sm" onclick="gerarCertidoesEmLote()" title="Gera a certidão dos documentos selecionados — ou de todos que batem com o filtro atual, se nada estiver selecionado">📜 Certidões em lote</button>
           <span id="doc-tag-pill"></span>
+        </div>
+        <div id="doc-bulk-bar" class="bulk-bar" style="display:none" role="region" aria-label="Ações em massa">
+          <span id="doc-bulk-count" class="bulk-count"></span>
+          <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="_docBulkExcluir()">✕ Excluir</button>
+          <button class="btn btn-outline btn-sm" onclick="gerarCertidoesEmLote()">📜 Certidões</button>
+          <button class="btn btn-outline btn-sm" onclick="_docBulkCsv()">⬇ Exportar CSV</button>
+          <button class="btn btn-outline btn-sm" onclick="_docSel=new Set();renderDocumentosLista(S.pag.page)">Limpar seleção</button>
         </div>
         <div id="documentos-conteudo"><div class="loading">Carregando…</div></div>
       </div>
@@ -1181,7 +1198,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.46.4';
+const SGDP_VERSION = '1.47.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1935,17 +1952,25 @@ ${corpo}
 // documento com quebra de página entre cada uma.
 const CERTIDAO_LOTE_LIMITE = 100;
 async function gerarCertidoesEmLote() {
-  const qs = new URLSearchParams({ tipo: S.pag.tipo, page: 1, per: CERTIDAO_LOTE_LIMITE });
-  if (S.filtros.q)   qs.set('q',   S.filtros.q);
-  if (S.filtros.ano) qs.set('ano', S.filtros.ano);
-  if (S.filtros.tag) qs.set('tag', S.filtros.tag);
-  const r = await API.get('/api/documentos?' + qs);
-  const d = await API.json(r);
-  if (!d || !d.items.length) { toast('Nenhum documento encontrado com o filtro atual.', 'info'); return; }
-  if (d.total > CERTIDAO_LOTE_LIMITE) {
-    const ok = await confirmar(`O filtro atual encontrou ${d.total} documentos — apenas os primeiros ${CERTIDAO_LOTE_LIMITE} serão incluídos. Continuar?`, 'Gerar mesmo assim');
-    if (!ok) return;
+  // Com documentos selecionados, a certidão é a deles — sem o teto de 100, que só
+  // existe para o caminho por filtro (onde o usuário não viu o que vai entrar).
+  let d;
+  if (_docSel && _docSel.size) {
+    d = { items: _docSelecionados(), total: _docSel.size };
+  } else {
+    const qs = new URLSearchParams({ tipo: S.pag.tipo, page: 1, per: CERTIDAO_LOTE_LIMITE });
+    if (S.filtros.q)   qs.set('q',   S.filtros.q);
+    if (S.filtros.ano) qs.set('ano', S.filtros.ano);
+    if (S.filtros.tag) qs.set('tag', S.filtros.tag);
+    const r = await API.get('/api/documentos?' + qs);
+    d = await API.json(r);
+    if (!d || !d.items.length) { toast('Nenhum documento encontrado com o filtro atual.', 'info'); return; }
+    if (d.total > CERTIDAO_LOTE_LIMITE) {
+      const ok = await confirmar(`O filtro atual encontrou ${d.total} documentos — apenas os primeiros ${CERTIDAO_LOTE_LIMITE} serão incluídos. Continuar?`, 'Gerar mesmo assim');
+      if (!ok) return;
+    }
   }
+  if (!d.items.length) { toast('Nenhum documento selecionado.', 'info'); return; }
 
   const rCfg = await API.get('/api/config');
   const cfg = (await API.json(rCfg)) || {};
@@ -2412,10 +2437,21 @@ async function renderDocumentosLista(page = 1) {
   if (!d) return;
   S.pag.total = d.total;
 
+  // A seleção vale só para a página que está na tela: trocar de página ou de
+  // filtro recarrega esta função, então zerar aqui evita agir sobre o que o
+  // usuário não está mais vendo.
+  _docSel = new Set();
+  _docsPagina = d.items;
+
   const rows = d.items.length ? d.items.map(doc => {
     const podeEditar = S.user.admin || (doc.sigiloso ? doc.criado_por === S.user.id : doc.criado_por_departamento === S.user.departamento);
+    const motivoSem = doc.sigiloso ? 'Documento sigiloso de outro procurador'
+                                   : `Documento do departamento ${doc.criado_por_departamento || '(sem departamento)'}`;
     return `
     <tr>
+      <td class="col-check"><input type="checkbox" class="doc-row-check" data-id="${doc.id}"
+        ${podeEditar ? '' : 'disabled'} title="${podeEditar ? 'Selecionar documento' : esc(motivoSem)}"
+        onchange="_docSelToggle(${doc.id}, this.checked)" aria-label="${podeEditar ? 'Selecionar documento' : esc(motivoSem)}"></td>
       <td class="tipo-${doc.tipo}"><span class="num-doc">${doc.sigiloso ? '🔒 ' : ''}${fmtNum(doc.numero, doc.ano, doc.tipo, doc.oficio_interno ? DEPARTAMENTO_SIGLA[doc.criado_por_departamento] : '')}</span></td>
       <td>${fmtData(doc.data)}</td>
       <td class="td-ementa">
@@ -2443,7 +2479,7 @@ async function renderDocumentosLista(page = 1) {
       </td>
     </tr>
   `;
-  }).join('') : `<tr class="empty-row"><td colspan="7">Nenhum documento encontrado.</td></tr>`;
+  }).join('') : `<tr class="empty-row"><td colspan="8">Nenhum documento encontrado.</td></tr>`;
 
   const totalPages = Math.ceil(d.total / S.pag.per);
   const paginacao = totalPages > 1 ? `
@@ -2462,11 +2498,83 @@ async function renderDocumentosLista(page = 1) {
 
   document.getElementById('documentos-conteudo').innerHTML = `
     <table>
-      <thead><tr><th>Número</th><th>Data</th><th>Ementa</th><th>Partes</th><th>Origem</th><th>PDF</th><th>Ações</th></tr></thead>
+      <thead><tr>
+        <th class="col-check"><input type="checkbox" id="doc-check-all" onchange="_docSelAll(this.checked)"
+          title="Selecionar os documentos desta página" aria-label="Selecionar os documentos desta página"></th>
+        <th>Número</th><th>Data</th><th>Ementa</th><th>Partes</th><th>Origem</th><th>PDF</th><th>Ações</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table>
     ${paginacao}
   `;
+  _docUpdateBulk();
+}
+
+// ── Ações em massa dos documentos ─────────────────────────────────────────────
+// A lista é paginada no servidor (50 por página), então a seleção é sempre da
+// página visível — o rótulo do contador diz isso, para ninguém achar que está
+// agindo sobre o filtro inteiro. Linhas que o usuário não pode excluir vêm com a
+// caixa desabilitada: a lista mostra documentos de outros departamentos (o filtro
+// da listagem só esconde sigilosos), mas a exclusão exige o mesmo departamento.
+let _docSel = new Set();
+let _docsPagina = [];
+function _docSelToggle(id, on) { if (on) _docSel.add(id); else _docSel.delete(id); _docUpdateBulk(); }
+function _docSelAll(on) {
+  document.querySelectorAll('#documentos-conteudo .doc-row-check:not([disabled])').forEach(cb => {
+    cb.checked = on;
+    if (on) _docSel.add(Number(cb.dataset.id)); else _docSel.delete(Number(cb.dataset.id));
+  });
+  _docUpdateBulk();
+}
+function _docUpdateBulk() {
+  const bar = document.getElementById('doc-bulk-bar');
+  if (!bar) return;
+  const n = _docSel.size;
+  bar.style.display = n ? 'flex' : 'none';
+  document.getElementById('doc-bulk-count').textContent = `${n} selecionado${n === 1 ? '' : 's'} (desta página)`;
+  const all = document.getElementById('doc-check-all');
+  if (all) {
+    const marcaveis = document.querySelectorAll('#documentos-conteudo .doc-row-check:not([disabled])').length;
+    all.checked = n > 0 && n === marcaveis;
+    all.indeterminate = n > 0 && n < marcaveis;
+  }
+}
+const _docSelecionados = () => _docsPagina.filter(d => _docSel.has(d.id));
+
+async function _docBulkExcluir() {
+  const ids = [..._docSel];
+  if (!ids.length) return;
+  const ok = await confirmar(
+    `Enviar ${ids.length} documento(s) para a Lixeira? Podem ser restaurados por 30 dias.`, 'Excluir');
+  if (!ok) return;
+  const r = await API.post('/api/documentos/bulk-delete', { ids });
+  const d = await API.json(r);
+  if (!r || !r.ok) { toast(d?.error || 'Falha ao excluir em massa.', 'error'); return; }
+  const nExc = (d.excluidos || []).length, bloq = d.bloqueados || [];
+  toast(`${nExc} documento(s) enviado(s) à Lixeira.`, nExc ? 'success' : 'info');
+  const anteriores = _docsPagina;   // o render abaixo troca _docsPagina pela página nova
+  await renderDocumentosLista(S.pag.page);
+  if (bloq.length) {
+    // confirmar() escreve por innerHTML — quebra de linha aqui é <br>, não \n
+    const nome = id => { const x = anteriores.find(y => y.id === id); return x ? fmtNum(x.numero, x.ano, x.tipo) : id; };
+    await confirmar(`${nExc} excluído(s). ${bloq.length} não pôde(ram) ser excluído(s):<br><br>` +
+      bloq.map(b => `• ${esc(nome(b.id))}: ${esc(b.motivo)}`).join('<br>'), 'Entendi');
+  }
+}
+
+async function _docBulkCsv() {
+  const sel = _docSelecionados();
+  if (!sel.length) return;
+  const cab = ['Tipo', 'Número', 'Ano', 'Data', 'Ementa', 'Partes', 'Origem', 'Assunto'];
+  const esq = v => { const t = String(v ?? ''); return /[";\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+  const linhas = [cab.join(';'), ...sel.map(d => [
+    d.tipo, d.numero, d.ano, d.data, d.ementa, d.partes || '', d.criado_por_departamento || '', d.assunto || ''
+  ].map(esq).join(';'))];
+  // BOM + CRLF: é como o Excel em português abre sem quebrar acento
+  const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  await salvarArquivo(blob, `documentos_${new Date().toISOString().slice(0, 10)}.csv`,
+    [{ description: 'CSV', accept: { 'text/csv': ['.csv'] } }]);
+  toast(`${sel.length} documento(s) exportado(s).`, 'success');
 }
 
 function filtrarPorTag(tag) {
@@ -2689,8 +2797,12 @@ async function renderLixeira() {
   const r = await API.get('/api/lixeira');
   const d = await API.json(r);
   if (!d) return;
+  _lixSel = new Set();
+  _lixPagina = d.items;
   const rows = d.items.length ? d.items.map(doc => `
     <tr>
+      <td class="col-check"><input type="checkbox" class="lix-row-check" data-id="${doc.id}"
+        onchange="_lixSelToggle(${doc.id}, this.checked)" aria-label="Selecionar documento da lixeira"></td>
       <td class="tipo-${doc.tipo}"><span class="num-doc">${fmtNum(doc.numero, doc.ano, doc.tipo)}</span></td>
       <td>${fmtData(doc.data)}</td>
       <td class="td-ementa"><span title="${esc(doc.ementa)}">${esc(doc.ementa)}</span></td>
@@ -2702,7 +2814,7 @@ async function renderLixeira() {
         </div>
       </td>
     </tr>
-  `).join('') : `<tr class="empty-row"><td colspan="5">A lixeira está vazia.</td></tr>`;
+  `).join('') : `<tr class="empty-row"><td colspan="6">A lixeira está vazia.</td></tr>`;
   const lembretes = d.lembretes || [];
   const rowsLembretes = lembretes.length ? lembretes.map(l => `
     <tr>
@@ -2721,8 +2833,17 @@ async function renderLixeira() {
   document.getElementById('lixeira-conteudo').innerHTML = `
     <h3 style="margin:0 0 8px">Documentos</h3>
     <div class="table-wrap">
+      <div id="lix-bulk-bar" class="bulk-bar" style="display:none" role="region" aria-label="Ações em massa">
+        <span id="lix-bulk-count" class="bulk-count"></span>
+        <button class="btn btn-outline btn-sm" onclick="_lixBulkRestaurar()">↺ Restaurar selecionados</button>
+        <button class="btn btn-outline btn-sm" onclick="_lixSel=new Set();renderLixeira()">Limpar seleção</button>
+      </div>
       <table>
-        <thead><tr><th>Número</th><th>Data</th><th>Ementa</th><th>Excluído em</th><th>Ações</th></tr></thead>
+        <thead><tr>
+          <th class="col-check"><input type="checkbox" id="lix-check-all" onchange="_lixSelAll(this.checked)"
+            title="Selecionar todos" aria-label="Selecionar todos os documentos da lixeira"></th>
+          <th>Número</th><th>Data</th><th>Ementa</th><th>Excluído em</th><th>Ações</th>
+        </tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -2734,6 +2855,51 @@ async function renderLixeira() {
       </table>
     </div>
   `;
+  _lixUpdateBulk();
+}
+
+// ── Restauração em massa na Lixeira ───────────────────────────────────────────
+// Restaurar é mais restrito que excluir: só o criador (ou admin). O servidor
+// aplica isso por documento e devolve o que barrou, com o motivo.
+let _lixSel = new Set();
+let _lixPagina = [];
+function _lixSelToggle(id, on) { if (on) _lixSel.add(id); else _lixSel.delete(id); _lixUpdateBulk(); }
+function _lixSelAll(on) {
+  document.querySelectorAll('#lixeira-conteudo .lix-row-check').forEach(cb => {
+    cb.checked = on;
+    if (on) _lixSel.add(Number(cb.dataset.id)); else _lixSel.delete(Number(cb.dataset.id));
+  });
+  _lixUpdateBulk();
+}
+function _lixUpdateBulk() {
+  const bar = document.getElementById('lix-bulk-bar');
+  if (!bar) return;
+  const n = _lixSel.size;
+  bar.style.display = n ? 'flex' : 'none';
+  document.getElementById('lix-bulk-count').textContent = `${n} selecionado${n === 1 ? '' : 's'}`;
+  const all = document.getElementById('lix-check-all');
+  if (all) {
+    const total = document.querySelectorAll('#lixeira-conteudo .lix-row-check').length;
+    all.checked = n > 0 && n === total;
+    all.indeterminate = n > 0 && n < total;
+  }
+}
+
+async function _lixBulkRestaurar() {
+  const ids = [..._lixSel];
+  if (!ids.length) return;
+  const r = await API.post('/api/lixeira/bulk-restaurar', { ids });
+  const d = await API.json(r);
+  if (!r || !r.ok) { toast(d?.error || 'Falha ao restaurar em massa.', 'error'); return; }
+  const nOk = (d.restaurados || []).length, bloq = d.bloqueados || [];
+  toast(`${nOk} documento(s) restaurado(s).`, nOk ? 'success' : 'info');
+  const antes = _lixPagina;
+  await renderLixeira();
+  if (bloq.length) {
+    const nome = id => { const x = antes.find(y => y.id === id); return x ? fmtNum(x.numero, x.ano, x.tipo) : id; };
+    await confirmar(`${nOk} restaurado(s). ${bloq.length} não pôde(ram) ser restaurado(s):<br><br>` +
+      bloq.map(b => `• ${esc(nome(b.id))}: ${esc(b.motivo)}`).join('<br>'), 'Entendi');
+  }
 }
 
 async function restaurarLembrete(id) {

@@ -29,7 +29,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.46.4'
+SERVER_VERSION = '1.47.0'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -964,6 +964,12 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._json(200, {'ok': True})
             threading.Thread(target=_check_shutdown, daemon=True).start()
 
+        elif p == '/api/documentos/bulk-delete':
+            self._bulk_delete_docs(self._ids_do_corpo(), s)
+
+        elif p == '/api/lixeira/bulk-restaurar':
+            self._bulk_restaurar_docs(self._ids_do_corpo(), s)
+
         elif p == '/api/documentos':
             self._create_doc(self._body(), s)
 
@@ -1442,6 +1448,68 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                          (time.strftime('%Y-%m-%dT%H:%M:%S'), did))
             conn.commit()
         self._json(200, {'ok': True})
+
+    def _ids_do_corpo(self):
+        """Lista de ids do corpo JSON, já saneada — só inteiros, sem repetidos."""
+        body = self._body()
+        data = json.loads(body) if body else {}
+        brutos = data.get('ids') if isinstance(data.get('ids'), list) else []
+        vistos, ids = set(), []
+        for x in brutos:
+            try:
+                i = int(x)
+            except (TypeError, ValueError):
+                continue
+            if i not in vistos:
+                vistos.add(i); ids.append(i)
+        return ids
+
+    def _bulk_delete_docs(self, ids, s):
+        """Exclusão em massa (para a Lixeira). Mesma regra e mesma auditoria do
+        botão individual, aplicada documento a documento — quem não passa em
+        pode_editar_doc volta em 'bloqueados' com o motivo, em vez de derrubar o
+        lote inteiro. A trilha continua tendo uma linha por documento, que é o
+        que permite auditar depois quem apagou o quê."""
+        excluidos, bloqueados = [], []
+        with get_db() as conn:
+            for did in ids:
+                row = conn.execute(
+                    '''SELECT d.*, u.departamento criado_por_departamento
+                       FROM documentos d LEFT JOIN usuarios u ON d.criado_por=u.id
+                       WHERE d.id=?''', (did,)).fetchone()
+                if not row:
+                    bloqueados.append({'id': did, 'motivo': 'Documento não encontrado.'}); continue
+                if row['excluido_em']:
+                    bloqueados.append({'id': did, 'motivo': 'Já está na Lixeira.'}); continue
+                if not pode_editar_doc(row, s):
+                    motivo = ('Documento sigiloso de outro procurador.' if row['sigiloso']
+                              else f"Documento do departamento {row['criado_por_departamento'] or '(sem departamento)'}.")
+                    bloqueados.append({'id': did, 'motivo': motivo}); continue
+                audit(conn, s['user_id'], s['nome'], 'excluir', did,
+                      f"{row['tipo']} nº {row['numero']}/{row['ano']} (enviado à lixeira, em massa)")
+                conn.execute("UPDATE documentos SET excluido_em=? WHERE id=?",
+                             (time.strftime('%Y-%m-%dT%H:%M:%S'), did))
+                excluidos.append(did)
+            conn.commit()
+        self._json(200, {'excluidos': excluidos, 'bloqueados': bloqueados})
+
+    def _bulk_restaurar_docs(self, ids, s):
+        """Restauração em massa. pode_gerir_lixeira é mais restrito que a exclusão
+        (só criador ou admin), de propósito — respeitado item a item."""
+        restaurados, bloqueados = [], []
+        with get_db() as conn:
+            for did in ids:
+                row = conn.execute('SELECT * FROM documentos WHERE id=?', (did,)).fetchone()
+                if not row or not row['excluido_em']:
+                    bloqueados.append({'id': did, 'motivo': 'Não está na Lixeira.'}); continue
+                if not pode_gerir_lixeira(row, s):
+                    bloqueados.append({'id': did, 'motivo': 'Só quem criou o documento (ou o administrador) pode restaurá-lo.'}); continue
+                conn.execute('UPDATE documentos SET excluido_em=NULL WHERE id=?', (did,))
+                audit(conn, s['user_id'], s['nome'], 'restaurar', did,
+                      f"{row['tipo']} nº {row['numero']}/{row['ano']} (em massa)")
+                restaurados.append(did)
+            conn.commit()
+        self._json(200, {'restaurados': restaurados, 'bloqueados': bloqueados})
 
     def _list_lixeira(self, qs, s):
         # purga automática após 30 dias na lixeira

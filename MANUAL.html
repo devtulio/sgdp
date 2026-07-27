@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.46.4</title>
+<title>Manual Operacional — SGDP v1.47.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -84,7 +84,7 @@
       size: A4;
       margin: 20mm 20mm 25mm;
       @top-center {
-        content: "SGDP v1.46.4 — Manual Operacional";
+        content: "SGDP v1.47.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -111,7 +111,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.46.4</div>
+    <div class="cover-version">Versão 1.47.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -153,6 +153,7 @@
     <div class="toc-item h2"><a href="#s5">5. Painel Inicial, Busca e Filtros</a></div>
     <div class="toc-item h3"><a href="#s5-1">5.1 Painel inicial (Dashboard)</a></div>
     <div class="toc-item h3"><a href="#s5-2">5.2 Busca e filtros nas listagens</a></div>
+    <div class="toc-item h3"><a href="#s5-3">5.3 Ações em massa</a></div>
     <div class="toc-item h2"><a href="#s6">6. Administração</a></div>
     <div class="toc-item h3"><a href="#s6-1">6.1 Gestão de usuários</a></div>
     <div class="toc-item h3"><a href="#s6-2">6.2 Auditoria</a></div>
@@ -530,7 +531,35 @@
     <li><strong>Campo de busca:</strong> pesquisa por número, ementa e partes envolvidas. A busca em ementa/partes é <strong>por palavra</strong> (não apenas por trecho exato) — encontra o documento mesmo que as palavras buscadas não estejam juntas ou na mesma ordem do texto. Pressione Enter ou clique em <em>Filtrar</em> para aplicar.</li>
     <li><strong>Filtro por ano</strong> e <strong>filtro por etiqueta</strong> (ao clicar numa etiqueta de um documento): exibem apenas os documentos correspondentes.</li>
     <li><strong>Paginação:</strong> 50 documentos por página; navegue pelas setas ou números.</li>
+    <li><strong>Seleção em massa:</strong> a primeira coluna traz uma caixa por linha e um "selecionar todos" no cabeçalho.</li>
   </ul>
+
+  <h3 id="s5-3">5.3 Ações em massa</h3>
+  <p>
+    Marcando documentos na listagem aparece uma barra com as ações que valem para todos
+    os selecionados de uma vez:
+  </p>
+  <ul>
+    <li><strong>✕ Excluir:</strong> envia todos para a Lixeira (reversível por 30 dias, ver Seção 9)</li>
+    <li><strong>📜 Certidões:</strong> gera a certidão dos selecionados num único documento, um por página</li>
+    <li><strong>⬇ Exportar CSV:</strong> baixa uma planilha com os dados dos selecionados (tipo, número, ano, data, ementa, partes, origem e assunto)</li>
+  </ul>
+  <div class="nota">
+    <strong>A seleção é sempre da página que está na tela</strong> — o contador diz "selecionados
+    (desta página)" justamente por isso. Como a listagem mostra 50 por página, para agir sobre um
+    conjunto maior use os filtros para reduzir o resultado e repita em cada página.
+  </div>
+  <div class="aviso">
+    <strong>Documentos que você não pode excluir aparecem com a caixa esmaecida</strong>, e o motivo
+    aparece ao passar o mouse. Isso acontece porque a listagem mostra também os documentos
+    <em>não sigilosos</em> dos outros departamentos, mas a exclusão continua restrita ao seu
+    departamento (ou a você, no caso dos sigilosos) — a mesma regra do botão de excluir individual.
+  </div>
+  <div class="dica">
+    O botão <strong>📜 Certidões em lote</strong> da barra de ferramentas continua funcionando sem
+    seleção nenhuma: nesse caso ele usa o filtro atual, como antes. Com documentos selecionados,
+    ele passa a considerar só os selecionados — e sem o limite de 100 documentos.
+  </div>
   <div class="nota">
     <strong>Exemplo:</strong> para localizar um parecer que menciona "João da Silva", acesse
     <em>Pareceres</em>, digite "João" no campo de busca e pressione Enter.
@@ -799,6 +828,12 @@
     <li><strong>✕ Excluir de vez:</strong> remove o documento (e o PDF anexado) ou o lembrete permanentemente, sem esperar os 30 dias — ação irreversível</li>
   </ul>
   <p>
+    A lista de <strong>Documentos</strong> da Lixeira também aceita <strong>seleção em massa</strong>:
+    marque vários e use <strong>↺ Restaurar selecionados</strong> para devolvê-los de uma vez. O que
+    não puder ser restaurado é informado ao final, com o motivo. <strong>Excluir de vez continua
+    sendo item a item</strong>, de propósito — é a única ação sem volta do sistema.
+  </p>
+  <p>
     <strong>Quem pode restaurar e excluir de vez:</strong> apenas <strong>quem criou</strong> o
     documento ou o lembrete, e o <strong>administrador</strong>. Um procurador vê na Lixeira os
     documentos não sigilosos dos colegas, mas só age sobre os próprios; documentos
@@ -885,7 +920,11 @@
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
 
-  <h3>v1.46.4 — Julho/2026</h3>
+  <h3>v1.47.0 — Julho/2026</h3>
+<p><strong>Adicionado</strong></p>
+<ul><li>Ações em massa na listagem de documentos: excluir para a Lixeira, gerar certidões e exportar CSV dos selecionados; e restaurar vários de uma vez na Lixeira. Documentos que o usuário não pode excluir aparecem com a caixa de seleção esmaecida e o motivo no tooltip.</li></ul>
+
+<h3>v1.46.4 — Julho/2026</h3>
 <p><strong>Documentação</strong></p>
 <ul><li>README: a frase de arquitetura ainda dizia "Python stdlib"; o servidor usa o waitress, que vem junto no projeto (nada a instalar).</li></ul>
 
