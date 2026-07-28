@@ -5,6 +5,13 @@
 
 ---
 
+## [1.47.7] — 2026-07-28
+
+### Adicionado
+- **`Perguntar Onde Salvar Downloads.reg`** passa a acompanhar o sistema. Executado como administrador num posto da rede, faz o Chrome e o Edge perguntarem onde salvar cada arquivo baixado — o que o navegador não permite que a própria página faça fora de `localhost`/HTTPS. Uma vez por computador; desnecessário na máquina do servidor. Instruções no próprio arquivo e na seção de uso em rede local do manual.
+
+---
+
 ## [1.47.6] — 2026-07-28
 
 ### Documentação

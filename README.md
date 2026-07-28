@@ -1,6 +1,6 @@
 # SGDP — Sistema de Gestão de Documentos da Procuradoria
 
-![Versão](https://img.shields.io/badge/versão-v1.47.6-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/versão-v1.47.7-blue) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20%2B%20SQLite-orange) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Multiusuário](https://img.shields.io/badge/acesso-multiusuário-blueviolet) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21314680.svg)](https://doi.org/10.5281/zenodo.21314680) [![CI](https://github.com/devtulio/sgdp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/sgdp/actions/workflows/ci.yml)
 
 ## Descrição
 
@@ -139,6 +139,7 @@ SGDP/
 ├── Criar Atalho SGDP.ps1   # Script PowerShell de criação do atalho
 ├── Diagnostico SGDP.bat    # Roda o diagnóstico de rede (clique duplo)
 ├── Liberar Porta SGDP.bat  # Cria regra de firewall para porta 3001 (Admin)
+├── Perguntar Onde Salvar Downloads.reg  # Política do navegador: perguntar onde salvar cada download (Admin)
 ├── diagnostico.py          # Script de diagnóstico de rede e firewall
 ├── sgdp.ico                # Ícone personalizado do sistema
 ├── sgdp.db                 # Banco de dados SQLite (criado automaticamente)
