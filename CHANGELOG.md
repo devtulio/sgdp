@@ -5,6 +5,13 @@
 
 ---
 
+## [1.47.3] — 2026-07-27
+
+### Alterado
+- A restrição da importação em lote ao administrador passou a ser declarada junto da rota, como nas demais operações restritas do sistema. Comportamento idêntico ao da versão anterior — a mudança evita que a regra passe despercebida em revisões futuras.
+
+---
+
 ## [1.47.2] — 2026-07-27
 
 ### Alterado

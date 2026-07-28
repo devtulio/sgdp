@@ -29,7 +29,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.47.2'
+SERVER_VERSION = '1.47.3'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -993,6 +993,11 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             self._create_lembrete(self._body(), s)
 
         elif p == '/api/import/csv':
+            # Importação em lote é restrita ao administrador: cria vários documentos
+            # de uma vez e consome a numeração automática de cada tipo. Cadastrar um
+            # documento continua liberado a todos.
+            if not s['admin']:
+                self._json(403, {'error': 'A importação em lote é restrita ao administrador'}); return
             self._import_csv(self._body(), s)
 
         elif p == '/api/usuarios':
@@ -1885,12 +1890,9 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
     # ── Importação CSV ────────────────────────────────────────────────────────
 
     def _import_csv(self, body, s):
-        # Importação em lote é restrita ao administrador: ela cria vários
-        # documentos de uma vez e consome a numeração automática de cada tipo —
-        # um arquivo errado avança contadores que não voltam atrás. Cadastrar
-        # documento a documento continua liberado para todos.
-        if not s['admin']:
-            self._json(403, {'error': 'A importação em lote é restrita ao administrador'}); return
+        # A restrição a administrador fica na linha da rota, como nas demais rotas
+        # restritas da família — regra escondida no meio do handler passa
+        # despercebida em auditoria.
         data = json.loads(body) if body else {}
         rows = data.get('rows') or []
         if not rows: self._json(400, {'error': 'Nenhuma linha para importar'}); return
