@@ -5,6 +5,13 @@
 
 ---
 
+## [1.47.4] — 2026-07-27
+
+### Documentação
+- Atualização do componente compartilhado entre os quatro sistemas (máscara do código do catálogo Fiorilli/SCPI, usada pelo SGCA e pelo SGEA). Nada muda no SGDP.
+
+---
+
 ## [1.47.3] — 2026-07-27
 
 ### Alterado
