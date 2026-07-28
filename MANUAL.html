@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.47.5</title>
+<title>Manual Operacional — SGDP v1.47.6</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -84,7 +84,7 @@
       size: A4;
       margin: 20mm 20mm 25mm;
       @top-center {
-        content: "SGDP v1.47.5 — Manual Operacional";
+        content: "SGDP v1.47.6 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -111,7 +111,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.47.5</div>
+    <div class="cover-version">Versão 1.47.6</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -265,6 +265,19 @@
   <div class="aviso">
     <strong>Uso restrito à rede interna.</strong> A comunicação entre as máquinas é HTTP simples (sem criptografia de transporte) — adequado para uma rede interna confiável do órgão, mas <strong>nunca exponha a porta do sistema à internet</strong> (redirecionamento de porta no roteador, DMZ etc.). Para acesso remoto, utilize a VPN institucional.
   </div>
+  <div class="dica">
+    <strong>Baixar arquivos escolhendo a pasta, nos postos da rede.</strong> Na máquina que roda o servidor (acesso por <code>localhost</code>), todo download do sistema abre a janela <strong>"Salvar como"</strong>. Nos computadores que acessam <strong>pelo endereço de rede</strong> (<code>http://192.168.x.x:3001</code>), o navegador não oferece essa janela à página — é uma regra de segurança dele: só páginas servidas por HTTPS ou por <code>localhost</code> podem gravar em pasta escolhida. Nesses postos o arquivo vai direto para a pasta de Downloads.<br><br>
+    Para que também perguntem, ligue a opção <strong>do navegador</strong> em cada posto: <strong>Configurações → Downloads → "Perguntar onde salvar cada arquivo antes de fazer o download"</strong>. Para padronizar sem depender de cada usuário, aplique a política do navegador — salve o texto abaixo como <code>perguntar-onde-salvar.reg</code> e execute <strong>como Administrador, uma vez por computador</strong> (havendo domínio/AD, o mesmo ajuste vira uma GPO única e nenhum posto precisa ser visitado):<br><br>
+    <code>Windows Registry Editor Version 5.00</code><br>
+    <code>&nbsp;</code><br>
+    <code>[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]</code><br>
+    <code>"PromptForDownloadLocation"=dword:00000001</code><br>
+    <code>&nbsp;</code><br>
+    <code>[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge]</code><br>
+    <code>"PromptForDownloadLocation"=dword:00000001</code><br><br>
+    Vale para Chrome e Edge, é <strong>por computador</strong> (não por usuário), sobrevive a reinício e a atualização do navegador, e passa a valer ao fechar e reabrir o navegador. Para conferir se pegou, abra <code>chrome://policy</code> (ou <code>edge://policy</code>) e procure <code>PromptForDownloadLocation</code>. Para desfazer, troque <code>00000001</code> por <code>00000000</code>.
+  </div>
+
 </div>
 
 <!-- ── SEÇÃO 3–4 ───────────────────────────────────────────────────────────────── -->
@@ -396,7 +409,8 @@
     deixando escolher a pasta de destino — na máquina que roda o servidor (acesso por
     <code>localhost</code>). Ao acessar pela rede local por outro computador (endereço IP), o
     navegador não permite esse diálogo por segurança; nesses casos o arquivo é salvo direto na
-    pasta padrão de Downloads, como antes.
+    pasta padrão de Downloads — a menos que o navegador daquele posto esteja configurado para
+    perguntar, o que pode ser padronizado por política (ver <a href="#s2-3">Seção 2.3</a>).
   </div>
   <div class="dica">
     <strong>Dica:</strong> você também pode arrastar o arquivo PDF diretamente para a área de upload
@@ -919,6 +933,10 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.47.6 — Julho/2026</h3>
+  <p><strong>Documentação</strong></p>
+  <ul><li>Documentação: a seção de uso em rede local passa a explicar como fazer os postos que acessam pelo endereço de rede perguntarem onde salvar cada download (opção do navegador ou política, com o .reg pronto).</li></ul>
 
   <h3>v1.47.5 — Julho/2026</h3>
 <p><strong>Corrigido</strong></p>
