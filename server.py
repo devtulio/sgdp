@@ -29,7 +29,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.47.8'
+SERVER_VERSION = '1.47.9'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -718,7 +718,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 sgx_base.registrar_erro_cliente_js(_log, json.loads(self._body() or '{}'))
             except Exception:
                 pass
-            self._json(204, {}); return
+            self._sem_conteudo(); return
 
         s = self._auth()
         if not s: return
@@ -2453,6 +2453,13 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _sem_conteudo(self):
+        """204 nao pode ter corpo: o waitress descarta e avisa no log
+        ("application-written content was ignored"). Responde so o status."""
+        self.send_response(204)
+        self._cors()
+        self.end_headers()
 
     def _cors(self):
         self.send_header('Access-Control-Allow-Origin', '*')
