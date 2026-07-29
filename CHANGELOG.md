@@ -5,6 +5,13 @@
 
 ---
 
+## [1.47.10] — 2026-07-29
+
+### Removido
+- **Gerador de QR Code sem uso** (183 linhas) e uma rotina de leitura de upload que nenhuma rota chamava. O QR tinha sido desligado dos rodapés de propósito — um selo de autenticidade sem registro verificável por trás seria enganoso —, mas o gerador continuou no arquivo. Nada muda no uso.
+
+---
+
 ## [1.47.9] — 2026-07-28
 
 ### Corrigido

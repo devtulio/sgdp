@@ -29,7 +29,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.47.9'
+SERVER_VERSION = '1.47.10'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -391,27 +391,6 @@ def _fts_match_query(text):
     tokens = re.findall(r'\w+', text, re.UNICODE)
     if not tokens: return None
     return ' '.join(f'"{t}"*' for t in tokens)
-
-def _parse_multipart_all(body, boundary):
-    """Extrai todos os campos de um multipart/form-data em um dict:
-    {field_name: {'text': str, 'data': bytes, 'filename': str}} (portado do SGCD)."""
-    parts = {}
-    for part in body.split(b'--' + boundary):
-        if b'Content-Disposition' not in part: continue
-        sep = part.find(b'\r\n\r\n')
-        if sep < 0: continue
-        header  = part[:sep].decode('utf-8', errors='replace')
-        content = part[sep+4:]
-        if content.endswith(b'\r\n'): content = content[:-2]
-        m_name = re.search(r'name="([^"]*)"', header)
-        if not m_name: continue
-        name = m_name.group(1)
-        m_file = re.search(r'filename="([^"]*)"', header)
-        if m_file:
-            parts[name] = {'data': content, 'filename': m_file.group(1), 'text': None}
-        else:
-            parts[name] = {'data': content, 'filename': None, 'text': content.decode('utf-8', errors='replace').strip()}
-    return parts
 
 # ── Segurança ─────────────────────────────────────────────────────────────────
 
