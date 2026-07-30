@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.47.11</title>
+<title>Manual Operacional — SGDP v1.47.12</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -84,7 +84,7 @@
       size: A4;
       margin: 20mm 20mm 25mm;
       @top-center {
-        content: "SGDP v1.47.11 — Manual Operacional";
+        content: "SGDP v1.47.12 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -111,7 +111,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.47.11</div>
+    <div class="cover-version">Versão 1.47.12</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -744,7 +744,7 @@
     contagem</strong> — incluindo os que aconteceram no navegador dos usuários e foram reportados
     ao servidor. O registro é feito em um log rotativo, que não estoura o disco. Travamentos graves,
     quando ocorrem, ficam gravados à parte em um arquivo <code>*_crash.log</code> na pasta do sistema.
-    Use o botão <strong>↻ Atualizar</strong> para carregar a lista.
+    Use o botão <strong>↻ Atualizar</strong> para carregar a lista. O painel mostra apenas os <strong>últimos 7 dias</strong> — é o que faz dele um retrato do que está quebrado agora, e não um histórico que cresce para sempre; registros mais antigos continuam no arquivo de log e aparecem como uma contagem ao pé da lista.
   </p>
 
   <h3 id="s6-8">6.8 Organização (dados do órgão e brasão)</h3>
@@ -933,6 +933,10 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.47.12 — Julho/2026</h3>
+  <p><strong>Alterado</strong></p>
+  <ul><li>A tela "Erros recentes" passa a mostrar só os últimos 7 dias, para ser um retrato do que está quebrado agora; o que é mais antigo continua no log e aparece como contagem ao pé da lista.</li></ul>
 
   <h3>v1.47.11 — Julho/2026</h3>
   <p><strong>Corrigido</strong></p>
