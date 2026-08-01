@@ -10,12 +10,14 @@ Compartilha a arquitetura (servidor Python + SQLite + frontend single-file, sem 
 
 Funciona em rede local: um único computador executa o servidor e todos os procuradores acessam pelo navegador via IP ou `localhost`.
 
-![SGDP — painel da Procuradoria](docs/screenshots/painel.png)
+![Painel da Procuradoria](docs/screenshots/painel.png)
+<sup>Painel: contagem por espécie documental e a última numeração de cada uma.</sup>
 
-<p align="center">
-  <img src="docs/screenshots/documentos.png" width="49%" alt="Acervo de pareceres com busca e filtros">
-  <img src="docs/screenshots/agenda.png" width="49%" alt="Agenda de prazos">
-</p>
+![Acervo de pareceres](docs/screenshots/documentos.png)
+<sup>Acervo por espécie, com busca por número, ementa e partes.</sup>
+
+![Agenda de prazos](docs/screenshots/agenda.png)
+<sup>Agenda de prazos, com destaque para o que está vencido.</sup>
 
 > As telas acima usam dados fictícios, gerados por `docs/screenshots.spec.js` contra um banco temporário.
 
