@@ -66,3 +66,29 @@ test('paginação em Documentos preserva o foco do campo de busca', async ({ pag
   const nodeIdDepois = await searchInput.evaluate(el => el.dataset.__id);
   expect(nodeIdDepois).toBe(nodeIdAntes);
 });
+
+// Mesma armadilha do toISOString (data em UTC): depois das 21h, um lembrete cujo
+// prazo é HOJE aparecia como atrasado. Relógio fixo às 23h30 — única janela em
+// que o defeito aparece.
+test.describe('data local em fuso brasileiro', () => {
+  test.use({ timezoneId: 'America/Sao_Paulo' });
+
+  test('lembrete com prazo de hoje nao aparece como atrasado a noite', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-08-01T23:30:00-03:00'));
+    await page.goto('/SGDP.html');
+    await page.fill('#pin-username', 'admin');
+    await page.fill('#pin-input', 'novaSenhaE2E123');
+    await page.click('#overlay-pin button[onclick="fazerLogin()"]');
+    await expect(page.locator('#overlay-pin')).toBeHidden();
+
+    expect(await page.evaluate(() => _isoLocal()), 'data local saiu em UTC').toBe('2026-08-01');
+
+    await page.evaluate(() => API.post('/api/lembretes',
+      { titulo: 'Prazo vence hoje (E2E)', data_prazo: '2026-08-01' }));
+
+    await page.click('.nav-item[data-view="agenda"]');
+    const linha = page.locator('#agenda-conteudo tr', { hasText: 'Prazo vence hoje (E2E)' });
+    await expect(linha).toBeVisible();
+    await expect(linha, 'prazo de hoje foi marcado como atrasado').not.toContainText('atrasado');
+  });
+});

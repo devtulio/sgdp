@@ -1198,7 +1198,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.47.13';
+const SGDP_VERSION = '1.47.14';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -1509,7 +1509,7 @@ const TIPO_CORES = { lei:'#3b82f6', decreto:'#8b5cf6', portaria:'#f59e0b', parec
 
 function _periodoParaDatas(periodo) {
   const hoje = new Date();
-  const fmt = d => d.toISOString().slice(0,10);
+  const fmt = _isoLocal;
   const ini = new Date(hoje);
   if (periodo === 'semana') { ini.setDate(hoje.getDate() - hoje.getDay()); }
   else if (periodo === 'mes')    { ini.setDate(1); }
@@ -1607,7 +1607,7 @@ async function gerarRelatorioPendencias() {
   const lembretes = (await API.json(rLemb))?.items || [];
   const semPdf = (await API.json(rSemPdf))?.items || [];
 
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = _isoLocal();
   const vencidos  = lembretes.filter(l => l.data_prazo < hoje).sort((a,b) => a.data_prazo.localeCompare(b.data_prazo));
   const vencendo  = lembretes.filter(l => l.data_prazo >= hoje).sort((a,b) => a.data_prazo.localeCompare(b.data_prazo));
 
@@ -2014,7 +2014,7 @@ async function renderRelatorio(periodo, de, ate) {
     const dias = Math.max(1, Math.round((new Date(ateDt) - new Date(deDt)) / 86400000) + 1);
     const prevAteD = new Date(deDt); prevAteD.setDate(prevAteD.getDate() - 1);
     const prevDeD = new Date(prevAteD); prevDeD.setDate(prevDeD.getDate() - dias + 1);
-    const fmt = dt => dt.toISOString().slice(0, 10);
+    const fmt = dt => _isoLocal(dt);
     prevDe = fmt(prevDeD); prevAte = fmt(prevAteD);
   }
   const [r, rCfg, rPrev] = await Promise.all([
@@ -2389,7 +2389,7 @@ async function _docBulkCsv() {
   ].map(esq).join(';'))];
   // BOM + CRLF: é como o Excel em português abre sem quebrar acento
   const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  await salvarArquivo(blob, `documentos_${new Date().toISOString().slice(0, 10)}.csv`,
+  await salvarArquivo(blob, `documentos_${_isoLocal()}.csv`,
     [{ description: 'CSV', accept: { 'text/csv': ['.csv'] } }]);
   toast(`${sel.length} documento(s) exportado(s).`, 'success');
 }
@@ -2757,7 +2757,7 @@ async function renderAgenda() {
   const r = await API.get('/api/lembretes');
   const d = await API.json(r);
   if (!d) return;
-  const hoje = new Date().toISOString().slice(0,10);
+  const hoje = _isoLocal();
   const rows = d.items.length ? d.items.map(l => {
     const atrasado = !l.concluido && l.data_prazo < hoje;
     return `
@@ -2816,7 +2816,7 @@ async function excluirLembrete(id) {
 async function _atualizarBadgeAgenda() {
   const r = await API.get('/api/lembretes?pendentes=1');
   const d = await API.json(r);
-  const hoje = new Date().toISOString().slice(0,10);
+  const hoje = _isoLocal();
   const n = (d?.items || []).filter(l => l.data_prazo <= hoje).length;
   const el = document.getElementById('badge-agenda');
   el.style.display = n ? '' : 'none';
@@ -3428,7 +3428,7 @@ async function exportarAuditoriaCSV() {
 
   const csv = '﻿' + linhas.join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  await salvarArquivo(blob, `SGDP_auditoria_${new Date().toISOString().slice(0, 10)}.csv`,
+  await salvarArquivo(blob, `SGDP_auditoria_${_isoLocal()}.csv`,
     [{ description: 'CSV', accept: { 'text/csv': ['.csv'] } }]);
   toast(`${lista.length} registro(s) exportado(s).`, 'success');
 }
@@ -3562,7 +3562,7 @@ async function exportBackup() {
   if (!r.ok) { toast('Erro ao exportar backup.', 'error'); return; }
   const blob = await r.blob();
   const _now = new Date();
-  const _ds  = _now.toISOString().slice(0,10);
+  const _ds  = _isoLocal(_now);
   const _ts  = _now.toTimeString().slice(0,8).replace(/:/g,'-');
   await salvarArquivo(blob, `SIS_SGDP_BACKUP_${_ds}_${_ts}.json`,
     [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]);
@@ -4595,7 +4595,7 @@ function fmtSize(bytes) {
 }
 
 function hoje() {
-  return new Date().toISOString().slice(0,10);
+  return _isoLocal();
 }
 
 // ── Atalhos de teclado ────────────────────────────────────────────────────────

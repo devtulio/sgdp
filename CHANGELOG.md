@@ -9,6 +9,13 @@
 
 ---
 
+## [1.47.14] — 2026-08-01
+
+### Corrigido
+- **Lembrete com prazo de hoje aparecia como atrasado à noite.** O sistema calculava "hoje" convertendo o horário para o fuso de Greenwich. Depois das 21h, "hoje" já era o dia seguinte lá — e tudo que dependia disso errava um dia, mas só à noite. Um lembrete que vence hoje era pintado de vermelho e marcado "(atrasado)" para quem abrisse o sistema depois das 21h, e entrava na contagem do alerta da Agenda. O mesmo erro deslocava em um dia o intervalo dos relatórios por período ("esta semana", "este mês") e a data no nome dos arquivos exportados.
+
+---
+
 ## [1.47.13] — 2026-07-31
 
 ### Alterado
