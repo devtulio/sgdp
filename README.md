@@ -10,6 +10,15 @@ Compartilha a arquitetura (servidor Python + SQLite + frontend single-file, sem 
 
 Funciona em rede local: um único computador executa o servidor e todos os procuradores acessam pelo navegador via IP ou `localhost`.
 
+![SGDP — painel da Procuradoria](docs/screenshots/painel.png)
+
+<p align="center">
+  <img src="docs/screenshots/documentos.png" width="49%" alt="Acervo de pareceres com busca e filtros">
+  <img src="docs/screenshots/agenda.png" width="49%" alt="Agenda de prazos">
+</p>
+
+> As telas acima usam dados fictícios, gerados por `docs/screenshots.spec.js` contra um banco temporário.
+
 ---
 
 ## Funcionalidades Principais
