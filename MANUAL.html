@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.47.14</title>
+<title>Manual Operacional — SGDP v1.47.15</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -84,7 +84,7 @@
       size: A4;
       margin: 20mm 20mm 25mm;
       @top-center {
-        content: "SGDP v1.47.14 — Manual Operacional";
+        content: "SGDP v1.47.15 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -111,7 +111,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.47.14</div>
+    <div class="cover-version">Versão 1.47.15</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -933,6 +933,12 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.47.15 — Agosto/2026</h3>
+  <p><strong>Alterado</strong></p>
+  <ul><li>O fecho "local, data" dos documentos passou a usar uma função única do esqueleto compartilhado (<code>fmtExtenso</code>), no lugar da expressão repetida em cada gerador. Nada muda no que sai impresso; passa a haver um só lugar para corrigir.</li></ul>
+  <p><strong>Documentação</strong></p>
+  <ul><li>O README do projeto no GitHub passou a mostrar capturas de tela do sistema, geradas por script contra um banco temporário com dados fictícios.</li></ul>
 
   <h3>v1.47.14 — Agosto/2026</h3>
   <p><strong>Corrigido</strong></p>
