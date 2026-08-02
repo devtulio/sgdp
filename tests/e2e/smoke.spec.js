@@ -92,3 +92,31 @@ test.describe('data local em fuso brasileiro', () => {
     await expect(linha, 'prazo de hoje foi marcado como atrasado').not.toContainText('atrasado');
   });
 });
+
+// fmtExtenso subiu para o esqueleto: o bloco de assinatura dos documentos oficiais
+// passa por ele. Relogio fixo as 23h30 — a janela em que a data de UTC ja virou.
+test.describe('data por extenso no fecho dos documentos', () => {
+  test.use({ timezoneId: 'America/Sao_Paulo' });
+
+  test('bloco de assinatura usa a data local por extenso', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-08-01T23:30:00-03:00'));
+    await page.goto('/SGDP.html');
+    await page.fill('#pin-username', 'admin');
+    await page.fill('#pin-input', 'novaSenhaE2E123');
+    await page.click('#overlay-pin button[onclick="fazerLogin()"]');
+    await expect(page.locator('#overlay-pin')).toBeHidden();
+
+    const r = await page.evaluate(() => ({
+      hoje: fmtExtenso(),
+      comData: fmtExtenso('2026-01-01'),
+      doEsqueleto: !document.documentElement.innerHTML.includes('function fmtExtenso'),
+      // o fecho sai dentro do bloco de assinatura, que so aparece com autoridade configurada
+      bloco: _blocoAssinaturaOficial({ municipio: 'Cidade Exemplo', aut_nome: 'Fulano', aut_cargo: 'Prefeito' }),
+    }));
+    expect(r.hoje, 'o fecho saiu na data de UTC').toBe('1 de agosto de 2026');
+    expect(r.comData, 'string so-data voltou um dia').toBe('1 de janeiro de 2026');
+    expect(r.doEsqueleto, 'ainda existe uma copia local de fmtExtenso no HTML').toBe(true);
+    expect(r.bloco, 'o bloco de assinatura nao trouxe a data por extenso')
+      .toContain('Cidade Exemplo, 1 de agosto de 2026');
+  });
+});
