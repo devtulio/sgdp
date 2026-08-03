@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manual Operacional — SGDP v1.47.15</title>
+<title>Manual Operacional — SGDP v1.48.0</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background: #f5f5f5; }
@@ -84,7 +84,7 @@
       size: A4;
       margin: 20mm 20mm 25mm;
       @top-center {
-        content: "SGDP v1.47.15 — Manual Operacional";
+        content: "SGDP v1.48.0 — Manual Operacional";
         font-family: 'Times New Roman', serif;
         font-size: 9pt;
         color: #666;
@@ -111,7 +111,7 @@
     <div class="cover-title">Manual Operacional</div>
     <div class="cover-subtitle">SGDP — Sistema de Gestão de Documentos da Procuradoria</div>
     <div class="cover-system">Procuradoria-Geral Municipal</div>
-    <div class="cover-version">Versão 1.47.15</div>
+    <div class="cover-version">Versão 1.48.0</div>
     <br>
     <div style="font-size:11pt; color:#555; line-height:1.8;">
       Aplicação web multiusuário para procuradores municipais<br>
@@ -480,6 +480,21 @@
     <strong>Nota:</strong> um administrador sempre vê e pode editar todos os documentos,
     sigilosos ou não, de qualquer departamento.
   </div>
+  <div class="nota">
+    <strong>Sigiloso não sai no arquivo de sincronização.</strong> O <code>SYNC_</code> leva o acervo
+    a outra instalação, e quem recebe é administrador na máquina dele — o sigilo não sobreviveria à
+    viagem. Ficam de fora o documento, o PDF anexado e as linhas de auditoria que o citam; a tela
+    informa quantos foram omitidos ao exportar. Quem recupera a instalação inteira, com sigilosos e
+    contas, é o <strong>Cofre (.zip)</strong>, que é cópia desta máquina e não circula.
+  </div>
+  <div class="nota">
+    <strong>Arquivo vindo de outra instalação.</strong> Cada instalação numera os próprios usuários,
+    então o nº 2 de lá é outra pessoa aqui. Ao restaurar um arquivo de fora, os documentos entram
+    <strong>sem vínculo</strong> com os usuários locais — a autoria continua registrada pelo nome de
+    quem criou, gravado no próprio documento. Sem isso, um documento do colega passaria a ser tratado
+    como seu para efeito de permissão. A restauração fica registrada na trilha de auditoria, dizendo
+    se o arquivo veio desta instalação ou de outra.
+  </div>
 
   <h3 id="s4-7">4.7 Histórico de revisões</h3>
   <p>
@@ -639,7 +654,36 @@
   </table>
 
   <h3 id="s6-3">6.3 Backup e restauração</h3>
-  <p><strong>O que vai em cada backup.</strong> O arquivo <strong>JSON</strong> guarda documentos, contadores, auditoria e as contas de usuário — mas <strong>não</strong> a senha do e-mail pessoal de cada procurador, que nunca sai do servidor. Restaurar não a perde: o que o arquivo não traz é preservado como já está no sistema. Como o JSON contém as contas, trate-o como arquivo sensível ao enviá-lo a outra máquina (ver 6.4). Para recuperação completa depois de perda de disco, use o <strong>backup do banco (pacote .zip, com banco e anexos)</strong>, gerado automaticamente em Configurações → Dados.</p>
+  <p><strong>Dois arquivos, dois papéis.</strong> O <strong>Cofre</strong> (<code>DB_SGDP_BACKUP_....zip</code>) é a cópia desta instalação — banco completo e pasta de anexos, com documentos sigilosos, contas de usuário e configurações. É o arquivo de recuperação: guarde-o fora da máquina e trate-o como sensível, porque quem o tem tem o sistema inteiro. O <strong>arquivo de sincronização</strong> (<code>SYNC_SGDP_BACKUP_....json</code>) leva o acervo de trabalho a outra instalação: documentos, contadores, auditoria e PDFs, <strong>sem</strong> as contas de usuário e <strong>sem</strong> os documentos sigilosos.</p>
+
+  <div class="nota">
+    <strong>Mudança de nome (agosto/2026):</strong> o arquivo de sincronização se chamava
+    <code>SIS_</code>. Os gravados antes continuam aparecendo na lista e continuam podendo ser
+    restaurados — o sistema reconhece um backup pelo <em>conteúdo</em>, nunca pelo nome do arquivo.
+  </div>
+
+  <p><strong>Quando nascem.</strong> Os dois são gravados juntos, automaticamente, quando a última
+  sessão do sistema é encerrada. O sistema mantém os <strong>7 mais recentes de cada tipo</strong> e
+  descarta os anteriores. Também é possível gerar qualquer um deles na hora, pela aba Dados. Como o
+  gatilho é o encerramento, um sistema que fica semanas sem ser aberto não gera cópia nova.</p>
+
+  <p><strong>Ao restaurar o arquivo de sincronização</strong>, o sistema verifica de qual instalação
+  ele veio:</p>
+  <table>
+    <thead><tr><th>Origem do arquivo</th><th>O que acontece</th></tr></thead>
+    <tbody>
+      <tr><td>Desta instalação</td><td>Recuperação: os vínculos entre documentos e usuários são preservados</td></tr>
+      <tr><td>De outra instalação</td><td>Os vínculos caem; a autoria permanece pelo <strong>nome</strong> de quem criou, gravado no próprio documento</td></tr>
+    </tbody>
+  </table>
+  <p>O motivo: cada instalação numera os próprios usuários, então o nº 2 da máquina do colega é outra
+  pessoa aqui. Manter o número faria o documento dele ser tratado como seu — inclusive para permissão
+  de edição e de sigilo. A restauração fica registrada na trilha de auditoria, indicando se o arquivo
+  veio desta instalação ou de outra.</p>
+
+  <p>Há ainda um terceiro arquivo, eventual: <code>DB_SGDP_ANTES_&lt;motivo&gt;_....db</code>. O
+  sistema o grava sozinho <strong>antes</strong> de qualquer operação que substitua tudo, como uma
+  restauração — é o ponto de retorno se a operação der errado.</p>
   <p>
     Acesse a aba <strong>Dados</strong> em Configurações. O sistema mantém dois tipos de backup,
     lado a lado, guardados na mesma pasta (configurável pelo botão <em>Selecionar pasta</em>):
@@ -647,7 +691,7 @@
   <table>
     <thead><tr><th>Tipo</th><th>Arquivo</th><th>Conteúdo</th></tr></thead>
     <tbody>
-      <tr><td><strong>Sistema (JSON)</strong></td><td><code>SIS_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS.json</code></td><td>Documentos, usuários, contadores e PDFs (codificados em base64) — legível, usado também para <a href="#s6-4">sincronizar entre instalações</a> (6.4)</td></tr>
+      <tr><td><strong>Sincronização (JSON)</strong></td><td><code>SYNC_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS.json</code></td><td>Documentos, contadores e PDFs (codificados em base64) — <strong>sem as contas de usuário</strong> — legível, usado também para <a href="#s6-4">sincronizar entre instalações</a> (6.4)</td></tr>
       <tr><td><strong>Banco + anexos (.zip)</strong></td><td><code>DB_SGDP_BACKUP_AAAA-MM-DD_HH-MM-SS.zip</code></td><td>Pacote com a cópia binária completa do banco SQLite <em>e</em> a pasta de anexos — restaurá-lo repõe também os PDFs. Restauração mais direta, mas só entre instalações do mesmo sistema</td></tr>
     </tbody>
   </table>
@@ -933,6 +977,18 @@
 <!-- ── SEÇÃO 12 — HISTÓRICO DE VERSÕES ─────────────────────────────────────── -->
 <div class="page">
   <h2 id="s12">12. Histórico de Versões</h2>
+
+  <h3>v1.48.0 — Agosto/2026</h3>
+  <p><strong>Segurança</strong></p>
+  <ul>
+    <li><strong>Documento sigiloso não sai mais no arquivo de sincronização.</strong> Iam junto a ementa, as partes, o PDF e as linhas de auditoria que citam o documento — para uma instalação onde quem recebe é administrador. Sigilosos continuam no Cofre <code>.zip</code>, que não circula. Ao exportar, a tela informa quantos ficaram de fora.</li>
+    <li><strong>O arquivo de sincronização não leva mais as contas de usuário.</strong> Levava nome, CPF, e-mail e hash de senha, e a restauração casava por número de id: restaurar o arquivo de um colega renomeava a sua conta e trocava a sua senha pela dele.</li>
+    <li><strong>Arquivo restaurado de outra instalação não dá dono ao documento.</strong> O arquivo passou a carregar a identidade da instalação de origem; sendo diferente, os vínculos com usuários caem e a autoria fica pelo nome. A trilha de auditoria registra se o arquivo veio desta instalação ou de outra.</li>
+  </ul>
+  <p><strong>Adicionado</strong></p>
+  <ul><li><strong>A origem do documento passou a ser gravada no próprio documento</strong> — quem criou e quem alterou por último, por nome, como a trilha de auditoria já fazia. Antes o nome vinha de uma consulta pelo id: mudava se a conta fosse renomeada, sumia se ela fosse apagada e não significava nada na instalação do colega.</li></ul>
+  <p><strong>Alterado</strong></p>
+  <ul><li>O backup JSON passou a se chamar <code>SYNC_</code> em vez de <code>SIS_</code> — o nome agora diz o papel: quem restaura tudo é o Cofre <code>.zip</code>; o JSON leva os dados de trabalho a outra instalação. Arquivos gravados antes continuam na lista e continuam restauráveis, porque o backup é reconhecido pelo conteúdo, não pelo nome.</li></ul>
 
   <h3>v1.47.15 — Agosto/2026</h3>
   <p><strong>Alterado</strong></p>

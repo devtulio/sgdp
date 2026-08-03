@@ -1268,19 +1268,29 @@ class TestBackupPreservaUsuario(SGDPTestCase):
         with server.get_db() as conn:
             return dict(conn.execute('SELECT * FROM usuarios WHERE id=?', (uid,)).fetchone())
 
-    def test_backup_leva_todas_as_colunas_de_usuarios(self):
+    def _usuarios_legado(self):
+        """Bloco `usuarios` como os arquivos gerados antes de 2026-08-02 traziam."""
+        with server.get_db() as conn:
+            return [{k: v for k, v in dict(r).items() if k != 'smtp_pass'}
+                    for r in conn.execute('SELECT * FROM usuarios').fetchall()]
+
+    def test_json_nao_leva_contas(self):
+        # O arquivo SYNC_ circula entre as instalações dos procuradores. Levava a
+        # tabela `usuarios` inteira — hash de senha, CPF, e-mail — e o restore
+        # casava por id: como o id 1 é o admin em toda instalação, restaurar o
+        # arquivo do colega renomeava a conta local e trocava a senha pela dele.
+        # A autoria dos documentos, único motivo real para exportar contas, passou
+        # a viver no próprio documento (criado_por_nome).
         token = self.login()
         _, eu = self.request('GET', '/api/auth/me', token=token)
         uid = eu['id'] if isinstance(eu, dict) and 'id' in eu else 1
         self._preparar(token, uid)
         status, backup = self.request('GET', '/api/backup', token=token)
         self.assertEqual(status, 200, backup)
-        with server.get_db() as conn:
-            colunas = {r[1] for r in conn.execute('PRAGMA table_info(usuarios)')}
-        do_backup = set(backup['usuarios'][0])
-        # smtp_pass fica de fora de propósito — ver test_backup_nao_leva_senha_de_email
-        self.assertEqual(colunas - do_backup, {'smtp_pass'},
-                         'backup de usuarios não leva todas as colunas da tabela')
+        self.assertNotIn('usuarios', backup, 'o JSON voltou a levar contas de usuário')
+        bruto = json.dumps(backup, ensure_ascii=False)
+        for vazamento in ('senha_hash', self.CAMPOS['cpf']):
+            self.assertNotIn(vazamento, bruto, f'{vazamento} vazou no arquivo de sincronização')
 
     def test_backup_nao_leva_senha_de_email(self):
         # O arquivo JSON sai do servidor e o manual orienta enviá-lo a outro
@@ -1295,7 +1305,7 @@ class TestBackupPreservaUsuario(SGDPTestCase):
         bruto = json.dumps(backup, ensure_ascii=False)
         self.assertNotIn(self.SMTP['smtp_pass'], bruto,
                          'senha do e-mail pessoal vazou no arquivo de backup')
-        for u in backup['usuarios']:
+        for u in backup.get('usuarios', []):
             self.assertNotIn('smtp_pass', u)
 
     def test_restaurar_backup_preserva_smtp_e_dados_do_usuario(self):
@@ -1303,7 +1313,10 @@ class TestBackupPreservaUsuario(SGDPTestCase):
         _, eu = self.request('GET', '/api/auth/me', token=token)
         uid = eu['id'] if isinstance(eu, dict) and 'id' in eu else 1
         self._preparar(token, uid)
+        # arquivo legado: o export atual nao leva mais `usuarios`, mas os ja
+        # gravados levam, e restaurar um deles nao pode zerar coluna nenhuma
         _, backup = self.request('GET', '/api/backup', token=token)
+        backup['usuarios'] = self._usuarios_legado()
 
         status, _ = self.request('POST', '/api/backup/restore', backup, token=token)
         self.assertEqual(status, 200)
@@ -1321,7 +1334,7 @@ class TestBackupPreservaUsuario(SGDPTestCase):
         self._preparar(token, uid)
         _, backup = self.request('GET', '/api/backup', token=token)
         antigas = ('id', 'username', 'nome', 'senha_hash', 'admin', 'ativo', 'departamento', 'criado_em')
-        backup['usuarios'] = [{c: u[c] for c in antigas} for u in backup['usuarios']]
+        backup['usuarios'] = [{c: u[c] for c in antigas} for u in self._usuarios_legado()]
 
         status, _ = self.request('POST', '/api/backup/restore', backup, token=token)
         self.assertEqual(status, 200)
@@ -1573,8 +1586,7 @@ class TestBackupPadronizado(SGDPTestCase):
         self.assertEqual(j.get('schema'), server._BACKUP_SCHEMA)
         self.assertIn('exportedAt', j)
         self.assertNotIn('smtp_pass', j.get('settings', {}))
-        self.assertTrue(j.get('usuarios'), 'SGDP deve levar usuarios no JSON')
-        self.assertTrue(all('smtp_pass' not in u for u in j['usuarios']))
+        self.assertNotIn('usuarios', j, 'o JSON de sincronização não leva contas')
 
     def test_cofre_e_zip_com_anexos_e_restaura(self):
         token = self.login()
@@ -1850,6 +1862,155 @@ class TestAcoesEmMassa(SGDPTestCase):
         self.assertEqual(st, 200, aud)
         self.assertTrue(any(e['acao'] == 'excluir' and e.get('documento_id') == did for e in aud['items']),
                         'a exclusão em massa deve deixar rastro por documento')
+
+
+class TestOrigemDoDocumento(SGDPTestCase):
+    """A autoria vive no documento, não numa consulta à tabela de usuários.
+
+    O id sozinho é ponteiro vivo: some se a conta for apagada, muda se for
+    renomeada, e não significa nada em outra instalação — cada uma numera seus
+    usuários. Como o arquivo de sincronização deixou de levar contas, o nome
+    gravado é o que sustenta a origem do documento do outro lado. Mesmo desenho
+    que a tabela `auditoria` já usava (usuario_id + usuario_nome).
+    """
+
+    def test_documento_guarda_o_nome_de_quem_criou(self):
+        token = self.login()
+        st, doc = self.request('POST', '/api/documentos',
+                               {'tipo': 'parecer', 'ementa': 'Parecer sobre convênio',
+                                'data': '2026-08-02', 'ano': 2026}, token=token)
+        self.assertEqual(st, 201, doc)
+        st, lido = self.request('GET', f"/api/documentos/{doc['id']}", token=token)
+        self.assertEqual(st, 200, lido)
+        self.assertTrue(lido['criado_por_nome'], 'documento nasceu sem o nome de quem criou')
+
+    def test_autoria_sobrevive_a_conta_renomeada(self):
+        token = self.login()
+        _, eu = self.request('GET', '/api/auth/me', token=token)
+        uid = eu['id'] if isinstance(eu, dict) and 'id' in eu else 1
+        st, doc = self.request('POST', '/api/documentos',
+                               {'tipo': 'oficio', 'ementa': 'Ofício ao Ministério Público',
+                                'data': '2026-08-02', 'ano': 2026}, token=token)
+        self.assertEqual(st, 201, doc)
+        _, antes = self.request('GET', f"/api/documentos/{doc['id']}", token=token)
+        autor = antes['criado_por_nome']
+
+        # a conta muda de dono; o documento não muda de autor
+        self.request('PUT', f'/api/usuarios/{uid}', {'nome': 'Outro Procurador'}, token=token)
+        _, depois = self.request('GET', f"/api/documentos/{doc['id']}", token=token)
+        self.assertEqual(depois['criado_por_nome'], autor,
+                         'renomear a conta reescreveu a autoria de documento antigo')
+
+    def test_autoria_atravessa_a_sincronizacao_sem_contas(self):
+        # O JSON não leva usuários: se a autoria dependesse do JOIN, o documento
+        # chegaria sem autor na instalação do colega.
+        token = self.login()
+        st, doc = self.request('POST', '/api/documentos',
+                               {'tipo': 'lei', 'ementa': 'Lei de diretrizes orçamentárias',
+                                'data': '2026-08-02', 'ano': 2026}, token=token)
+        self.assertEqual(st, 201, doc)
+        _, backup = self.request('GET', '/api/backup', token=token)
+        self.assertNotIn('usuarios', backup)
+        doc_no_arquivo = next(d for d in backup['documentos'] if d['id'] == doc['id'])
+        self.assertTrue(doc_no_arquivo['criado_por_nome'],
+                        'o documento viajou no arquivo de sincronização sem a origem')
+
+        # simula a outra instalação: id de autor que não existe aqui
+        doc_no_arquivo['criado_por'] = 987
+        doc_no_arquivo['atualizado_por'] = 987
+        st, _ = self.request('POST', '/api/backup/restore', backup, token=token)
+        self.assertEqual(st, 200)
+        _, restaurado = self.request('GET', f"/api/documentos/{doc['id']}", token=token)
+        self.assertEqual(restaurado['criado_por_nome'], doc_no_arquivo['criado_por_nome'],
+                         'a origem se perdeu quando o id do autor não existe nesta base')
+
+
+class TestSigilosoNaoSincroniza(SGDPTestCase):
+    """Documento sigiloso não sai no arquivo de sincronização.
+
+    O manual orienta enviar o JSON ao colega, e o primeiro usuário de cada
+    instalação nasce administrador — o que sai daqui é legível lá. Sigiloso é
+    trabalhado só por quem criou; quem recupera a instalação inteira é o Cofre.
+    """
+
+    def _sigiloso(self, token, ementa='Parecer sigiloso sobre sindicância'):
+        st, doc = self.request('POST', '/api/documentos',
+                               {'tipo': 'parecer', 'ementa': ementa, 'data': '2026-08-02',
+                                'ano': 2026, 'sigiloso': True}, token=token)
+        self.assertEqual(st, 201, doc)
+        return doc['id'], ementa
+
+    def test_sigiloso_fica_fora_do_arquivo(self):
+        token = self.login()
+        did, ementa = self._sigiloso(token)
+        st, backup = self.request('GET', '/api/backup', token=token)
+        self.assertEqual(st, 200, backup)
+        self.assertNotIn(did, [d['id'] for d in backup['documentos']],
+                         'documento sigiloso viajou no arquivo de sincronização')
+        self.assertNotIn(ementa, json.dumps(backup, ensure_ascii=False),
+                         'a ementa do sigiloso vazou no arquivo')
+        # o banco e compartilhado entre os testes da classe: confere contra o banco,
+        # nao contra um numero fixo
+        with server.get_db() as conn:
+            n = conn.execute('SELECT COUNT(*) FROM documentos WHERE sigiloso=1').fetchone()[0]
+        self.assertEqual(backup.get('sigilososOmitidos'), n,
+                         'a tela precisa saber quantos ficaram de fora')
+
+    def test_auditoria_do_sigiloso_nao_vaza(self):
+        # As linhas de auditoria trazem tipo, número e ano no detalhe: sozinhas já
+        # reconstroem a existência e a numeração do documento sigiloso.
+        token = self.login()
+        did, _ = self._sigiloso(token)
+        _, backup = self.request('GET', '/api/backup', token=token)
+        self.assertFalse([a for a in backup['auditoria'] if a.get('documento_id') == did],
+                         'a auditoria do sigiloso saiu no arquivo')
+
+    def test_nao_sigiloso_continua_saindo(self):
+        token = self.login()
+        st, doc = self.request('POST', '/api/documentos',
+                               {'tipo': 'lei', 'ementa': 'Lei orçamentária anual',
+                                'data': '2026-08-02', 'ano': 2026}, token=token)
+        self.assertEqual(st, 201, doc)
+        _, backup = self.request('GET', '/api/backup', token=token)
+        self.assertIn(doc['id'], [d['id'] for d in backup['documentos']])
+
+
+class TestArquivoDeOutraInstalacao(SGDPTestCase):
+    """Id de usuário é local: restaurar arquivo de fora não pode dar dono ao documento."""
+
+    def test_arquivo_de_fora_zera_o_vinculo_de_usuario(self):
+        token = self.login()
+        st, doc = self.request('POST', '/api/documentos',
+                               {'tipo': 'oficio', 'ementa': 'Ofício de encaminhamento',
+                                'data': '2026-08-02', 'ano': 2026}, token=token)
+        self.assertEqual(st, 201, doc)
+        _, backup = self.request('GET', '/api/backup', token=token)
+        autor = next(d for d in backup['documentos'] if d['id'] == doc['id'])['criado_por_nome']
+
+        # mesmo arquivo, carimbado como vindo de outra maquina
+        backup['instalacao'] = 'outra-instalacao-qualquer'
+        st, _ = self.request('POST', '/api/backup/restore', backup, token=token)
+        self.assertEqual(st, 200)
+
+        with server.get_db() as conn:
+            linha = dict(conn.execute('SELECT criado_por, criado_por_nome FROM documentos WHERE id=?',
+                                      (doc['id'],)).fetchone())
+        self.assertIsNone(linha['criado_por'],
+                          'documento de outra instalação manteve vínculo com usuário local')
+        self.assertEqual(linha['criado_por_nome'], autor, 'a origem se perdeu junto com o vínculo')
+
+    def test_arquivo_da_propria_instalacao_preserva_o_vinculo(self):
+        token = self.login()
+        st, doc = self.request('POST', '/api/documentos',
+                               {'tipo': 'decreto', 'ementa': 'Decreto de ponto facultativo',
+                                'data': '2026-08-02', 'ano': 2026}, token=token)
+        self.assertEqual(st, 201, doc)
+        _, backup = self.request('GET', '/api/backup', token=token)
+        st, _ = self.request('POST', '/api/backup/restore', backup, token=token)
+        self.assertEqual(st, 200)
+        with server.get_db() as conn:
+            criado_por = conn.execute('SELECT criado_por FROM documentos WHERE id=?', (doc['id'],)).fetchone()[0]
+        self.assertIsNotNone(criado_por, 'recuperação da própria instalação perdeu o vínculo do autor')
 
 
 if __name__ == '__main__':

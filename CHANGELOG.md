@@ -9,6 +9,19 @@
 
 ---
 
+## [1.48.0] — 2026-08-02
+
+### Segurança
+- **Documento sigiloso não sai mais no arquivo de sincronização.** O `SYNC_` leva o acervo para a instalação de outro procurador — que é administrador na máquina dele. Iam junto a ementa, as partes e o PDF em base64 do que estava marcado como sigiloso, além das linhas de auditoria que citam o documento (com tipo, número e ano). A marcação promete restrição a quem criou; o arquivo quebrava a promessa em silêncio. Sigilosos continuam no **Cofre (.zip)**, que é cópia da própria instalação e não circula. Ao exportar, a tela informa quantos ficaram de fora.
+- **Arquivo restaurado de outra instalação não dá dono ao documento.** Cada instalação numera seus usuários: o nº 2 de lá é outra pessoa aqui. Como a permissão de sigiloso e de edição compara por id, restaurar um arquivo do colega podia entregar o documento dele a um usuário daqui. Agora o arquivo carrega a identidade da instalação de origem e, quando ela é diferente, os vínculos de usuário caem — a autoria permanece pelo nome gravado no documento. A trilha de auditoria passa a registrar se o arquivo restaurado veio desta instalação ou de outra.
+
+### Alterado
+- **O backup JSON passou a se chamar `SYNC_` em vez de `SIS_`.** O nome agora diz o papel: quem restaura tudo é o Cofre (`DB_..._.zip`, banco + anexos + contas); o JSON serve para levar os dados de trabalho a outra instalação. Os arquivos gravados antes continuam aparecendo na lista de restauração e continuam entrando na rotação — a identificação do backup sempre foi pelo conteúdo (envelope `_sgx`), nunca pelo nome do arquivo.
+- **O arquivo de sincronização não leva mais as contas de usuário.** Ele levava a tabela inteira — nome, CPF, e-mail e o hash da senha — e a restauração casava as contas **por número de id**. Como o id 1 é o administrador em toda instalação, restaurar o arquivo de um colega renomeava a sua conta e trocava a sua senha pela dele. Arquivos antigos que ainda tragam as contas continuam sendo restaurados normalmente.
+- **A origem do documento passou a ser gravada no próprio documento.** Quem criou e quem alterou por último ficam registrados por nome na linha do documento, como a trilha de auditoria já fazia. Antes o nome vinha de uma consulta à tabela de usuários pelo id: mudava se a conta fosse renomeada, sumia se ela fosse apagada, e não significava nada na instalação do colega — que numera os próprios usuários. Agora a autoria viaja junto com o documento e sobrevive à sincronização.
+
+---
+
 ## [1.47.15] — 2026-08-02
 
 ### Alterado

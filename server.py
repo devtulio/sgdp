@@ -8,6 +8,7 @@ import sqlite3
 import hashlib
 import secrets
 import threading
+import uuid
 import time
 import subprocess
 import re
@@ -29,7 +30,7 @@ for _stream in (sys.stdout, sys.stderr):
 # Versão do servidor — DEVE acompanhar o SGDP_VERSION do SGDP.html a cada release.
 # Exposta em /health para o frontend detectar quando o processo em execução está
 # desatualizado (HTML novo servido, mas server.py antigo ainda rodando em memória).
-SERVER_VERSION = '1.47.15'
+SERVER_VERSION = '1.48.0'
 
 PORT              = int(os.environ.get('SGDP_PORT', 3001))
 _BASE             = os.path.dirname(os.path.abspath(__file__))
@@ -123,6 +124,14 @@ def init_db():
                 arquivo_id     INTEGER REFERENCES arquivos(id) ON DELETE SET NULL,
                 criado_por     INTEGER REFERENCES usuarios(id),
                 atualizado_por INTEGER REFERENCES usuarios(id),
+                -- Nome de quem criou/editou gravado no proprio documento, como a
+                -- tabela `auditoria` ja faz. O id sozinho e ponteiro vivo: some se a
+                -- conta for apagada, muda se for renomeada, e nao significa nada em
+                -- outra instalacao (cada uma numera os usuarios por conta propria) —
+                -- por isso o JSON de sincronizacao nao leva mais usuarios. A autoria
+                -- e fato do documento, nao consulta a uma tabela mutavel.
+                criado_por_nome     TEXT DEFAULT '',
+                atualizado_por_nome TEXT DEFAULT '',
                 criado_em      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
                 atualizado_em  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
                 UNIQUE(tipo, numero, ano)
@@ -241,6 +250,15 @@ def init_db():
         ])
         # Migrações de colunas
         cols = [r[1] for r in conn.execute('PRAGMA table_info(documentos)').fetchall()]
+        if 'criado_por_nome' not in cols:
+            conn.execute("ALTER TABLE documentos ADD COLUMN criado_por_nome     TEXT DEFAULT ''")
+            conn.execute("ALTER TABLE documentos ADD COLUMN atualizado_por_nome TEXT DEFAULT ''")
+            # Backfill enquanto os ids ainda resolvem: depois de sincronizar com outra
+            # instalacao eles podem apontar para pessoa diferente ou para ninguem.
+            conn.execute("UPDATE documentos SET criado_por_nome = COALESCE("
+                         "(SELECT nome FROM usuarios WHERE id = documentos.criado_por), '')")
+            conn.execute("UPDATE documentos SET atualizado_por_nome = COALESCE("
+                         "(SELECT nome FROM usuarios WHERE id = documentos.atualizado_por), '')")
         if 'assunto'        not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN assunto        TEXT DEFAULT 'Outros'")
         if 'processo_pa'    not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN processo_pa    TEXT DEFAULT ''")
         if 'processo_tipo'  not in cols: conn.execute("ALTER TABLE documentos ADD COLUMN processo_tipo  TEXT DEFAULT ''")
@@ -295,6 +313,8 @@ def init_db():
                     arquivo_id     INTEGER REFERENCES arquivos(id) ON DELETE SET NULL,
                     criado_por     INTEGER REFERENCES usuarios(id),
                     atualizado_por INTEGER REFERENCES usuarios(id),
+                    criado_por_nome     TEXT DEFAULT '',
+                    atualizado_por_nome TEXT DEFAULT '',
                     criado_em      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
                     atualizado_em  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
                     assunto        TEXT DEFAULT 'Outros',
@@ -1127,11 +1147,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         with get_db() as conn:
             total = conn.execute(f'SELECT COUNT(*) FROM documentos d {w}', params).fetchone()[0]
             rows  = conn.execute(
-                f'''SELECT d.*, u1.nome criado_por_nome, u1.departamento criado_por_departamento, u2.nome atualizado_por_nome,
+                f'''SELECT d.*, u1.departamento criado_por_departamento,
                            a.nome_original arquivo_nome, a.tamanho arquivo_tamanho
                     FROM documentos d
                     LEFT JOIN usuarios u1 ON d.criado_por=u1.id
-                    LEFT JOIN usuarios u2 ON d.atualizado_por=u2.id
                     LEFT JOIN arquivos a ON d.arquivo_id=a.id
                     {w} ORDER BY d.ano DESC, d.numero DESC LIMIT ? OFFSET ?''',
                 params + [per, (page-1)*per]
@@ -1148,11 +1167,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
     def _get_doc(self, did, s):
         with get_db() as conn:
             row = conn.execute(
-                '''SELECT d.*, u1.nome criado_por_nome, u1.departamento criado_por_departamento, u2.nome atualizado_por_nome, u3.nome assinado_por_nome,
+                '''SELECT d.*, u1.departamento criado_por_departamento, u3.nome assinado_por_nome,
                           a.nome_original arquivo_nome, a.tamanho arquivo_tamanho
                    FROM documentos d
                    LEFT JOIN usuarios u1 ON d.criado_por=u1.id
-                   LEFT JOIN usuarios u2 ON d.atualizado_por=u2.id
                    LEFT JOIN usuarios u3 ON d.assinado_por=u3.id
                    LEFT JOIN arquivos a ON d.arquivo_id=a.id
                    WHERE d.id=?''', (did,)
@@ -1200,15 +1218,15 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             for tentativa in range(6):
                 try:
                     cur = conn.execute(
-                        'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,sigiloso,oficio_interno,oficio_interno_departamento,criado_por,atualizado_por)'
-                        ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                        'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,processo_pa,processo_tipo,processo_ref,ato_tipo,cargo,sigiloso,oficio_interno,oficio_interno_departamento,criado_por,atualizado_por,criado_por_nome,atualizado_por_nome)'
+                        ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                         (tipo, numero, ano, data_d, ementa,
                          data.get('partes') or '', data.get('observacoes') or '',
                          data.get('assunto') or 'Outros',
                          data.get('processo_pa') or '', data.get('processo_tipo') or '', data.get('processo_ref') or '',
                          data.get('ato_tipo') or '', data.get('cargo') or '',
                          sigiloso, oficio_interno, oficio_interno_departamento,
-                         s['user_id'], s['user_id'])
+                         s['user_id'], s['user_id'], s['nome'], s['nome'])
                     )
                     # captura o rowid ANTES de bump_contador — que pode fazer seu próprio
                     # INSERT em contadores na primeira vez que o tipo/ano é usado, o que
@@ -1250,7 +1268,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                     'current': dict(row),
                 })
                 return
-            fields = {'atualizado_por': s['user_id'], 'atualizado_em': _now_precise()}
+            fields = {'atualizado_por': s['user_id'], 'atualizado_por_nome': s['nome'], 'atualizado_em': _now_precise()}
             for f in ('ementa', 'partes', 'observacoes', 'data', 'assunto', 'processo_pa', 'processo_tipo', 'processo_ref', 'ato_tipo', 'cargo'):
                 if f in data: fields[f] = data[f]
             # sigiloso é sensível: mesmo quem só tem permissão de edição por
@@ -1645,7 +1663,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             reverse=True
         ) if os.path.isdir(bdir) else []
         backups_json = sorted(
-            (f for f in os.listdir(bdir) if f.startswith('SIS_SGDP_BACKUP_') and f.endswith('.json')),
+            (f for f in os.listdir(bdir) if f.startswith(_SYNC_PREFIXOS) and f.endswith('.json')),
             reverse=True
         ) if os.path.isdir(bdir) else []
 
@@ -1889,10 +1907,10 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
                 numero = int(r['numero']) if r.get('numero') else proximo_numero(conn, tipo, ano)
                 try:
                     conn.execute(
-                        'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,criado_por,atualizado_por)'
-                        ' VALUES (?,?,?,?,?,?,?,?,?,?)',
+                        'INSERT INTO documentos (tipo,numero,ano,data,ementa,partes,observacoes,assunto,criado_por,atualizado_por,criado_por_nome,atualizado_por_nome)'
+                        ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
                         (tipo, numero, ano, data_d, ementa, r.get('partes') or '', r.get('observacoes') or '',
-                         r.get('assunto') or 'Outros', s['user_id'], s['user_id'])
+                         r.get('assunto') or 'Outros', s['user_id'], s['user_id'], s['nome'], s['nome'])
                     )
                     bump_contador(conn, tipo, ano, numero)
                     importados += 1
@@ -1936,8 +1954,8 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             conn.execute('INSERT INTO arquivos (nome_original,nome_disco,tamanho,enviado_por) VALUES (?,?,?,?)',
                          (filename, nome_disco, len(filedata), s['user_id']))
             aid = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
-            conn.execute('UPDATE documentos SET arquivo_id=?,atualizado_por=?,atualizado_em=? WHERE id=?',
-                         (aid, s['user_id'], time.strftime('%Y-%m-%dT%H:%M:%S'), did))
+            conn.execute('UPDATE documentos SET arquivo_id=?,atualizado_por=?,atualizado_por_nome=?,atualizado_em=? WHERE id=?',
+                         (aid, s['user_id'], s['nome'], time.strftime('%Y-%m-%dT%H:%M:%S'), did))
             audit(conn, s['user_id'], s['nome'], 'upload', did, filename)
             conn.commit()
         self._json(200, {'ok': True, 'arquivo_id': aid, 'nome_original': filename, 'tamanho': len(filedata)})
@@ -2246,7 +2264,7 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self._cors()
         self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Content-Disposition', f'attachment; filename="SIS_SGDP_BACKUP_{time.strftime("%Y-%m-%d_%H-%M-%S")}.json"')
+        self.send_header('Content-Disposition', f'attachment; filename="SYNC_SGDP_BACKUP_{time.strftime("%Y-%m-%d_%H-%M-%S")}.json"')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -2283,21 +2301,42 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
             # única de numeração, e sem ele a sequência de ofício interno de dois
             # departamentos podia colidir.
             cols_doc = [r[1] for r in conn.execute('PRAGMA table_info(documentos)')]
-            for doc in backup.get('documentos', []):
-                vindas = [c for c in cols_doc if c in doc]
-                conn.execute(
-                    f'INSERT OR REPLACE INTO documentos ({",".join(vindas)}) '
-                    f'VALUES ({",".join("?" * len(vindas))})',
-                    [int(bool(doc[c])) if c == 'sigiloso' else doc[c] for c in vindas])
-            for c in backup.get('contadores', []):
-                conn.execute('INSERT OR REPLACE INTO contadores VALUES (?,?,?)', (c['tipo'],c['ano'],c['ultimo']))
+            # Contas antigas primeiro: arquivo legado traz `usuarios`, e restaurar as
+            # contas antes dos documentos faz os ids de autoria resolverem.
             for u in backup.get('usuarios', []):
                 _restaurar_usuario(conn, u)
+            # Id de usuario e local. Se o arquivo veio de OUTRA instalacao, nenhum id
+            # dele significa nada aqui — e o caso perigoso nao e o id desconhecido
+            # (esse a FK ja barraria), e o id que por acaso existe: o 2 de la vira
+            # outra pessoa aqui, que passaria a ser dona do documento para efeito de
+            # permissao (pode_ver_doc/pode_editar_doc comparam por id). Entao,
+            # arquivo de fora: todos os vinculos caem, a autoria fica pelo nome
+            # gravado no proprio documento. Arquivo daqui (recuperacao): preserva.
+            de_fora = bool(backup.get('instalacao')) and backup.get('instalacao') != _instalacao_id(conn)
+            ids_locais = {r[0] for r in conn.execute('SELECT id FROM usuarios')}
+            fks_usuario = [c for c in ('criado_por', 'atualizado_por', 'assinado_por') if c in cols_doc]
+            for doc in backup.get('documentos', []):
+                vindas = [c for c in cols_doc if c in doc]
+                valores = []
+                for c in vindas:
+                    v = doc[c]
+                    if c == 'sigiloso':
+                        v = int(bool(v))
+                    elif c in fks_usuario and v is not None and (de_fora or v not in ids_locais):
+                        v = None
+                    valores.append(v)
+                conn.execute(
+                    f'INSERT OR REPLACE INTO documentos ({",".join(vindas)}) '
+                    f'VALUES ({",".join("?" * len(vindas))})', valores)
+            for c in backup.get('contadores', []):
+                conn.execute('INSERT OR REPLACE INTO contadores VALUES (?,?,?)', (c['tipo'],c['ano'],c['ultimo']))
             # Backups antigos podem trazer uma chave 'signatures' — ignorada de propósito
             # (assinatura digital removida).
             ndoc = len(backup.get('documentos', []))
             narq = len(backup.get('arquivos', []))
-            audit(conn, s['user_id'], s['nome'], 'restaurar_backup', detalhes=f"{ndoc} documentos, {narq} arquivos")
+            origem = 'de outra instalação' if de_fora else 'desta instalação'
+            audit(conn, s['user_id'], s['nome'], 'restaurar_backup',
+                  detalhes=f"{ndoc} documentos, {narq} arquivos — arquivo {origem}")
             conn.commit()
         self._json(200, {'ok': True, 'documentos': ndoc, 'arquivos': narq})
 
@@ -2478,10 +2517,17 @@ class SGDPHandler(http.server.SimpleHTTPRequestHandler):
 # A mecânica pesada (Cofre .zip, rotação) fica logo abaixo; ao portar aos irmãos
 # a parte genérica sobe para o sgx_base.
 _SGX_SIGLA = 'SGDP'
-_BACKUP_SCHEMA = 2
+_BACKUP_SCHEMA = 3
 # Flag por sistema: o SGDP leva `usuarios` no JSON portátil (é multiusuário e
 # sincroniza contas entre procuradoras). Os irmãos de admin único não levam.
-_BACKUP_INCLUI_USUARIOS = True
+# O JSON portatil (SYNC_) circula entre as instalacoes dos procuradores — o manual
+# orienta enviar o arquivo ao colega. Levava a tabela `usuarios` inteira, com hash
+# de senha, CPF e e-mail, e o restore casava por id: como o id 1 e o admin em toda
+# instalacao, restaurar o arquivo do colega renomeava a sua conta e trocava a sua
+# senha pela dele. A autoria dos documentos, unico motivo real para exportar
+# usuarios, passou a viver no proprio documento (criado_por_nome). Ler continua
+# valendo: arquivo antigo que traga `usuarios` ainda restaura, via _restaurar_usuario.
+_BACKUP_INCLUI_USUARIOS = False
 # Credenciais e caminhos que NÃO viajam no JSON portátil: o arquivo sai do
 # servidor. smtp_pass é senha viva; backup_path é local da máquina de origem e
 # não deve reconfigurar o destino. Ausente no arquivo = mantém o valor do banco.
@@ -2496,26 +2542,60 @@ def _backup_exported_at(data):
 
 def _montar_backup(conn):
     """Payload único do backup JSON portátil — antes duplicado (e divergente)
-    entre _export_backup e _do_json_backup."""
+    entre _export_backup e _do_json_backup.
+
+    NÃO leva documentos sigilosos. Este arquivo é o de sincronização: o manual
+    orienta enviá-lo ao colega, e o primeiro usuário de cada instalação nasce
+    administrador — então tudo que sai daqui é legível do outro lado. Marcar um
+    documento como sigiloso promete restrição ao criador; mandá-lo junto quebrava
+    a promessa em silêncio, com ementa, partes e o PDF em base64. Sigiloso é
+    trabalhado só por quem o criou, e continua no Cofre (.zip), que é cópia da
+    própria instalação e não circula.
+
+    Sai junto o que reconstrói o documento pela borda: o anexo dele e as linhas
+    de auditoria que o citam (que trazem tipo, número e ano no `detalhes`).
+    """
     import base64
-    docs      = [dict(r) for r in conn.execute('SELECT * FROM documentos').fetchall()]
+    docs = [dict(r) for r in conn.execute('SELECT * FROM documentos WHERE sigiloso=0').fetchall()]
+    ids_sigilosos = {r[0] for r in conn.execute('SELECT id FROM documentos WHERE sigiloso=1')}
+    anexos_sigilosos = {r[0] for r in conn.execute(
+        'SELECT arquivo_id FROM documentos WHERE sigiloso=1 AND arquivo_id IS NOT NULL')}
     conts     = [dict(r) for r in conn.execute('SELECT * FROM contadores').fetchall()]
-    auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()]
+    auditoria = [dict(r) for r in conn.execute('SELECT * FROM auditoria').fetchall()
+                 if r['documento_id'] not in ids_sigilosos]
     settings  = {r['key']: r['value'] for r in conn.execute('SELECT key,value FROM sys_settings').fetchall()
                  if r['key'] not in _NAO_EXPORTAR}
     arqs = []
     for arq in conn.execute('SELECT * FROM arquivos').fetchall():
+        if arq['id'] in anexos_sigilosos:
+            continue
         p = os.path.join(UPLOADS_DIR, arq['nome_disco'])
         if os.path.isfile(p):
             with open(p, 'rb') as f:
                 arqs.append({**dict(arq), 'data_b64': base64.b64encode(f.read()).decode()})
     payload = {'_sgx': _SGX_SIGLA, 'schema': _BACKUP_SCHEMA,
                'exportedAt': time.strftime('%Y-%m-%dT%H:%M:%S'),
+               'instalacao': _instalacao_id(conn), 'sigilososOmitidos': len(ids_sigilosos),
                'documentos': docs, 'contadores': conts, 'arquivos': arqs,
                'settings': settings, 'auditoria': auditoria}
     if _BACKUP_INCLUI_USUARIOS:
         payload['usuarios'] = _usuarios_para_backup(conn)
     return payload
+
+
+def _instalacao_id(conn):
+    """Identidade desta instalação, criada no primeiro uso e guardada em sys_settings.
+
+    Serve para a restauração saber se o arquivo veio daqui (recuperação, os ids de
+    usuário valem) ou de outra máquina (sincronização, os ids não significam nada:
+    cada instalação numera os próprios usuários, e o id 2 de lá é outra pessoa aqui).
+    """
+    row = conn.execute("SELECT value FROM sys_settings WHERE key='instalacao_id'").fetchone()
+    if row and row['value']:
+        return row['value']
+    novo = uuid.uuid4().hex
+    conn.execute("INSERT OR REPLACE INTO sys_settings (key,value) VALUES ('instalacao_id',?)", (novo,))
+    return novo
 
 
 # ── Watchdog ──────────────────────────────────────────────────────────────────
@@ -2542,7 +2622,7 @@ def _get_backup_cfg():
 def _do_json_backup(cfg=None):
     if cfg is None: cfg = _get_backup_cfg()
     bdir = cfg['path']; os.makedirs(bdir, exist_ok=True)
-    name = time.strftime('SIS_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.json')
+    name = time.strftime('SYNC_SGDP_BACKUP_%Y-%m-%d_%H-%M-%S.json')
     try:
         with get_db() as conn:
             backup = _montar_backup(conn)
@@ -2580,12 +2660,19 @@ def _do_db_backup(cfg=None):
 # Prefixo do Cofre casa tanto o .zip novo quanto o .db legado (mesmo grupo lógico
 # de rotação e de listagem).
 _COFRE_EXTS = ('.zip', '.db')
+# Prefixo do JSON portatil: SYNC_ desde 2026-08-02 (antes SIS_). A listagem e a
+# rotacao casam os dois — arquivo gravado antes do renome continua aparecendo na
+# tela de restauracao e continua entrando na conta dos N mantidos. Trocar so o
+# prefixo novo deixaria os antigos orfaos no disco, fora de qualquer limpeza.
+# A identificacao do conteudo nunca dependeu do nome: quem valida e o envelope
+# (_sgx/schema), via sgx_base.eh_backup.
+_SYNC_PREFIXOS = ('SYNC_SGDP_BACKUP_', 'SIS_SGDP_BACKUP_')
 
 def _rotate_backups(cfg=None):
     if cfg is None: cfg = _get_backup_cfg()
     bdir = cfg['path']; keep = cfg['keep']
     if not os.path.isdir(bdir): return
-    for prefix, exts in [('DB_SGDP_BACKUP_', _COFRE_EXTS), ('SIS_SGDP_BACKUP_', ('.json',))]:
+    for prefix, exts in [('DB_SGDP_BACKUP_', _COFRE_EXTS), (_SYNC_PREFIXOS, ('.json',))]:
         files = sorted(f for f in os.listdir(bdir) if f.startswith(prefix) and f.endswith(exts))
         for old in files[:-keep]:
             fp = os.path.join(bdir, old)

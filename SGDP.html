@@ -1198,7 +1198,7 @@ const TIPOS_PLURAL = {
 };
 const ANO_ATUAL = new Date().getFullYear();
 
-const SGDP_VERSION = '1.47.15';
+const SGDP_VERSION = '1.48.0';
 document.title = `SGDP v${SGDP_VERSION}`;
 document.querySelectorAll('.sgdp-version-badge').forEach(el => el.textContent = `v${SGDP_VERSION}`);
 
@@ -3554,25 +3554,31 @@ async function selecionarPastaBackup() {
 
 async function exportBackup() {
   const ok = await confirmar(
-    '💡 Guarde o arquivo em local externo à máquina — pasta de rede, servidor municipal, OneDrive/Google Drive institucional — para garantir recuperação em caso de formatação ou falha do equipamento.',
+    'Este é o arquivo de <strong>sincronização</strong>: leva o acervo para outra instalação, mas <strong>não</strong> leva documentos sigilosos nem as contas de usuário. Para recuperar a instalação inteira, use o <strong>Cofre (.zip)</strong>.<br><br>💡 Guarde o arquivo em local externo à máquina — pasta de rede, servidor municipal, OneDrive/Google Drive institucional.',
     'Salvar arquivo'
   );
   if (!ok) return;
   const r = await fetch('/api/backup', { headers: { Authorization: `Bearer ${S.token}` } });
   if (!r.ok) { toast('Erro ao exportar backup.', 'error'); return; }
-  const blob = await r.blob();
+  // lê o corpo uma vez só: precisa do JSON (quantos sigilosos ficaram de fora) e
+  // do blob para gravar
+  const texto = await r.text();
+  const omitidos = (() => { try { return JSON.parse(texto).sigilososOmitidos || 0; } catch { return 0; } })();
+  const blob = new Blob([texto], { type: 'application/json' });
   const _now = new Date();
   const _ds  = _isoLocal(_now);
   const _ts  = _now.toTimeString().slice(0,8).replace(/:/g,'-');
-  await salvarArquivo(blob, `SIS_SGDP_BACKUP_${_ds}_${_ts}.json`,
+  await salvarArquivo(blob, `SYNC_SGDP_BACKUP_${_ds}_${_ts}.json`,
     [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]);
-  toast('Backup exportado com sucesso.', 'success');
+  toast(omitidos
+    ? `Arquivo de sincronização exportado — ${omitidos} documento(s) sigiloso(s) ficaram de fora.`
+    : 'Arquivo de sincronização exportado com sucesso.', 'success');
 }
 
 async function importBackup(file) {
   if (!file) return;
   const ok = await confirmar(
-    `<strong>Atenção:</strong> isso substituirá <em>todos</em> os documentos, PDFs e usuários pelos dados do backup.<br><br>Esta ação é irreversível. Deseja continuar?`,
+    `<strong>Atenção:</strong> isso substituirá <em>todos</em> os documentos e PDFs pelos dados do arquivo.<br><br>Se o arquivo vier de outra instalação, os documentos entram sem vínculo com os usuários daqui — a autoria fica registrada pelo nome. Documentos sigilosos não viajam neste arquivo.<br><br>Esta ação é irreversível. Deseja continuar?`,
     'Sim, restaurar'
   );
   if (!ok) return;
