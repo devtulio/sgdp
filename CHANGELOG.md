@@ -9,6 +9,13 @@
 
 ---
 
+## [1.48.1] — 2026-08-05
+
+### Documentação
+- **Página do projeto no GitHub revisada: a seção de sistemas irmãos passa a citar só a família SG (o Licitarium tem arquitetura própria e sai da lista), a linha de licença segue o padrão dos quatro e o aviso sobre backup dos dados virou parágrafo simples.**
+
+---
+
 ## [1.48.0] — 2026-08-02
 
 ### Segurança
