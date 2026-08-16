@@ -40,6 +40,6 @@ export default defineConfig({
     url: `http://localhost:${port}/health`,
     reuseExistingServer: false,
     timeout: 30_000,  // waitress boota um tico mais lento que o http.server
-    env: { SGDP_DATA_DIR: dataDir, SGDP_PORT: String(port) },
+    env: { SGDP_DATA_DIR: dataDir, SGDP_PORT: String(port), SGDP_NO_BROWSER: '1' },
   },
 });
